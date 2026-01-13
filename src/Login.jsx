@@ -1,3 +1,10 @@
+import namingLogoImg from "./login_image/네이밍_로고_추천.png";
+import analyzeCompany from "./login_image/기업 초기 진단.png"
+import analyzeReport from "./login_image/진단분석리포트.png"
+import makeset from "./login_image/문서초안생성.png"
+import story from "./login_image/스토리텔링.png"
+
+
 export default function LoginApp() {
   return (
     <div className="login-page navy">
@@ -9,20 +16,70 @@ export default function LoginApp() {
           </div>
           <div className="feature-marquee" aria-label="서비스 핵심 기능">
             <div className="marquee-track">
-              <span className="chip">AI 브랜드 진단 리포트</span>
-              <span className="chip">인터뷰 인사이트 요약</span>
-              <span className="chip">네이밍·로고 추천</span>
-              <span className="chip">홈페이지 템플릿 제작</span>
-              <span className="chip">사업계획서·IR 초안</span>
+              <div className="marquee-card">
+                <img src={namingLogoImg} alt="네이밍 로고 추천" />
+                <strong>네이밍·로고 추천</strong>
+                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
+              </div>
 
-              {/* 끊김 방지: 동일 문구 반복 */}
-              <span className="chip">AI 브랜드 진단 리포트</span>
-              <span className="chip">인터뷰 인사이트 요약</span>
-              <span className="chip">네이밍·로고 추천</span>
-              <span className="chip">홈페이지 템플릿 제작</span>
-              <span className="chip">사업계획서·IR 초안</span>
+              <div className="marquee-card">
+                <img src={analyzeCompany} alt="기업 진단 분석" />
+                <strong>기업 진단분석</strong>
+                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={analyzeReport} alt="분석기반 리포트" />
+                <strong>분석 리포트 제공</strong>
+                <p>분석 내용 기반 리포트를 제공합니다..</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={makeset} alt="문서초안자동생성" />
+                <strong>문서 초안 자동 생성</strong>
+                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={story} alt="스토리텔링" />
+                <strong>스타트업 스토리텔링</strong>
+                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
+              </div>
+
+              {/* ✅ 끊김 방지용 반복(최소 1세트 더) */}
+              <div className="marquee-card">
+                <img src={namingLogoImg} alt="네이밍 로고 추천" />
+                <strong>네이밍·로고 추천</strong>
+                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={analyzeCompany} alt="기업 진단 분석" />
+                <strong>기업 진단분석</strong>
+                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={analyzeReport} alt="분석기반 리포트" />
+                <strong>분석 리포트 제공</strong>
+                <p>분석 내용 기반 리포트를 제공합니다..</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={makeset} alt="문서초안자동생성" />
+                <strong>문서 초안 자동 생성</strong>
+                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={story} alt="스토리텔링" />
+                <strong>스타트업 스토리텔링</strong>
+                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
+              </div>
+              
             </div>
           </div>
+
           <footer className="hero-footer">
             <div className="hero-footer-links">
               <button type="button" className="hero-footer-link">개인정보 처리방침</button>
