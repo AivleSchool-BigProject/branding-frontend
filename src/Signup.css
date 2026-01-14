@@ -1,0 +1,188 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+
+:root {
+  --navy: #001f66;
+  --blue: #1766e5;
+  --text: #111827;
+  --muted: #8a90a3;
+  --line: #d9deea;
+  --panel: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Noto Sans KR", sans-serif;
+  color: var(--text);
+  background: #f5f6fb;
+}
+
+.signup-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: start;
+}
+
+.signup-card {
+  width: min(520px, 92vw);
+  margin: 48px auto 32px;
+  background: var(--panel);
+  border: 1px solid #eef1f6;
+  border-radius: 18px;
+  padding: 36px 32px 28px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.08);
+}
+
+.signup-title {
+  text-align: center;
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.signup-form {
+  display: grid;
+  gap: 18px;
+}
+
+.field {
+  display: grid;
+  font-weight: bold;
+  gap: 8px;
+}
+
+label {
+  font-size: 13px;
+  color: #5c6476;
+  font-weight: 600;
+}
+
+input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #fff;
+  width: 100%;
+}
+
+input:focus {
+  outline: none;
+  border-color: #9ec2ff;
+  box-shadow: 0 0 0 3px rgba(23, 102, 229, 0.12);
+}
+
+.hint {
+  font-size: 11px;
+  color: #9aa1b2;
+}
+
+.terms {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #6a7180;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.link-button {
+  border: none;
+  background: transparent;
+  color: #6a7180;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.primary {
+  border: none;
+  border-radius: 10px;
+  padding: 12px 0;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.secondary {
+  border: 1px solid #d9deea;
+  border-radius: 10px;
+  padding: 12px 0;
+  background: #fff;
+  color: #4f5665;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.signup-footer {
+  background: var(--navy);
+  color: #e7ecf7;
+  padding: 18px 24px 22px;
+  font-size: 12px;
+}
+
+.footer-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 6px;
+}
+
+@media (max-width: 600px) {
+  .signup-card {
+    margin: 32px auto 24px;
+    padding: 28px 22px 24px;
+  }
+}
+
+.date-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.date-input input {
+  width: 100%;
+  padding-right: 44px; /* 아이콘 공간 */
+  cursor: pointer;
+}
+
+.calendar-icon {
+  position: absolute;
+  right: 14px;
+  font-size: 18px;
+  color: #8a90a3;
+  pointer-events: none;
+}
+
+/* react-datepicker 팝업이 카드 위로 나오게 */
+.react-datepicker {
+  font-family: inherit;
+  border-radius: 12px;
+}
+
+/* 버튼 2개를 좌우로 */
+.button-row {
+  display: flex;
+  gap: 12px;            /* 버튼 사이 간격 */
+  margin-top: 12px;
+}
+
+/* 버튼이 반반 차지 */
+.button-row button {
+  flex: 1;              /* ⭐ 핵심 */
+}
