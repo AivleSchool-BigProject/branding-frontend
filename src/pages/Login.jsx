@@ -1,8 +1,8 @@
-﻿import namingLogoImg from "./login_image/네이밍_로고_추천.png";
-import analyzeCompany from "./login_image/기업 초기 진단.png"
-import analyzeReport from "./login_image/진단분석리포트.png"
-import makeset from "./login_image/문서초안생성.png"
-import story from "./login_image/스토리텔링.png"
+﻿import namingLogoImg from "../login_image/네이밍_로고_추천.png";
+import analyzeCompany from "../login_image/기업 초기 진단.png"
+import analyzeReport from "../login_image/진단분석리포트.png"
+import makeset from "../login_image/문서초안생성.png"
+import story from "../login_image/스토리텔링.png"
 
 
 export default function LoginApp({ onSignup, onFindId, onFindPw }) {
