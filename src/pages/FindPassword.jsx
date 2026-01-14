@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../styles/FindPassword.css";
 
 export default function FindPassword({ onBack }) {
   const [userId, setUserId] = useState("");
@@ -36,9 +37,7 @@ export default function FindPassword({ onBack }) {
               onChange={(event) => setPhone(event.target.value)}
             />
           </div>
-          <p className="hint">
-            회원가입시 비밀번호를 안내드립니다.
-          </p>
+          <p className="hint">회원가입시 비밀번호를 안내드립니다.</p>
           {result ? <p className="result">{result}</p> : null}
           <button type="submit" className="primary">
             확인
@@ -50,12 +49,18 @@ export default function FindPassword({ onBack }) {
       </main>
       <footer className="findpw-footer">
         <div className="footer-inner">
-            <div className="hero-footer-text">
-              <div><strong>BRANDPILOT</strong></div>
-              <div>BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)</div>
-              <div>KT AIVLE 7반 15조 </div>
-              <div className="hero-footer-copy">© 2026 Team15 Corp. All rights reserved.</div>
+          <div className="hero-footer-text">
+            <div>
+              <strong>BRANDPILOT</strong>
             </div>
+            <div>
+              BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
+            </div>
+            <div>KT AIVLE 7반 15조 </div>
+            <div className="hero-footer-copy">
+              © 2026 Team15 Corp. All rights reserved.
+            </div>
+          </div>
         </div>
       </footer>
     </div>

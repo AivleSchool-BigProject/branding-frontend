@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "../styles/FindID.css";
 
 export default function FindID({ onBack }) {
   const [name, setName] = useState("");
@@ -53,12 +54,18 @@ export default function FindID({ onBack }) {
       </main>
       <footer className="findid-footer">
         <div className="footer-inner">
-            <div className="hero-footer-text">
-              <div><strong>BRANDPILOT</strong></div>
-              <div>BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)</div>
-              <div>KT AIVLE 7반 15조 </div>
-              <div className="hero-footer-copy">© 2026 Team15 Corp. All rights reserved.</div>
+          <div className="hero-footer-text">
+            <div>
+              <strong>BRANDPILOT</strong>
             </div>
+            <div>
+              BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
+            </div>
+            <div>KT AIVLE 7반 15조 </div>
+            <div className="hero-footer-copy">
+              © 2026 Team15 Corp. All rights reserved.
+            </div>
+          </div>
         </div>
       </footer>
     </div>

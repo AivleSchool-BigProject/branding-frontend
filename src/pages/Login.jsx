@@ -4,7 +4,16 @@ import analyzeReport from "../login_image/진단분석리포트.png";
 import makeset from "../login_image/문서초안생성.png";
 import story from "../login_image/스토리텔링.png";
 
-export default function LoginApp({ onSignup, onFindId, onFindPw }) {
+import "../styles/Login.css";
+
+export default function LoginApp({ onSignup, onFindId, onFindPw, onLogin }) {
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (onLogin) {
+      onLogin();
+    }
+  };
+
   return (
     <div className="login-page navy">
       <div className="login-shell split">
@@ -106,7 +115,7 @@ export default function LoginApp({ onSignup, onFindId, onFindPw }) {
 
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
-          <form className="login-form">
+          <form className="login-form" onSubmit={handleSubmit}>
             <div className="field">
               <label htmlFor="login-id">아이디 (E-mail 계정)</label>
               <input id="login-id" type="text" placeholder="이메일 아이디" />

@@ -1,0 +1,455 @@
+﻿/* src/styles/MainPage.css */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+
+:root {
+  --navy: #001f66;
+  --text: #101522;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --line: #e5e7ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Manrope", "Noto Sans KR", sans-serif;
+  color: var(--text);
+  background: #f6f7fb;
+}
+
+.main-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+/* ✅ 예전 배치 그대로: 로고 / 가운데 메뉴 / 오른쪽 계정 */
+.main-header {
+  background: var(--navy);
+  color: #fff;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand {
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.main-nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.account-nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.nav-link {
+  border: none;
+  background: transparent;
+  color: #e5e9f7;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+/* =========================
+   ✅ Dropdown (브랜드 컨설팅)
+   - PC: hover로 열림 + 메뉴까지 선택 가능
+   - Mobile: 클릭(is-open)으로 열림
+   ========================= */
+.nav-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 버튼-패널 사이 이동할 때 hover 끊기는 문제 해결(브릿지) */
+.nav-dropdown::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px; /* panel top(calc)와 맞춤 */
+  background: transparent;
+}
+
+.nav-dropdown__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-dropdown__chev {
+  display: inline-block;
+  transform: translateY(-1px);
+  transition: transform 0.18s ease;
+  opacity: 0.95;
+}
+
+.nav-dropdown__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 210px;
+
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+  padding: 8px;
+
+  opacity: 0;
+  transform: translateY(-8px) scale(0.98);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+
+  z-index: 999;
+}
+
+/* ✅ PC hover */
+.nav-dropdown:hover .nav-dropdown__panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.nav-dropdown:hover .nav-dropdown__chev {
+  transform: rotate(180deg) translateY(-1px);
+}
+
+/* ✅ Mobile click */
+.nav-dropdown.is-open .nav-dropdown__panel {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.nav-dropdown.is-open .nav-dropdown__chev {
+  transform: rotate(180deg) translateY(-1px);
+}
+
+.nav-dropdown__item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.05s ease;
+}
+.nav-dropdown__item:hover {
+  background: #f3f4f6;
+}
+.nav-dropdown__item:active {
+  transform: translateY(1px);
+}
+
+/* Main content */
+.main-content {
+  padding: 42px 32px 72px;
+}
+
+.section-title {
+  margin: 0 0 26px;
+  font-size: 15px;
+  font-weight: bold;
+  display: inline-block;
+  position: relative;
+}
+
+.section-title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 100%;
+  height: 6px;
+  background: var(--navy);
+  border-radius: 999px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  justify-items: center;
+}
+
+.info-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  min-height: 380px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
+  border-color: rgba(23, 102, 229, 0.35);
+}
+
+.card-image {
+  width: 100%;
+  height: 300px;
+  background: #f1f3f9;
+  overflow: hidden;
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border: 3px solid #dfe4ef;
+  border-radius: 12px;
+}
+
+.card-body {
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.card-tag {
+  margin: 0;
+  font-size: 12px;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.card-body h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.deal-board {
+  margin-top: 40px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  padding: 24px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.deal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.deal-eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #4f46e5;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.deal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.deal-more {
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  color: #5b6476;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.deal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.deal-card {
+  border: 1px solid #edf0f6;
+  border-radius: 14px;
+  padding: 16px;
+  background: #fff;
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.deal-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+  border-color: rgba(23, 102, 229, 0.35);
+}
+
+.deal-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.deal-card h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.deal-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.deal-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.deal-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.deal-tags span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f4ed8;
+  background: #eaf0ff;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.deal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.deal-footer strong {
+  font-size: 12px;
+  color: #1f2a44;
+}
+
+.deal-footer button {
+  border: 1px solid #e1e6f2;
+  background: #fff;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #55607a;
+}
+
+.main-footer {
+  background: var(--navy);
+  color: #e7ecf7;
+  padding: 18px 24px 22px;
+  font-size: 12px;
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 6px;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer-link {
+  border: none;
+  background: transparent;
+  color: #e7ecf7;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.footer-sep {
+  color: rgba(231, 236, 247, 0.6);
+}
+
+.footer-text {
+  color: rgba(231, 236, 247, 0.82);
+}
+
+@media (max-width: 980px) {
+  .main-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  .deal-grid {
+    grid-template-columns: 1fr;
+  }
+}

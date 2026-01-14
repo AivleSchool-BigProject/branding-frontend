@@ -1,14 +1,45 @@
+// src/pages/DiagnosisHome.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/DiagnosisHome.css";
 
 export default function DiagnosisHome() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [brandOpen, setBrandOpen] = useState(false);
-  const [draft, setDraft] = useState(null);
+  const navigate = useNavigate();
 
+  // ✅ 브랜드 컨설팅 드롭다운(모바일 클릭용)
+  const [brandOpen, setBrandOpen] = useState(false);
   const brandRef = useRef(null);
 
-  // ✅ 기업 진단 & 인터뷰 프로세스(상자 안에 설명까지)
+  useEffect(() => {
+    const onDown = (e) => {
+      if (!brandOpen) return;
+      if (brandRef.current && !brandRef.current.contains(e.target)) {
+        setBrandOpen(false);
+      }
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") setBrandOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [brandOpen]);
+
+  const handleBrandItem = (action) => {
+    setBrandOpen(false);
+    const map = {
+      concept: "컨셉 컨설팅",
+      naming: "네이밍 컨설팅",
+      logo: "로고 컨설팅",
+      homepage: "홈페이지 컨설팅",
+    };
+    alert(`${map[action]} 클릭 (테스트)`);
+  };
+
+  // ✅ 4칸 프로세스
   const steps = useMemo(
     () => [
       {
@@ -19,23 +50,25 @@ export default function DiagnosisHome() {
       {
         n: 2,
         title: "AI 분석",
-        bullets: ["리스크/병목 자동 분석", "핵심 이슈 요약"],
+        bullets: ["리스크/병목 자동 분석", "영역별 점수화 + 이슈 요약"],
       },
       {
         n: 3,
         title: "우선순위 & 로드맵",
-        bullets: ["점수화 + 우선순위 도출", "4~12주 실행 로드맵 초안 생성"],
+        bullets: ["핵심 과제 우선순위 도출", "4~12주 실행 로드맵 초안 생성"],
       },
       {
         n: 4,
         title: "결과 및 전략",
-        bullets: ["실행 체크리스트 + KPI 제안", "맞춤 컨설팅 추천"],
+        bullets: ["체크리스트/KPI 제안", "맞춤 컨설팅 추천"],
       },
     ],
     []
   );
 
   // ===== localStorage 진행률(테스트용) =====
+  const [draft, setDraft] = useState(null);
+
   const loadDraft = () => {
     try {
       const raw = localStorage.getItem("diagnosisDraft");
@@ -63,7 +96,7 @@ export default function DiagnosisHome() {
       case 2:
         return "AI 분석";
       case 3:
-        return "우선순위 진단";
+        return "우선순위 & 로드맵";
       case 4:
         return "결과 및 전략";
       default:
@@ -78,55 +111,16 @@ export default function DiagnosisHome() {
     return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
   }, [draft]);
 
-  const resumeAvailable = Boolean(draft);
-
-  // ===== 드롭다운: 바깥 클릭/ESC 닫기 =====
-  useEffect(() => {
-    const onDown = (e) => {
-      if (!brandOpen) return;
-      if (brandRef.current && !brandRef.current.contains(e.target)) {
-        setBrandOpen(false);
-      }
-    };
-    const onKey = (e) => {
-      if (e.key === "Escape") setBrandOpen(false);
-    };
-
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [brandOpen]);
-
-  // ===== 액션(테스트용) =====
-  const handleBrandItem = (action) => {
-    setBrandOpen(false);
-    const map = {
-      concept: "컨셉 컨설팅",
-      naming: "네이밍 컨설팅",
-      logo: "로고 컨설팅",
-      homepage: "홈페이지 컨설팅",
-    };
-    alert(`${map[action]} 클릭(테스트)`);
-  };
-
-  const handleStart = () => alert("기업 진단 시작(테스트)");
-  const handleLogout = () => alert("로그아웃(테스트)");
-  const handleHome = () => alert("홈으로 이동(테스트)");
-
+  const handleStart = () => alert("기업 진단 시작 (테스트)");
   const handleResume = () => {
     if (!draft) return;
-    alert(`이어서 진행(테스트)\n단계: ${stageLabel}\n진행률: ${progress}%`);
+    alert(`이어서 진행 (테스트)\n단계: ${stageLabel}\n진행률: ${progress}%`);
   };
-
   const handleRestart = () => {
     localStorage.removeItem("diagnosisDraft");
     setDraft(null);
     alert("진단 데이터를 초기화했습니다. (localStorage 삭제)");
   };
-
   const handleSeed = () => {
     const sample = { progress: 35, stage: 2, updatedAt: Date.now() };
     localStorage.setItem("diagnosisDraft", JSON.stringify(sample));
@@ -136,113 +130,100 @@ export default function DiagnosisHome() {
 
   return (
     <div className="diagHome">
-      {/* Header */}
-      <header className="diagHome__header">
-        <div className="diagHome__headerInner">
-          <div
-            className="diagHome__brand"
-            role="button"
-            tabIndex={0}
-            onClick={handleHome}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") handleHome();
-            }}
-          >
-            AI Consulting
-          </div>
+      {/* ✅ 메인과 동일한 “이전 헤더 배치” */}
+      <header className="main-header">
+        <div
+          className="brand"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/main")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") navigate("/main");
+          }}
+        >
+          BRANDPILOT
+        </div>
 
-          <button
-            className="diagHome__menuBtn"
-            type="button"
-            aria-label="메뉴 열기"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            ☰
+        <nav className="main-nav" aria-label="주요 메뉴">
+          <button type="button" className="nav-link">
+            기업 진단 &amp; 인터뷰
           </button>
 
-          <nav className={`diagHome__nav ${menuOpen ? "is-open" : ""}`}>
-            <a href="#diagnosis" className="diagHome__link is-active">
-              기업 진단 &amp; 인터뷰
-            </a>
+          <div
+            className={`nav-dropdown ${brandOpen ? "is-open" : ""}`}
+            ref={brandRef}
+          >
+            <button
+              type="button"
+              className="nav-link nav-dropdown__btn"
+              aria-expanded={brandOpen ? "true" : "false"}
+              onClick={() => setBrandOpen((v) => !v)}
+            >
+              브랜드 컨설팅 <span className="nav-dropdown__chev">▾</span>
+            </button>
 
             <div
-              className={`diagHome__dropdown ${brandOpen ? "is-open" : ""}`}
-              ref={brandRef}
+              className="nav-dropdown__panel"
+              role="menu"
+              aria-label="브랜드 컨설팅 메뉴"
             >
               <button
-                className="diagHome__link diagHome__dropdownBtn"
                 type="button"
-                aria-expanded={brandOpen}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setBrandOpen((v) => !v);
-                }}
+                className="nav-dropdown__item"
+                onClick={() => handleBrandItem("concept")}
               >
-                브랜드 컨설팅{" "}
-                <span className="diagHome__chev" aria-hidden="true">
-                  ▾
-                </span>
+                컨셉 컨설팅
               </button>
-
-              <div
-                className="diagHome__dropdownPanel"
-                role="menu"
-                aria-label="브랜드 컨설팅 메뉴"
+              <button
+                type="button"
+                className="nav-dropdown__item"
+                onClick={() => handleBrandItem("naming")}
               >
-                <button
-                  className="diagHome__ddItem"
-                  type="button"
-                  onClick={() => handleBrandItem("concept")}
-                >
-                  컨셉 컨설팅
-                </button>
-                <button
-                  className="diagHome__ddItem"
-                  type="button"
-                  onClick={() => handleBrandItem("naming")}
-                >
-                  네이밍 컨설팅
-                </button>
-                <button
-                  className="diagHome__ddItem"
-                  type="button"
-                  onClick={() => handleBrandItem("logo")}
-                >
-                  로고 컨설팅
-                </button>
-                <button
-                  className="diagHome__ddItem"
-                  type="button"
-                  onClick={() => handleBrandItem("homepage")}
-                >
-                  홈페이지 컨설팅
-                </button>
-              </div>
+                네이밍 컨설팅
+              </button>
+              <button
+                type="button"
+                className="nav-dropdown__item"
+                onClick={() => handleBrandItem("logo")}
+              >
+                로고 컨설팅
+              </button>
+              <button
+                type="button"
+                className="nav-dropdown__item"
+                onClick={() => handleBrandItem("homepage")}
+              >
+                홈페이지 컨설팅
+              </button>
             </div>
+          </div>
 
-            <a href="#promo" className="diagHome__link">
-              홍보물 컨설팅
-            </a>
-            <a href="#home" className="diagHome__link">
-              홈
-            </a>
-            <a href="#mypage" className="diagHome__link">
-              마이페이지
-            </a>
+          <button type="button" className="nav-link">
+            홍보물 컨설팅
+          </button>
+        </nav>
 
-            <button
-              className="diagHome__link diagHome__link--btn"
-              type="button"
-              onClick={handleLogout}
-            >
-              로그아웃
-            </button>
-          </nav>
+        <div className="account-nav">
+          <button
+            type="button"
+            className="nav-link"
+            onClick={() => navigate("/main")}
+          >
+            홈
+          </button>
+          <button type="button" className="nav-link">
+            마이페이지
+          </button>
+          <button
+            type="button"
+            className="nav-link"
+            onClick={() => alert("로그아웃(테스트)")}
+          >
+            로그아웃
+          </button>
         </div>
       </header>
 
-      {/* Body */}
       <main className="diagHome__main">
         <section className="diagHome__heroCard">
           <p className="diagHome__heroText">
@@ -250,36 +231,26 @@ export default function DiagnosisHome() {
             제공합니다.
           </p>
 
-          {/* ✅ 프로세스: 상자 안에 상세 설명 */}
           <div className="processCard">
             <div className="processCard__head">
               <h3 className="processCard__title">기업 진단 프로세스</h3>
               <div className="processCard__sub">
-                입력 → 분석 → 우선순위 → 전략 추천까지 한 번에
+                입력 → 분석 → 우선순위 → 전략까지 한 번에
               </div>
             </div>
 
             <ol className="processGrid" aria-label="기업 진단 단계">
-              {steps.map((s, idx) => (
+              {steps.map((s) => (
                 <li className="processItem" key={s.n}>
                   <div className="processItem__top">
                     <span className="processItem__badge">{s.n}</span>
                     <div className="processItem__title">{s.title}</div>
                   </div>
-
                   <ul className="processItem__list">
                     {s.bullets.map((b, i) => (
                       <li key={i}>{b}</li>
                     ))}
                   </ul>
-
-                  {/* 연결선: PC에서만 보여줌 */}
-                  {idx < steps.length - 1 && (
-                    <span
-                      className="processItem__connector"
-                      aria-hidden="true"
-                    />
-                  )}
                 </li>
               ))}
             </ol>
@@ -351,7 +322,7 @@ export default function DiagnosisHome() {
               className="diagHome__actionBtn"
               type="button"
               onClick={handleResume}
-              disabled={!resumeAvailable}
+              disabled={!draft}
             >
               이어서 진행하기
             </button>
@@ -375,16 +346,23 @@ export default function DiagnosisHome() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="diagHome__footer">
-        <div className="diagHome__footerInner">
-          <div className="diagHome__footerTitle">
-            KT AIVLE EDU 개인정보 처리방침 | 이용약관
+      <footer className="main-footer">
+        <div className="footer-inner">
+          <div className="footer-links">
+            <button type="button" className="footer-link">
+              개인정보 처리방침
+            </button>
+            <span className="footer-sep">|</span>
+            <button type="button" className="footer-link">
+              이용약관
+            </button>
           </div>
-          <div className="diagHome__footerText">
-            (주)케이티 경기도 성남시 분당구 불정로 90 (정자동) | 대표자명:
-            김영섭 | 사업자등록번호: 102-81-42945
-            <br />© 2026 AI Consulting. All rights reserved.
+          <div className="footer-text">
+            BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
+          </div>
+          <div className="footer-text">KT AIVLE 7반 15조 </div>
+          <div className="footer-text hero-footer-copy">
+            © 2026 Team15 Corp. All rights reserved.
           </div>
         </div>
       </footer>
