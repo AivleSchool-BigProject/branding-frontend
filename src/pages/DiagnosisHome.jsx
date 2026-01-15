@@ -1,12 +1,24 @@
 // src/pages/DiagnosisHome.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../styles/DiagnosisHome.css";
 
-export default function DiagnosisHome() {
+import SiteFooter from "../components/SiteFooter.jsx";
+
+// ✅ 모달/콘텐츠(메인과 동일하게 쓰려면)
+import PolicyModal from "../components/PolicyModal.jsx";
+import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
+
+export default function DiagnosisHome({ onLogout }) {
   const navigate = useNavigate();
 
+  // ✅ 브랜드 컨설팅 드롭다운 (메인과 동일)
   const [brandOpen, setBrandOpen] = useState(false);
   const brandRef = useRef(null);
+
+  // ✅ 푸터 약관/방침 모달 (메인과 동일)
+  const [openType, setOpenType] = useState(null);
+  const closeModal = () => setOpenType(null);
 
   useEffect(() => {
     const onDown = (e) => {
@@ -37,6 +49,16 @@ export default function DiagnosisHome() {
     alert(`${map[action]} 클릭 (테스트)`);
   };
 
+  // ✅ 메인페이지와 동일하게: 기업진단 버튼 클릭 시 이 페이지(/diagnosis) 유지
+  const handleDiagnosisClick = () => navigate("/diagnosis");
+
+  // ✅ 로그아웃 처리 (메인과 동일)
+  const handleLogout = () => {
+    if (typeof onLogout === "function") onLogout();
+    else navigate("/login");
+  };
+
+  // ✅ 4칸 프로세스
   const steps = useMemo(
     () => [
       {
@@ -63,6 +85,7 @@ export default function DiagnosisHome() {
     []
   );
 
+  // ===== localStorage 진행률(테스트용) =====
   const [draft, setDraft] = useState(null);
 
   const loadDraft = () => {
@@ -126,6 +149,24 @@ export default function DiagnosisHome() {
 
   return (
     <div className="diagHome">
+      {/* ✅ 개인정보/이용약관 모달 (메인과 동일) */}
+      <PolicyModal
+        open={openType === "privacy"}
+        title="개인정보 처리방침"
+        onClose={closeModal}
+      >
+        <PrivacyContent />
+      </PolicyModal>
+
+      <PolicyModal
+        open={openType === "terms"}
+        title="이용약관"
+        onClose={closeModal}
+      >
+        <TermsContent />
+      </PolicyModal>
+
+      {/* ✅ Header: MainPage 형식으로 통일 */}
       <header className="main-header">
         <div
           className="brand"
@@ -143,7 +184,7 @@ export default function DiagnosisHome() {
           <button
             type="button"
             className="nav-link"
-            onClick={() => navigate("/diagnosis")}
+            onClick={handleDiagnosisClick}
           >
             기업 진단 &amp; 인터뷰
           </button>
@@ -161,7 +202,11 @@ export default function DiagnosisHome() {
               브랜드 컨설팅 <span className="nav-dropdown__chev">▾</span>
             </button>
 
-            <div className="nav-dropdown__panel" role="menu">
+            <div
+              className="nav-dropdown__panel"
+              role="menu"
+              aria-label="브랜드 컨설팅 메뉴"
+            >
               <button
                 type="button"
                 className="nav-dropdown__item"
@@ -193,11 +238,7 @@ export default function DiagnosisHome() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="nav-link"
-            onClick={() => alert("홍보물 컨설팅 (테스트)")}
-          >
+          <button type="button" className="nav-link">
             홍보물 컨설팅
           </button>
         </nav>
@@ -210,29 +251,16 @@ export default function DiagnosisHome() {
           >
             홈
           </button>
-          <button
-            type="button"
-            className="nav-link"
-            onClick={() => alert("마이페이지 (테스트)")}
-          >
+          <button type="button" className="nav-link">
             마이페이지
           </button>
-          <button
-            type="button"
-            className="nav-link"
-            onClick={() => {
-              alert("로그아웃(테스트)");
-              navigate("/login");
-            }}
-          >
+          <button type="button" className="nav-link" onClick={handleLogout}>
             로그아웃
           </button>
         </div>
       </header>
 
-      {/* ✅ 이하 너 코드 그대로 */}
       <main className="diagHome__main">
-        {/* ... (동일) */}
         <section className="diagHome__heroCard">
           <p className="diagHome__heroText">
             간단한 정보를 입력하면 AI가 빠르게 분석하고, 주요 문제와 추천 전략을
@@ -347,33 +375,14 @@ export default function DiagnosisHome() {
             className="diagHome__devSeed"
             type="button"
             onClick={handleSeed}
-            title="테스트용 저장 데이터 생성"
           >
             테스트 저장 생성
           </button>
         </section>
       </main>
 
-      <footer className="main-footer">
-        <div className="footer-inner">
-          <div className="footer-links">
-            <button type="button" className="footer-link">
-              개인정보 처리방침
-            </button>
-            <span className="footer-sep">|</span>
-            <button type="button" className="footer-link">
-              이용약관
-            </button>
-          </div>
-          <div className="footer-text">
-            BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
-          </div>
-          <div className="footer-text">KT AIVLE 7반 15조 </div>
-          <div className="footer-text hero-footer-copy">
-            © 2026 Team15 Corp. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      {/* ✅ Footer: DiagnosisHome 형식으로 통일(공통 컴포넌트) */}
+      <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );
 }

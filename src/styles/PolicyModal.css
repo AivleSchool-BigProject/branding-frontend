@@ -1,0 +1,277 @@
+/* src/styles/PolicyModal.css
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+
+:root {
+  --navy: #001f66;
+  --blue: #1766e5;
+  --text: #111827;
+  --muted: #8a90a3;
+  --line: #d9deea;
+  --panel: #ffffff;
+  --bg: #f5f6fb;
+}
+
+.policyModal__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 10, 28, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  z-index: 9999;
+}
+
+.policyModal__dialog {
+  width: min(720px, 96vw);
+  max-height: min(78vh, 760px);
+  background: var(--panel);
+  border-radius: 18px;
+  border: 1px solid rgba(217, 222, 234, 0.9);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  font-family: "Manrope", "Noto Sans KR", sans-serif;
+}
+
+.policyModal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  background: linear-gradient(90deg, var(--navy), #0b2f8f);
+  color: #fff;
+}
+
+.policyModal__titleWrap {
+  display: grid;
+  gap: 6px;
+}
+
+.policyModal__badge {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+
+.policyModal__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.policyModal__close {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.policyModal__close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.policyModal__body {
+  padding: 18px;
+  overflow: auto;
+  background: #fff;
+}
+
+.policyModal__footer {
+  padding: 14px 18px 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #eef1f6;
+  background: #fbfcff;
+}
+
+.policyModal__btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.policyModal__btn:hover {
+  filter: brightness(0.98);
+}
+
+/* ===== 내용 문서 스타일 ===== */
+/* .policyDoc {
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.policyDoc__lead {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: #26314a;
+  font-weight: 600;
+}
+
+.policyDoc__section {
+  padding: 14px 14px;
+  border: 1px solid #eef1f6;
+  background: #ffffff;
+  border-radius: 14px;
+  margin: 12px 0;
+}
+
+.policyDoc__section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.policyDoc ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.policyDoc li {
+  margin: 6px 0;
+  font-size: 13px;
+  color: #2b3345;
+}
+
+.policyDoc__muted {
+  margin: 0;
+  font-size: 13px;
+  color: #5f677a;
+}
+
+.policyDoc__footnote {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: #7b8398;
+}
+
+@media (max-width: 520px) {
+  .policyModal__dialog {
+    max-height: 82vh;
+  }
+  .policyModal__body {
+    padding: 14px;
+  }
+  .policyModal__title {
+    font-size: 16px;
+  }
+} */
+
+/* src/styles/PolicyModal.css */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+:root {
+  --navy: #001f66;
+  --blue: #1766e5;
+  --text: #111827;
+  --muted: #6b7280;
+  --line: #e5e7ef;
+  --panel: #ffffff;
+}
+
+.policyModal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+/* ✅ 배경 */
+.policyModal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+/* ✅ 패널 */
+.policyModal__panel {
+  position: relative;
+  width: min(860px, 92vw);
+  max-height: min(78vh, 720px);
+  background: var(--panel);
+  border-radius: 18px;
+  border: 1px solid rgba(229, 231, 239, 0.9);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+/* ✅ 헤더: BRANDPILOT 네이비로 통일 */
+.policyModal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--navy);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.policyModal__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+}
+
+/* ✅ 닫기 버튼 */
+.policyModal__close {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffffff;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.policyModal__close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.policyModal__close:active {
+  transform: translateY(1px);
+}
+
+/* ✅ 바디 */
+.policyModal__body {
+  padding: 16px;
+  overflow: auto;
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 13px;
+}
+
+/* ✅ 바디 안에서 강조 문구(있을 때 예쁨) */
+.policyModal__body strong {
+  color: var(--navy);
+}
+
+.policyModal__body a {
+  color: var(--blue);
+  text-decoration: none;
+}
+.policyModal__body a:hover {
+  text-decoration: underline;
+}

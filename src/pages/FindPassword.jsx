@@ -1,6 +1,8 @@
 // src/pages/FindPassword.jsx
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../styles/FindPassword.css";
+import SiteFooter from "../components/SiteFooter.jsx";
 
 export default function FindPassword() {
   const navigate = useNavigate();
@@ -36,19 +38,15 @@ export default function FindPassword() {
     return onlyNum.length >= 10 && onlyNum.length <= 11;
   }, [phone]);
 
-  // ✅ 비밀번호 규칙: 8자 + 대문자 + 숫자 + 특수문자
-  const pwRules = useMemo(() => {
+  const pwValid = useMemo(() => {
     const v = newPw;
-    return {
-      lenOk: v.length >= 8,
-      upperOk: /[A-Z]/.test(v),
-      numOk: /\d/.test(v),
-      specialOk: /[^a-zA-Z0-9]/.test(v),
-    };
+    const lenOk = v.length >= 8;
+    const hasUpper = /[A-Z]/.test(v); // ✅ 대문자 포함
+    const hasLower = /[a-z]/.test(v);
+    const hasNum = /\d/.test(v);
+    const hasSpecial = /[^a-zA-Z0-9]/.test(v);
+    return lenOk && hasUpper && hasLower && hasNum && hasSpecial;
   }, [newPw]);
-
-  const pwValid =
-    pwRules.lenOk && pwRules.upperOk && pwRules.numOk && pwRules.specialOk;
 
   const pwMatch = useMemo(
     () => newPw && newPw2 && newPw === newPw2,
@@ -60,6 +58,7 @@ export default function FindPassword() {
     setError("");
   };
 
+  // (1) 인증코드 발송
   const handleRequest = async (e) => {
     e.preventDefault();
     resetAlerts();
@@ -83,6 +82,7 @@ export default function FindPassword() {
     }
   };
 
+  // (2) 인증코드 확인
   const handleVerify = async (e) => {
     e.preventDefault();
     resetAlerts();
@@ -100,13 +100,14 @@ export default function FindPassword() {
     }
   };
 
+  // (3) 새 비밀번호 재설정
   const handleReset = async (e) => {
     e.preventDefault();
     resetAlerts();
 
     if (!pwValid) {
       return setError(
-        "비밀번호는 8자 이상이며 대문자/숫자/특수문자를 포함해야 합니다."
+        "비밀번호는 8자 이상이며 대문자/소문자/숫자/특수문자를 모두 포함해야 합니다."
       );
     }
     if (!pwMatch) return setError("비밀번호 확인이 일치하지 않습니다.");
@@ -280,7 +281,7 @@ export default function FindPassword() {
                 autoComplete="new-password"
               />
               <small className="helper">
-                8자 이상 · <b>대문자</b> · 숫자 · 특수문자 포함
+                8자 이상 · 대문자/소문자/숫자/특수문자 포함
               </small>
             </div>
 
@@ -297,14 +298,7 @@ export default function FindPassword() {
             </div>
 
             <div className="checkline">
-              <span className={`pill ${pwRules.lenOk ? "ok" : ""}`}>8자+</span>
-              <span className={`pill ${pwRules.upperOk ? "ok" : ""}`}>
-                대문자
-              </span>
-              <span className={`pill ${pwRules.numOk ? "ok" : ""}`}>숫자</span>
-              <span className={`pill ${pwRules.specialOk ? "ok" : ""}`}>
-                특수문자
-              </span>
+              <span className={`pill ${pwValid ? "ok" : ""}`}>규칙 충족</span>
               <span className={`pill ${pwMatch ? "ok" : ""}`}>일치</span>
             </div>
 
@@ -341,22 +335,7 @@ export default function FindPassword() {
         )}
       </main>
 
-      <footer className="findpw-footer">
-        <div className="footer-inner">
-          <div className="hero-footer-text">
-            <div>
-              <strong>BRANDPILOT</strong>
-            </div>
-            <div>
-              BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
-            </div>
-            <div>KT AIVLE 7반 15조 </div>
-            <div className="hero-footer-copy">
-              © 2026 Team15 Corp. All rights reserved.
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
