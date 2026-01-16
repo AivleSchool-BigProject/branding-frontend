@@ -1,0 +1,354 @@
+/* src/styles/LogoConsultingInterview.css */
+.diagInterview {
+  min-height: 100vh;
+  background: #f6f7fb;
+  display: flex;
+  flex-direction: column;
+}
+
+.diagInterview__main {
+  flex: 1;
+  padding: 28px 24px 60px;
+}
+
+.diagInterview__container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.diagInterview__titleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.diagInterview__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.diagInterview__sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #5b6476;
+}
+
+.diagInterview__topActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.diagInterview__grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.diagInterview__left {
+  display: grid;
+  gap: 14px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e6e9f1;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.card__head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.card__head p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #5b6476;
+}
+
+.formGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.req {
+  color: #1766e5;
+  margin-left: 4px;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid #e6e9f1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  color: #0f172a;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: rgba(23, 102, 229, 0.55);
+  box-shadow: 0 0 0 3px rgba(23, 102, 229, 0.12);
+}
+
+.helper {
+  font-size: 12px;
+  color: #5b6476;
+}
+
+.bottomBar {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 8px;
+}
+
+.btn {
+  border: 1px solid #e6e9f1;
+  background: #fff;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: rgba(23, 102, 229, 0.45);
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn.primary {
+  background: #001f66;
+  color: #fff;
+  border-color: #001f66;
+}
+
+.btn.primary:hover {
+  opacity: 0.92;
+}
+
+.btn.disabled,
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ✅ 오른쪽 영역: sticky 안정화 */
+.diagInterview__right {
+  position: sticky;
+  top: 92px;
+  align-self: start; /* ✅ grid에서 sticky가 더 안정적으로 동작 */
+  height: fit-content;
+}
+
+/* ✅ 여기만 “스크롤 따라오기” 핵심 */
+.sideCard {
+  position: static;
+  top: 92px; /* ✅ 헤더 높이만큼 여유(필요하면 80~110 사이로 조절) */
+  background: #fff;
+  border: 1px solid #e6e9f1;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.sideCard__titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sideCard h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.badge {
+  background: rgba(23, 102, 229, 0.12);
+  color: #1766e5;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.progressBar {
+  margin-top: 10px;
+  height: 10px;
+  background: #eef1f7;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressBar__fill {
+  height: 100%;
+  background: #1766e5;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+
+.sideMeta {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.sideMeta__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #5b6476;
+}
+
+.sideMeta__row .v {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.saveMsg {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #1766e5;
+  font-weight: 700;
+}
+
+.divider {
+  height: 1px;
+  background: #e6e9f1;
+  margin: 14px 0;
+}
+
+.sideSubTitle {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.checkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.checkList li {
+  font-size: 12px;
+  color: #5b6476;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.checkList li::after {
+  content: "•";
+  color: #c4cad8;
+}
+
+.checkList li.ok {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.checkList li.ok::after {
+  content: "✓";
+  color: #1766e5;
+  font-weight: 900;
+}
+
+.jumpGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.jumpBtn {
+  border: 1px solid #e6e9f1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.jumpBtn:hover {
+  border-color: rgba(23, 102, 229, 0.45);
+}
+
+.sideAnalyze {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #5b6476;
+}
+
+@media (max-width: 980px) {
+  .diagInterview__grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* 모바일에서도 동일하게 따라오게 유지(원하면 여기서 static으로 바꿔도 됨) */
+  .sideCard {
+    position: sticky;
+    top: 14px;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottomBar {
+    justify-content: stretch;
+    flex-wrap: wrap;
+  }
+
+  .bottomBar .btn {
+    flex: 1;
+  }
+}

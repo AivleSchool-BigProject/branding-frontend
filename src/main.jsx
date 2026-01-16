@@ -20,6 +20,11 @@ import "./styles/PolicyModal.css";
 import "./styles/EasyLogin.css";
 import "./styles/EasyLoginModal.css";
 import "./styles/SiteFooter.css";
+import "./styles/DiagnosisInterview.css";
+import "./styles/SiteFooter.css";
+import "./styles/SiteHeader.css";
+
+import "./styles/HomepageConsultingInterview.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
