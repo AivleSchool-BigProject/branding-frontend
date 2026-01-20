@@ -1,0 +1,157 @@
+/* src/styles/BrandAllResults.css */
+
+.brandAll-main {
+  padding: 28px 0 52px;
+}
+
+.brandAll-container {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.brandAll-titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.brandAll-title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.brandAll-sub {
+  margin: 8px 0 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.brandAll-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.brandAll-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .brandAll-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.brandAll-cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.brandAll-cardTitle {
+  margin: 0;
+  font-size: 18px;
+}
+
+.brandAll-cardDesc {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.brandAll-empty {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.brandAll-emptyText {
+  margin: 0;
+  color: #6b7280;
+}
+
+.brandAll-meta {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.brandAll-metaRow {
+  display: flex;
+  gap: 8px;
+}
+
+.brandAll-metaRow .k {
+  min-width: 70px;
+  color: #6b7280;
+}
+
+.brandAll-metaRow .v {
+  color: #111827;
+}
+
+.brandAll-summary {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .brandAll-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.brandAll-sItem {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.brandAll-sItem .k {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.brandAll-sItem .v {
+  font-size: 14px;
+  color: #111827;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.brandAll-cardActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* status pill (없으면 대비용) */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.status-pill.success {
+  background: rgba(34, 197, 94, 0.16);
+}
+
+.status-pill.ghost {
+  background: rgba(0, 0, 0, 0.04);
+  color: #6b7280;
+}

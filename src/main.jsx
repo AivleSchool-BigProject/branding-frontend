@@ -79,11 +79,12 @@ import "./styles/PromotionResult.css";
 import "./styles/BrandConsultingResult.css";
 
 import "./styles/InvestmentBoard.css";
+import "./styles/BrandStoryConsultingInterview.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

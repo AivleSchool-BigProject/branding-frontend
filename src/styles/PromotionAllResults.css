@@ -1,0 +1,139 @@
+/* src/styles/PromotionAllResults.css */
+
+.promoAll-main {
+  padding: 28px 0 52px;
+}
+
+.promoAll-container {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.promoAll-titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.promoAll-title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.promoAll-sub {
+  margin: 8px 0 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.promoAll-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.promoAll-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+}
+
+@media (max-width: 960px) {
+  .promoAll-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.promoAll-cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.promoAll-cardTitle {
+  margin: 0;
+  font-size: 18px;
+}
+
+.promoAll-cardDesc {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.promoAll-empty {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.promoAll-emptyText {
+  margin: 0;
+  color: #6b7280;
+}
+
+.promoAll-meta {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.promoAll-metaRow {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.promoAll-metaRow .k {
+  min-width: 70px;
+  color: #6b7280;
+}
+
+.promoAll-metaRow .v {
+  color: #111827;
+}
+
+.promoAll-summary {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .promoAll-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+.promoAll-sItem {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.promoAll-sItem .k {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.promoAll-sItem .v {
+  font-size: 14px;
+  color: #111827;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.promoAll-cardActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}

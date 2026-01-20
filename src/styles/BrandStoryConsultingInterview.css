@@ -1,0 +1,17 @@
+/* src/styles/BrandStoryConsultingInterview.css */
+
+.brandStoryInterview .diagInterview__sub {
+  line-height: 1.5;
+}
+
+.brandStoryInterview .helper {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.75;
+  font-size: 12px;
+}
+
+.brandStoryInterview textarea {
+  resize: vertical;
+  min-height: 92px;
+}
