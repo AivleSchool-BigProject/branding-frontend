@@ -1,5 +1,6 @@
 /* src/styles/MyPage.css */
 
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 .mypage-content {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;

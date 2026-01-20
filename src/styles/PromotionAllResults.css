@@ -1,5 +1,5 @@
 /* src/styles/PromotionAllResults.css */
-
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 .promoAll-main {
   padding: 28px 0 52px;
 }

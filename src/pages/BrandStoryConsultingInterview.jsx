@@ -8,9 +8,6 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-// ✅ 공통 스타일 재사용 중이면 유지
-// import "../styles/BrandStoryConsultingInterview.css";
-
 const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 
 // ✅ 기타(직접 입력) 값(내부 식별용)

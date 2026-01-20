@@ -1,4 +1,5 @@
 /* src/styles/DiagnosisHome.css */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 .diagHome,
 .diagHome * {
   box-sizing: border-box;
@@ -100,7 +101,9 @@
   opacity: 0;
   transform: translateY(-8px) scale(0.98);
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
   z-index: 999;
 }
 /* PC hover */
@@ -133,7 +136,9 @@
   font-weight: 800;
   color: #111827;
   cursor: pointer;
-  transition: background 0.12s ease, transform 0.05s ease;
+  transition:
+    background 0.12s ease,
+    transform 0.05s ease;
 }
 .nav-dropdown__item:hover {
   background: #f3f4f6;
@@ -275,7 +280,9 @@
   font-size: 18px;
   font-weight: 900;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.05s ease;
+  transition:
+    filter 0.15s ease,
+    transform 0.05s ease;
   display: grid;
   gap: 8px;
   justify-items: center;
@@ -409,7 +416,9 @@
   font-weight: 900;
   cursor: pointer;
   background: #ffffff;
-  transition: filter 0.15s ease, transform 0.05s ease;
+  transition:
+    filter 0.15s ease,
+    transform 0.05s ease;
 }
 .diagHome__actionBtn:hover {
   filter: brightness(0.98);

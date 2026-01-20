@@ -8,8 +8,6 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-import "../styles/BrandAllResults.css";
-
 function safeParse(raw) {
   try {
     return raw ? JSON.parse(raw) : null;
