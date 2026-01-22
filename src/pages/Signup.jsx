@@ -7,7 +7,7 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-import * as authApi from "../api/authApi";
+import { authApi } from "../api";
 
 export default function SignupApp() {
   const navigate = useNavigate();
@@ -17,7 +17,7 @@ export default function SignupApp() {
   // ✅ loginId
   const [id, setId] = useState("");
 
-  // ✅ email 추가 (Swagger에 있음)
+  // ✅ Swagger에 있는 email
   const [email, setEmail] = useState("");
 
   const [pw, setPw] = useState("");
@@ -41,7 +41,6 @@ export default function SignupApp() {
 
   const isEmailLike = useMemo(() => {
     const v = email.trim();
-    // 가벼운 이메일 검증
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }, [email]);
 
@@ -69,7 +68,6 @@ export default function SignupApp() {
     e.preventDefault();
     setError("");
 
-    // ====== 프론트 검증 ======
     const safeId = id.trim();
     const safeEmail = email.trim();
     const safeName = name.trim();
@@ -94,14 +92,12 @@ export default function SignupApp() {
     if (!isPhoneLike)
       return setError("휴대폰 번호는 숫자만 10~11자리로 입력해주세요.");
 
+    // ✅ 백 스펙에는 없지만, 너 UI 요구사항이면 프론트 검증만 유지
     if (!birthDate) return setError("생년월일을 선택해주세요.");
 
     if (!agreeTerms || !agreePrivacy)
       return setError("필수 약관에 동의해주세요.");
 
-    // ====== 백엔드 요청 (Swagger 기준) ======
-    // POST /auth/register
-    // body: { loginId, email, password, mobileNumber, username }
     setIsLoading(true);
     try {
       await authApi.register({
@@ -115,12 +111,7 @@ export default function SignupApp() {
       alert("회원가입 완료! 로그인 해주세요.");
       navigate("/login");
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "회원가입 실패";
-      setError(msg);
+      setError(err.userMessage || "회원가입 실패");
     } finally {
       setIsLoading(false);
     }
@@ -164,8 +155,7 @@ export default function SignupApp() {
             </small>
           </div>
 
-          {/* ✅ email 추가 */}
-          {/* <div className="field">
+          <div className="field">
             <label htmlFor="signup-email">이메일</label>
             <input
               id="signup-email"
@@ -176,7 +166,7 @@ export default function SignupApp() {
               autoComplete="email"
               disabled={isLoading}
             />
-          </div> */}
+          </div>
 
           <div className="field">
             <label htmlFor="signup-password">비밀번호</label>

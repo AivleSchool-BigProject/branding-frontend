@@ -1,21 +1,43 @@
 // src/api/authApi.js
+import client from "./client";
 
-import api from "./client";
-
-// Swagger 기준: POST /auth/register
-export const register = async (payload) => {
-  const res = await api.post("/auth/register", payload);
+/**
+ * ✅ 로그인
+ * POST /auth/login
+ * body: { loginId, password }
+ */
+export async function login({ loginId, password }) {
+  const res = await client.post("/auth/login", { loginId, password });
   return res.data;
-};
+}
 
-// Swagger 기준: POST /auth/login  -> { accessToken: "..." }
-export const login = async (payload) => {
-  const res = await api.post("/auth/login", payload);
+/**
+ * ✅ 회원가입
+ * POST /auth/register
+ * body: { loginId, email, password, mobileNumber, username }
+ */
+export async function register({
+  loginId,
+  email,
+  password,
+  mobileNumber,
+  username,
+}) {
+  const res = await client.post("/auth/register", {
+    loginId,
+    email,
+    password,
+    mobileNumber,
+    username,
+  });
   return res.data;
-};
+}
 
-// Swagger 기준: POST /auth/logout
-export const logout = async () => {
-  const res = await api.post("/auth/logout");
+/**
+ * ✅ 로그아웃 (백에 /auth/logout 있으면 사용)
+ * 없으면 프론트에서 localStorage만 지워도 됨.
+ */
+export async function logout() {
+  const res = await client.post("/auth/logout");
   return res.data;
-};
+}

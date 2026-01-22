@@ -12,20 +12,24 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import EasyLoginModal from "../components/EasyLoginModal.jsx";
 
-import * as authApi from "../api/authApi";
-import { setToken } from "../utils/auth";
+import { authApi } from "../api"; // ✅ src/api/index.js에서 export됨
+import { setCurrentUserId } from "../utils/auth"; // ✅ JWT 없이도 로그인 상태 저장용
 
 export default function LoginApp() {
   const navigate = useNavigate();
 
+  // ✅ 약관/개인정보 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
+  // ✅ 간편로그인 모달
   const [easyOpen, setEasyOpen] = useState(false);
 
+  // ✅ 입력값
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
 
+  // ✅ UX
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,31 +37,23 @@ export default function LoginApp() {
     event.preventDefault();
     setErrorMsg("");
 
-    const safeId = id.trim();
-    const safePw = password;
+    const loginId = id.trim();
+    const pw = password;
 
-    if (!safeId) return setErrorMsg("아이디를 입력해주세요.");
-    if (!safePw) return setErrorMsg("비밀번호를 입력해주세요.");
+    if (!loginId) return setErrorMsg("아이디를 입력해주세요.");
+    if (!pw) return setErrorMsg("비밀번호를 입력해주세요.");
 
     setIsLoading(true);
     try {
-      // POST /auth/login  body: { loginId, password }
-      const data = await authApi.login({ loginId: safeId, password: safePw });
+      // ✅ 백엔드 로그인 호출
+      await authApi.login({ loginId, password: pw });
 
-      // Swagger 예시: { accessToken: "..." }
-      if (!data?.accessToken) {
-        throw new Error("토큰이 반환되지 않았습니다. (백 응답 확인 필요)");
-      }
+      // ✅ JWT 안 써도 “로그인 상태”는 필요하니 아이디 저장
+      setCurrentUserId(loginId);
 
-      setToken(data.accessToken);
       navigate("/main");
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "로그인 실패";
-      setErrorMsg(msg);
+      setErrorMsg(err.userMessage || "로그인에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -84,6 +80,7 @@ export default function LoginApp() {
       <EasyLoginModal open={easyOpen} onClose={() => setEasyOpen(false)} />
 
       <div className="login-shell split">
+        {/* Left: 소개 영역 */}
         <section className="login-hero navy-panel">
           <div className="hero-top">
             <span className="hero-title-line">여러분의 새로운 시작</span>
@@ -121,33 +118,6 @@ export default function LoginApp() {
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
-
-              {/* 반복 */}
-              <div className="marquee-card">
-                <img src={namingLogoImg} alt="네이밍 로고 추천" />
-                <strong>네이밍·로고 추천</strong>
-                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
-              </div>
-              <div className="marquee-card">
-                <img src={analyzeCompany} alt="기업 진단 분석" />
-                <strong>기업 진단분석</strong>
-                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
-              </div>
-              <div className="marquee-card">
-                <img src={analyzeReport} alt="분석기반 리포트" />
-                <strong>분석 리포트 제공</strong>
-                <p>분석 내용 기반 리포트를 제공합니다.</p>
-              </div>
-              <div className="marquee-card">
-                <img src={makeset} alt="문서초안자동생성" />
-                <strong>문서 초안 자동 생성</strong>
-                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
-              </div>
-              <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
-                <strong>스타트업 스토리텔링</strong>
-                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
-              </div>
             </div>
           </div>
 
@@ -177,7 +147,7 @@ export default function LoginApp() {
               <div>
                 BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
               </div>
-              <div>KT AIVLE 7반 15조 </div>
+              <div>KT AIVLE 7반 15조</div>
               <div className="hero-footer-copy">
                 © 2026 Team15 Corp. All rights reserved.
               </div>
@@ -185,6 +155,7 @@ export default function LoginApp() {
           </footer>
         </section>
 
+        {/* Right: 로그인 폼 */}
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
 

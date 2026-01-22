@@ -3,8 +3,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/SiteHeader.css";
 
-import * as authApi from "../api/authApi";
-import { clearToken } from "../utils/auth";
+// ✅ JWT 미사용: 토큰 관련 함수 제거하고 loginId만 지움
+import { clearCurrentUserId } from "../utils/auth";
+
+// (선택) 백에 logout API가 있으면 호출해도 되고, 없으면 안 불러도 됨.
+// 지금은 “토큰 없이” 연동이 목표라서 굳이 안 불러도 됨.
+// import * as authApi from "../api/authApi";
 
 // ✅ 컴포넌트 밖으로 빼면 렌더마다 객체 새로 안 만들어짐
 const BRAND_INTERVIEW_ROUTES = {
@@ -144,19 +148,19 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     navigate("/investment");
   };
 
+  // ✅ JWT 미사용 로그아웃: 서버 호출 없이 localStorage만 정리
   const handleLogout = async () => {
     const ok = window.confirm("로그아웃 하시겠습니까?");
     if (!ok) return;
 
     try {
-      // ✅ 서버에 로그아웃 요청(토큰이 있으면 interceptor가 Authorization 붙여줌)
-      await authApi.logout();
+      // (선택) 백에 logout API가 있고 꼭 호출하고 싶으면 아래 주석 해제
+      // await authApi.logout();
     } catch (e) {
-      // ❗ 실패해도 프론트는 로그아웃 처리하는 게 일반적
       console.warn("logout API failed:", e);
     } finally {
-      // ✅ 토큰 삭제
-      clearToken();
+      // ✅ 토큰 대신 loginId 삭제
+      clearCurrentUserId();
 
       // ✅ 부모에서 추가 정리하고 싶으면(onLogout) 호출
       if (typeof onLogout === "function") onLogout();
