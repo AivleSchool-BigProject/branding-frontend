@@ -11,8 +11,16 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 const STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_PROGRESS_KEY = "diagnosisDraft";
 
+// ✅ DiagnosisInterview에서 저장한 결과(백 응답) 키
+const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
+
+/**
+ * ✅ 옵션 라벨(진단 인터뷰/결과 값 불일치 대비해서 "둘 다" 포함)
+ */
 const INDUSTRY_OPTIONS = [
+  { value: "saas_platform", label: "SaaS/플랫폼" },
   { value: "saas", label: "SaaS/플랫폼" },
+
   { value: "manufacturing", label: "제조/하드웨어" },
   { value: "commerce", label: "커머스" },
   { value: "education", label: "교육" },
@@ -29,13 +37,20 @@ const STAGE_OPTIONS = [
   { value: "early_revenue", label: "초기 매출 발생" },
   { value: "pmf", label: "PMF 탐색" },
   { value: "scaleup", label: "스케일업" },
+
+  // 레거시/변형 값 대응
+  { value: "revenue", label: "매출 발생" },
+  { value: "invest", label: "투자 유치 진행" },
 ];
 
 const PERSONA_OPTIONS = [
   { value: "trend_2030", label: "2030 트렌드 세터" },
   { value: "worker_3040", label: "3040 직장인" },
   { value: "startup_ceo", label: "초기 스타트업 대표" },
+
+  { value: "mid_team_lead", label: "중견기업 팀장" },
   { value: "mid_manager", label: "중견기업 팀장" },
+
   { value: "professional", label: "전문직(의/법/회계 등)" },
   { value: "student", label: "학생/취준생" },
   { value: "etc", label: "기타" },
@@ -46,6 +61,69 @@ const getLabel = (value, options) => {
   if (!v) return "-";
   const found = options.find((o) => o.value === v);
   return found ? found.label : v;
+};
+
+// ✅ 오브젝트/배열을 사람이 읽기 좋게 텍스트로 변환(구조 유동적이라 방어적으로)
+const toPrettyText = (value, indent = 0) => {
+  const pad = "  ".repeat(indent);
+
+  if (value == null) return "-";
+  if (typeof value === "string") return value.trim() ? value : "-";
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "-";
+    return value
+      .map((v) => {
+        if (typeof v === "string") return `${pad}- ${v}`;
+        return `${pad}- ${toPrettyText(v, indent + 1)}`;
+      })
+      .join("\n");
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return "-";
+    return entries
+      .map(([k, v]) => {
+        const vv =
+          typeof v === "object" && v !== null
+            ? `\n${toPrettyText(v, indent + 1)}`
+            : ` ${toPrettyText(v, 0)}`;
+        return `${pad}- ${k}:${vv}`;
+      })
+      .join("\n");
+  }
+
+  return String(value);
+};
+
+// ✅ 보고서에서 "요약" 비슷한 필드 자동 추출(있으면 사용)
+const pickSummary = (report) => {
+  if (!report) return "";
+  if (typeof report === "string") return report.trim();
+
+  if (typeof report === "object") {
+    const keys = [
+      "summary",
+      "overview",
+      "result",
+      "report",
+      "aiSummary",
+      "diagnosis",
+      "content",
+    ];
+    for (const k of keys) {
+      const v = report?.[k];
+      if (!v) continue;
+      const text = typeof v === "string" ? v.trim() : toPrettyText(v);
+      if (text && text !== "-") return text;
+    }
+    return toPrettyText(report);
+  }
+
+  return "";
 };
 
 export default function DiagnosisResult({ onLogout }) {
@@ -59,7 +137,7 @@ export default function DiagnosisResult({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ draft 로딩 (현재는 localStorage)
+  // ✅ draft 로딩 (입력 요약 UI 유지)
   const draft = useMemo(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -70,6 +148,43 @@ export default function DiagnosisResult({ onLogout }) {
   }, []);
 
   const form = draft?.form || {};
+
+  // ✅ 백 연동 결과 로딩(우선순위: location.state > localStorage)
+  const backendResult = useMemo(() => {
+    // 1) navigate state 우선
+    if (location.state?.interviewReport || location.state?.brandId) {
+      return {
+        brandId: location.state?.brandId,
+        interviewReport: location.state?.interviewReport,
+      };
+    }
+
+    // 2) localStorage
+    try {
+      const raw = localStorage.getItem(DIAGNOSIS_RESULT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [location.state]);
+
+  const interviewReport = backendResult?.interviewReport || null;
+  const brandId = backendResult?.brandId || null;
+
+  /**
+   * ✅ 백 응답 구조 예시:
+   * {
+   *   brandId: 2,
+   *   interviewReport: {
+   *     todo: ["네이밍 진행", "컨셉 정의"],
+   *     stage: "초기 브랜드",
+   *     summary: "AI 인터뷰 진단 결과"
+   *   }
+   * }
+   */
+  const reportStage = interviewReport?.stage;
+  const reportTodo = interviewReport?.todo;
+  const reportSummary = interviewReport?.summary;
 
   // ✅ 리포트 표시용 값 꺼내기 + 레거시 키 대응
   const oneLine = String(form?.oneLine || "").trim();
@@ -173,7 +288,16 @@ export default function DiagnosisResult({ onLogout }) {
     visionHeadline,
   ]);
 
-  // ✅ 프론트 룰 기반 더미 팁
+  // ✅ AI 결과 텍스트(보고서 구조가 뭔지 몰라서 방어적으로 출력)
+  const aiSummaryText = useMemo(() => {
+    // summary가 있으면 그걸 최우선으로 보여주고,
+    // 없으면 pickSummary로 자동 추출
+    const s = typeof reportSummary === "string" ? reportSummary.trim() : "";
+    if (s) return s;
+    return pickSummary(interviewReport);
+  }, [interviewReport, reportSummary]);
+
+  // ✅ 프론트 룰 기반 fallback 팁(= AI 결과가 없을 때만 보여줄 가이드)
   const tips = useMemo(() => {
     const out = [];
 
@@ -205,8 +329,9 @@ export default function DiagnosisResult({ onLogout }) {
   const handleResetAll = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(HOME_PROGRESS_KEY);
+    localStorage.removeItem(DIAGNOSIS_RESULT_KEY);
 
-    alert("진단 입력/진행률 데이터를 초기화했습니다.");
+    alert("진단 입력/진행률/AI 결과 데이터를 초기화했습니다.");
     navigate("/diagnosisinterview", { state: { reset: true } });
   };
 
@@ -244,8 +369,15 @@ export default function DiagnosisResult({ onLogout }) {
             <div>
               <h1 className="diagResult__title">초기 진단 결과 리포트</h1>
               <p className="diagResult__sub">
-                입력 내용을 기반으로 요약 리포트를 생성했습니다. (현재는
-                UI/연결용 더미 리포트)
+                입력 내용을 기반으로 요약 리포트를 생성했습니다.
+                {brandId ? (
+                  <>
+                    {" "}
+                    <span style={{ opacity: 0.8 }}>
+                      (brandId: {String(brandId)})
+                    </span>
+                  </>
+                ) : null}
               </p>
             </div>
 
@@ -266,6 +398,7 @@ export default function DiagnosisResult({ onLogout }) {
           <div className="diagResult__grid">
             {/* ✅ Left: 리포트 본문 */}
             <section className="diagResult__left">
+              {/* 0) 요약 */}
               <div className="card">
                 <div className="card__head">
                   <h2>요약</h2>
@@ -292,6 +425,91 @@ export default function DiagnosisResult({ onLogout }) {
                 </div>
               </div>
 
+              {/* ✅ 1) AI 요약 결과(백 연동) */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>AI 진단 결과</h2>
+                  <p>백엔드에서 생성된 AI 요약/리포트를 표시합니다.</p>
+                </div>
+
+                {interviewReport ? (
+                  <>
+                    {/* 요약 */}
+                    <div className="block">
+                      <div className="block__title">리포트</div>
+                      <div
+                        className="block__body"
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {aiSummaryText || "-"}
+                      </div>
+                    </div>
+
+                    {/* 현재 단계 */}
+                    <div className="block">
+                      <div className="block__title">현재 단계</div>
+                      <div className="block__body">
+                        {reportStage ? String(reportStage) : "-"}
+                      </div>
+                    </div>
+
+                    {/* TODO */}
+                    <div className="block">
+                      <div className="block__title">추천 TODO</div>
+                      <div
+                        className="block__body"
+                        style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
+                      >
+                        {Array.isArray(reportTodo)
+                          ? reportTodo.length
+                            ? reportTodo.map((t) => `- ${t}`).join("\n")
+                            : "-"
+                          : reportTodo
+                            ? toPrettyText(reportTodo)
+                            : "-"}
+                      </div>
+                    </div>
+
+                    {/* (선택) 전체 원본도 확인하고 싶으면 아래 주석 해제 */}
+                    {/* 
+                    <div className="block">
+                      <div className="block__title">원본(JSON)</div>
+                      <div className="block__body" style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                        {JSON.stringify(interviewReport, null, 2)}
+                      </div>
+                    </div>
+                    */}
+                  </>
+                ) : (
+                  <div className="tips">
+                    <div className="tips__title">아직 AI 결과가 없습니다</div>
+                    <ul className="tips__list">
+                      <li>
+                        인터뷰 페이지에서 <b>“AI 요약 결과 보기”</b> 버튼을 눌러
+                        백엔드 요청을 완료해 주세요.
+                      </li>
+                      <li>
+                        아래는 입력값 기반의 <b>프론트 fallback</b>{" "}
+                        가이드입니다.
+                      </li>
+                    </ul>
+
+                    <div className="divider" style={{ margin: "12px 0" }} />
+
+                    <div className="tips__title">추천 개선 포인트(임시)</div>
+                    <ul className="tips__list">
+                      {tips.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* 2) 고객/문제 */}
               <div className="card">
                 <div className="card__head">
                   <h2>고객/문제</h2>
@@ -309,13 +527,11 @@ export default function DiagnosisResult({ onLogout }) {
                 </div>
               </div>
 
+              {/* 3) 차별화/비전 */}
               <div className="card">
                 <div className="card__head">
                   <h2>차별화 / 비전</h2>
-                  <p>
-                    차별화 포인트와 방향성(비전)을 기반으로 개선 힌트를
-                    제공합니다.
-                  </p>
+                  <p>입력한 차별화 포인트와 비전(헤드라인)을 정리합니다.</p>
                 </div>
 
                 <div className="block">
@@ -331,15 +547,22 @@ export default function DiagnosisResult({ onLogout }) {
                 </div>
 
                 <div className="tips">
-                  <div className="tips__title">추천 개선 포인트</div>
+                  <div className="tips__title">다음 단계 추천</div>
                   <ul className="tips__list">
-                    {tips.map((t, i) => (
-                      <li key={i}>{t}</li>
-                    ))}
+                    <li>
+                      브랜드 컨설팅으로 넘어가 네이밍/컨셉/로고를 이어서
+                      진행해보세요.
+                    </li>
+                    <li>
+                      AI 결과가 더 구조화되어 내려오면(예:
+                      strengths/risks/recommendations) 섹션별 카드로 더 예쁘게
+                      나눌 수 있어요.
+                    </li>
                   </ul>
                 </div>
               </div>
 
+              {/* 4) 선택 입력 */}
               <div className="card">
                 <div className="card__head">
                   <h2>추가 입력(선택)</h2>
@@ -375,7 +598,7 @@ export default function DiagnosisResult({ onLogout }) {
 
             {/* ✅ Right: 사이드 카드들 */}
             <aside className="diagResult__right">
-              {/* 1) 기존 진행/상태 카드 */}
+              {/* 1) 진행/상태 카드 */}
               <div className="sideCard">
                 <div className="sideCard__titleRow">
                   <h3>진행/상태</h3>
@@ -432,12 +655,12 @@ export default function DiagnosisResult({ onLogout }) {
                 </button>
 
                 <p className="hint" style={{ marginTop: 10 }}>
-                  * 이 페이지는 “결과 화면 연결”을 위한 리포트 UI입니다. 실제 AI
-                  분석 결과를 붙이면 완성됩니다.
+                  * AI 결과는 인터뷰 페이지에서 “AI 요약 결과 보기” 요청이
+                  성공하면 표시됩니다.
                 </p>
               </div>
 
-              {/* 2) ✅ 새로 추가: 완료 안내 + 브랜드 컨설팅 이동 카드 */}
+              {/* 2) 다음 단계 카드 */}
               <div className="sideCard" style={{ marginTop: 14 }}>
                 <div className="sideCard__titleRow">
                   <h3>다음 단계</h3>
@@ -478,7 +701,9 @@ export default function DiagnosisResult({ onLogout }) {
 
                     <button
                       type="button"
-                      className={`btn primary w100 ${isCompleted ? "" : "disabled"}`}
+                      className={`btn primary w100 ${
+                        isCompleted ? "" : "disabled"
+                      }`}
                       onClick={handleGoBrandConsulting}
                       disabled={!isCompleted}
                       style={{ marginTop: 12 }}
@@ -493,8 +718,6 @@ export default function DiagnosisResult({ onLogout }) {
                   </>
                 )}
               </div>
-
-              {/* 필요하면 여기 아래에 또 다른 사이드 카드도 계속 추가 가능 */}
             </aside>
           </div>
         </div>
