@@ -33,7 +33,9 @@ function pickKeywords(text, max = 8) {
 }
 
 function stageLabel(v) {
-  const s = String(v || "").trim().toLowerCase();
+  const s = String(v || "")
+    .trim()
+    .toLowerCase();
   if (!s) return "-";
   if (s === "idea") return "아이디어";
   if (s === "mvp") return "MVP";
@@ -57,7 +59,8 @@ function readDiagnosisForm() {
   for (const k of DIAG_KEYS) {
     const parsed = safeParse(localStorage.getItem(k));
     if (!parsed) continue;
-    const form = parsed?.form && typeof parsed.form === "object" ? parsed.form : parsed;
+    const form =
+      parsed?.form && typeof parsed.form === "object" ? parsed.form : parsed;
     if (form && typeof form === "object") return form;
   }
   return null;
@@ -113,7 +116,10 @@ function generateStoryCandidates(form, seed = 0) {
       solution: `그리고 우리는 ${solution}을 통해, ${target}이(가) 더 빠르게 결정하고 더 꾸준히 실행하도록 돕습니다.`,
     };
 
-    const body = structure.order.map((k) => blocks[k]).filter(Boolean).join("\n\n");
+    const body = structure.order
+      .map((k) => blocks[k])
+      .filter(Boolean)
+      .join("\n\n");
 
     return {
       id: title,
@@ -121,18 +127,37 @@ function generateStoryCandidates(form, seed = 0) {
       oneLiner: oneLine ? `“${oneLine}”` : `“${goal}”`,
       tone: `${tone} · ${structure.label}`,
       story: body,
-      proof: proof ? `근거/신뢰 요소: ${proof}` : "근거/신뢰 요소: (선택) 성과/지표/사례를 추가하면 설득력이 커집니다.",
+      proof: proof
+        ? `근거/신뢰 요소: ${proof}`
+        : "근거/신뢰 요소: (선택) 성과/지표/사례를 추가하면 설득력이 커집니다.",
       ending: end,
-      keywords: Array.from(new Set([industry, stage, "신뢰", "실행", ...pickKeywords(form?.keywords || "", 6)])).slice(0, 10),
+      keywords: Array.from(
+        new Set([
+          industry,
+          stage,
+          "신뢰",
+          "실행",
+          ...pickKeywords(form?.keywords || "", 6),
+        ]),
+      ).slice(0, 10),
     };
   };
 
   const s = pick(structures, 0);
 
   return [
-    mk(0, "A · 담백한 문제해결형", { ...s, order: ["problem", "turning", "solution"] }),
-    mk(1, "B · 창업 계기/창업자형", { ...s, order: ["origin", "problem", "solution"] }),
-    mk(2, "C · 고객 여정/감정형", { ...s, order: ["problem", "customer", "solution"] }),
+    mk(0, "A · 담백한 문제해결형", {
+      ...s,
+      order: ["problem", "turning", "solution"],
+    }),
+    mk(1, "B · 창업 계기/창업자형", {
+      ...s,
+      order: ["origin", "problem", "solution"],
+    }),
+    mk(2, "C · 고객 여정/감정형", {
+      ...s,
+      order: ["problem", "customer", "solution"],
+    }),
   ];
 }
 
@@ -195,7 +220,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   );
 
   // ✅ 필수 항목(스토리에서 사용자가 입력해야 하는 것만)
-  const requiredKeys = useMemo(() => ["brandCore", "problemStory", "solutionStory", "goal"], []);
+  const requiredKeys = useMemo(
+    () => ["brandCore", "problemStory", "solutionStory", "goal"],
+    [],
+  );
   const requiredStatus = useMemo(() => {
     const status = {};
     requiredKeys.forEach((k) => {
@@ -218,7 +246,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
 
-  const setValue = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const setValue = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const scrollToSection = (ref) => {
     if (!ref?.current) return;
@@ -255,12 +284,28 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       if (!diag) return;
 
       const next = {
-        companyName: safeText(diag.companyName || diag.brandName || diag.projectName, ""),
+        companyName: safeText(
+          diag.companyName || diag.brandName || diag.projectName,
+          "",
+        ),
         industry: safeText(diag.industry || diag.category || diag.field, ""),
         stage: safeText(diag.stage, ""),
         website: safeText(diag.website || diag.homepage || diag.siteUrl, ""),
-        oneLine: safeText(diag.oneLine || diag.companyIntro || diag.intro || diag.serviceIntro || diag.shortIntro, ""),
-        targetCustomer: safeText(diag.targetCustomer || diag.target || diag.customerTarget || diag.primaryCustomer, ""),
+        oneLine: safeText(
+          diag.oneLine ||
+            diag.companyIntro ||
+            diag.intro ||
+            diag.serviceIntro ||
+            diag.shortIntro,
+          "",
+        ),
+        targetCustomer: safeText(
+          diag.targetCustomer ||
+            diag.target ||
+            diag.customerTarget ||
+            diag.primaryCustomer,
+          "",
+        ),
       };
 
       setForm((prev) => ({
@@ -307,18 +352,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
     return () => clearTimeout(t);
   }, [form]);
-
-  const handleTempSave = () => {
-    try {
-      const payload = { form, updatedAt: Date.now() };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      setLastSaved(new Date(payload.updatedAt).toLocaleString());
-      setSaveMsg("임시 저장 완료");
-    } catch {
-      setSaveMsg("저장 실패");
-    }
-  };
-
   const persistResult = (nextCandidates, nextSelectedId, nextSeed) => {
     const updatedAt = Date.now();
 
@@ -337,7 +370,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
 
     try {
-      const selected = nextCandidates.find((c) => c.id === nextSelectedId) || null;
+      const selected =
+        nextCandidates.find((c) => c.id === nextSelectedId) || null;
       localStorage.setItem(
         LEGACY_KEY,
         JSON.stringify({
@@ -413,12 +447,34 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
     const base = { ...INITIAL_FORM };
     if (diag) {
-      base.companyName = safeText(diag.companyName || diag.brandName || diag.projectName, "");
-      base.industry = safeText(diag.industry || diag.category || diag.field, "");
+      base.companyName = safeText(
+        diag.companyName || diag.brandName || diag.projectName,
+        "",
+      );
+      base.industry = safeText(
+        diag.industry || diag.category || diag.field,
+        "",
+      );
       base.stage = safeText(diag.stage, "");
-      base.website = safeText(diag.website || diag.homepage || diag.siteUrl, "");
-      base.oneLine = safeText(diag.oneLine || diag.companyIntro || diag.intro || diag.serviceIntro || diag.shortIntro, "");
-      base.targetCustomer = safeText(diag.targetCustomer || diag.target || diag.customerTarget || diag.primaryCustomer, "");
+      base.website = safeText(
+        diag.website || diag.homepage || diag.siteUrl,
+        "",
+      );
+      base.oneLine = safeText(
+        diag.oneLine ||
+          diag.companyIntro ||
+          diag.intro ||
+          diag.serviceIntro ||
+          diag.shortIntro,
+        "",
+      );
+      base.targetCustomer = safeText(
+        diag.targetCustomer ||
+          diag.target ||
+          diag.customerTarget ||
+          diag.primaryCustomer,
+        "",
+      );
     }
 
     setForm(base);
@@ -428,30 +484,21 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setSaveMsg("");
     setLastSaved("-");
   };
-
-  const handleNextSection = () => {
-    if (!String(form.brandCore || "").trim()) {
-      scrollToSection(refCore);
-      return;
-    }
-    if (!String(form.problemStory || "").trim() || !String(form.solutionStory || "").trim()) {
-      scrollToSection(refStory);
-      return;
-    }
-    if (!String(form.goal || "").trim()) {
-      scrollToSection(refGoal);
-      return;
-    }
-    scrollToResult();
-  };
-
   return (
     <div className="diagInterview consultingInterview">
-      <PolicyModal open={openType === "privacy"} title="개인정보 처리방침" onClose={closeModal}>
+      <PolicyModal
+        open={openType === "privacy"}
+        title="개인정보 처리방침"
+        onClose={closeModal}
+      >
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
+      <PolicyModal
+        open={openType === "terms"}
+        title="이용약관"
+        onClose={closeModal}
+      >
         <TermsContent />
       </PolicyModal>
 
@@ -461,14 +508,21 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         <div className="diagInterview__container">
           <div className="diagInterview__titleRow">
             <div>
-              <h1 className="diagInterview__title">브랜드 스토리 컨설팅 인터뷰</h1>
+              <h1 className="diagInterview__title">
+                브랜드 스토리 컨설팅 인터뷰
+              </h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 스토리 재료(핵심·문제·해결·목표)만 입력합니다.
+                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 스토리
+                재료(핵심·문제·해결·목표)만 입력합니다.
               </p>
             </div>
 
             <div className="diagInterview__topActions">
-              <button type="button" className="btn ghost" onClick={() => navigate("/brandconsulting")}>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate("/brandconsulting")}
+              >
                 브랜드 컨설팅으로
               </button>
             </div>
@@ -482,28 +536,47 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               <div className="card" ref={refBasic}>
                 <div className="card__head">
                   <h2>1. 기본 정보 (자동 반영)</h2>
-                  <p>기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이 페이지에서 수정하지 않아요)</p>
+                  <p>
+                    기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이
+                    페이지에서 수정하지 않아요)
+                  </p>
                 </div>
 
                 <div className="formGrid">
                   <div className="field">
                     <label>회사/프로젝트명</label>
-                    <input value={form.companyName} disabled placeholder="기업 진단에서 자동 반영" />
+                    <input
+                      value={form.companyName}
+                      disabled
+                      placeholder="기업 진단에서 자동 반영"
+                    />
                   </div>
 
                   <div className="field">
                     <label>산업/분야</label>
-                    <input value={form.industry} disabled placeholder="기업 진단에서 자동 반영" />
+                    <input
+                      value={form.industry}
+                      disabled
+                      placeholder="기업 진단에서 자동 반영"
+                    />
                   </div>
 
                   <div className="field">
                     <label>성장 단계</label>
-                    <input value={stageLabel(form.stage)} disabled placeholder="기업 진단에서 자동 반영" />
+                    <input
+                      value={stageLabel(form.stage)}
+                      disabled
+                      placeholder="기업 진단에서 자동 반영"
+                    />
                   </div>
 
                   <div className="field">
                     <label>웹사이트/소개 링크</label>
-                    <input value={form.website} disabled placeholder="기업 진단에서 자동 반영" />
+                    <input
+                      value={form.website}
+                      disabled
+                      placeholder="기업 진단에서 자동 반영"
+                    />
                   </div>
                 </div>
 
@@ -516,7 +589,12 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>회사/서비스 소개</label>
-                  <textarea value={form.oneLine} disabled placeholder="기업 진단에서 자동 반영" rows={3} />
+                  <textarea
+                    value={form.oneLine}
+                    disabled
+                    placeholder="기업 진단에서 자동 반영"
+                    rows={3}
+                  />
                 </div>
               </div>
 
@@ -655,10 +733,19 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
                     <h2>스토리 후보 3안</h2>
-                    <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요. (현재는 더미 생성)</p>
+                    <p>
+                      후보 1개를 선택하면 다음 단계로 진행할 수 있어요. (현재는
+                      더미 생성)
+                    </p>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 10,
+                    }}
+                  >
                     {candidates.map((c) => {
                       const isSelected = selectedId === c.id;
                       return (
@@ -667,15 +754,29 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                           style={{
                             borderRadius: 16,
                             padding: 14,
-                            border: isSelected ? "1px solid rgba(99,102,241,0.45)" : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected ? "0 12px 30px rgba(99,102,241,0.10)" : "none",
+                            border: isSelected
+                              ? "1px solid rgba(99,102,241,0.45)"
+                              : "1px solid rgba(0,0,0,0.08)",
+                            boxShadow: isSelected
+                              ? "0 12px 30px rgba(99,102,241,0.10)"
+                              : "none",
                             background: "rgba(255,255,255,0.6)",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 10,
+                            }}
+                          >
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>{c.name}</div>
-                              <div style={{ marginTop: 6, opacity: 0.9 }}>{c.oneLiner}</div>
+                              <div style={{ fontWeight: 900, fontSize: 15 }}>
+                                {c.name}
+                              </div>
+                              <div style={{ marginTop: 6, opacity: 0.9 }}>
+                                {c.oneLiner}
+                              </div>
                             </div>
                             <span
                               style={{
@@ -683,8 +784,12 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                                 fontWeight: 800,
                                 padding: "4px 10px",
                                 borderRadius: 999,
-                                background: isSelected ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
-                                border: isSelected ? "1px solid rgba(99,102,241,0.25)" : "1px solid rgba(0,0,0,0.06)",
+                                background: isSelected
+                                  ? "rgba(99,102,241,0.12)"
+                                  : "rgba(0,0,0,0.04)",
+                                border: isSelected
+                                  ? "1px solid rgba(99,102,241,0.25)"
+                                  : "1px solid rgba(0,0,0,0.06)",
                                 color: "rgba(0,0,0,0.75)",
                                 height: "fit-content",
                               }}
@@ -693,7 +798,15 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                             </span>
                           </div>
 
-                          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.92, whiteSpace: "pre-wrap", lineHeight: 1.55 }}>
+                          <div
+                            style={{
+                              marginTop: 10,
+                              fontSize: 13,
+                              opacity: 0.92,
+                              whiteSpace: "pre-wrap",
+                              lineHeight: 1.55,
+                            }}
+                          >
                             {c.story}
 
                             <div style={{ marginTop: 10, opacity: 0.9 }}>
@@ -708,7 +821,14 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                             <div style={{ marginTop: 10 }}>
                               <b>키워드</b>
-                              <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                              <div
+                                style={{
+                                  marginTop: 6,
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: 6,
+                                }}
+                              >
                                 {c.keywords.map((kw) => (
                                   <span
                                     key={kw}
@@ -729,7 +849,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                             </div>
                           </div>
 
-                          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                          <div
+                            style={{ marginTop: 12, display: "flex", gap: 8 }}
+                          >
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
@@ -745,8 +867,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </div>
 
                   {canGoNext ? (
-                    <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
-                      <button type="button" className="btn primary" onClick={handleGoNext}>
+                    <div
+                      style={{
+                        marginTop: 14,
+                        display: "flex",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={handleGoNext}
+                      >
                         다음 단계로
                       </button>
                     </div>
@@ -757,15 +889,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   )}
                 </div>
               ) : null}
-
-              <div className="bottomBar">
-                <button type="button" className="btn ghost" onClick={handleTempSave}>
-                  임시 저장
-                </button>
-                <button type="button" className="btn ghost" onClick={handleNextSection}>
-                  다음 섹션
-                </button>
-              </div>
             </section>
 
             {/* ✅ 오른쪽: 진행률 */}
@@ -778,8 +901,17 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <span className="badge">{progress}%</span>
                 </div>
 
-                <div className="progressBar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-                  <div className="progressBar__fill" style={{ width: `${progress}%` }} />
+                <div
+                  className="progressBar"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress}
+                >
+                  <div
+                    className="progressBar__fill"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
 
                 <div className="sideMeta">
@@ -808,14 +940,25 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 <button
                   type="button"
                   className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
-                  onClick={() => handleGenerateCandidates(hasResult ? "regen" : "generate")}
+                  onClick={() =>
+                    handleGenerateCandidates(hasResult ? "regen" : "generate")
+                  }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing ? "생성 중..." : hasResult ? "AI 분석 재요청" : "AI 분석 요청"}
+                  {analyzing
+                    ? "생성 중..."
+                    : hasResult
+                      ? "AI 분석 재요청"
+                      : "AI 분석 요청"}
                 </button>
 
-                <button type="button" className="btn ghost" onClick={handleResetAll} style={{ width: "100%" }}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%" }}
+                >
                   전체 초기화
                 </button>
 
@@ -830,7 +973,12 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 <h4 className="sideSubTitle">섹션 바로가기</h4>
                 <div className="jumpGrid">
                   {sections.map((s) => (
-                    <button key={s.id} type="button" className="jumpBtn" onClick={() => scrollToSection(s.ref)}>
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="jumpBtn"
+                      onClick={() => scrollToSection(s.ref)}
+                    >
                       {s.label}
                     </button>
                   ))}
