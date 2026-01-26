@@ -199,6 +199,12 @@
   color: #065f46;
 }
 
+.status-pill.progress {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+}
+
+
 /* ---- 하단 빠른 이동 ---- */
 .mypage-navRow {
   display: flex;

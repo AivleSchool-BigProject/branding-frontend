@@ -22,9 +22,10 @@ import BrandConsultingResult from "./pages/BrandConsultingResult.jsx";
 import BrandAllResults from "./pages/BrandAllResults.jsx";
 
 import PromotionPage from "./pages/Promotion.jsx";
-import DigitalImageConsultingInterview from "./pages/DigitalImageConsultingInterview.jsx";
-import OfflineImageConsultingInterview from "./pages/OfflineImageConsultingInterview.jsx";
-import PromoVideoConsultingInterview from "./pages/PromoVideoConsultingInterview.jsx";
+import ProductIconConsultingInterview from "./pages/ProductIconConsultingInterview.jsx";
+import AICutModelConsultingInterview from "./pages/AICutModelConsultingInterview.jsx";
+import ProductStagingCutConsultingInterview from "./pages/ProductStagingCutConsultingInterview.jsx";
+import SNSPosterConsultingInterview from "./pages/SNSPosterConsultingInterview.jsx";
 import PromotionResult from "./pages/PromotionResult.jsx";
 import PromotionAllResults from "./pages/PromotionAllResults.jsx";
 
@@ -105,11 +106,11 @@ export default function App() {
           element={<ConceptConsultingInterview />}
         />
 
+        
         <Route
           path="/brand/concept/interview"
           element={<ConceptConsultingInterview />}
-        />
-        {/* ✅ 브랜드 스토리 컨설팅 */}
+        />{/* ✅ 브랜드 스토리 컨설팅 */}
         <Route
           path="/brand/story"
           element={<BrandStoryConsultingInterview />}
@@ -133,16 +134,20 @@ export default function App() {
         {/* ✅ 홍보물 컨설팅 */}
         <Route path="/promotion" element={<PromotionPage />} />
         <Route
-          path="/promotion/digital/interview"
-          element={<DigitalImageConsultingInterview />}
+          path="/promotion/icon/interview"
+          element={<ProductIconConsultingInterview />}
         />
         <Route
-          path="/promotion/offline/interview"
-          element={<OfflineImageConsultingInterview />}
+          path="/promotion/aicut/interview"
+          element={<AICutModelConsultingInterview />}
         />
         <Route
-          path="/promotion/video/interview"
-          element={<PromoVideoConsultingInterview />}
+          path="/promotion/staging/interview"
+          element={<ProductStagingCutConsultingInterview />}
+        />
+        <Route
+          path="/promotion/poster/interview"
+          element={<SNSPosterConsultingInterview />}
         />
 
         {/* ✅ 마이페이지 */}

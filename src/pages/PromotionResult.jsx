@@ -1,261 +1,275 @@
 // src/pages/PromotionResult.jsx
-import React, { useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import React, { useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
-import PolicyModal from "../components/PolicyModal.jsx";
-import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-
-const KEY_MAP = {
-  digital: "promoInterview_digital_v1",
-  offline: "promoInterview_offline_v1",
-  video: "promoInterview_video_v1",
+const SERVICE_MAP = {
+  icon: {
+    label: "제품 아이콘 컨설팅",
+    resultKey: "promoInterviewResult_icon_v1",
+    interviewRoute: "/promotion/icon/interview",
+  },
+  aicut: {
+    label: "AI컷 모델 컨설팅",
+    resultKey: "promoInterviewResult_aicut_v1",
+    interviewRoute: "/promotion/aicut/interview",
+  },
+  staging: {
+    label: "제품 연출컷 컨설팅",
+    resultKey: "promoInterviewResult_staging_v1",
+    interviewRoute: "/promotion/staging/interview",
+  },
+  poster: {
+    label: "SNS 제품 포스터 컨설팅",
+    resultKey: "promoInterviewResult_poster_v1",
+    interviewRoute: "/promotion/poster/interview",
+  },
 };
 
-const LABEL_MAP = {
-  digital: "디지털 이미지 컨설팅",
-  offline: "오프라인 이미지 컨설팅",
-  video: "홍보 영상 컨설팅",
-};
+function safeParse(raw) {
+  try {
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
-const INTERVIEW_ROUTE = {
-  digital: "/promotion/digital/interview",
-  offline: "/promotion/offline/interview",
-  video: "/promotion/video/interview",
-};
+function prettyLines(text) {
+  return String(text || "")
+    .split(/\n/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
 
 export default function PromotionResult({ onLogout }) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
-  // ✅ 약관/방침 모달
-  const [openType, setOpenType] = useState(null);
-  const closeModal = () => setOpenType(null);
+  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const service = query.get("service") || "icon";
+  const meta = SERVICE_MAP[service] || SERVICE_MAP.icon;
 
-  const service = useMemo(() => {
-    const s = searchParams.get("service");
-    if (s === "digital" || s === "offline" || s === "video") return s;
-    return "digital";
-  }, [searchParams]);
+  const data = useMemo(() => safeParse(localStorage.getItem(meta.resultKey)), [meta.resultKey]);
 
-  const storageKey = KEY_MAP[service];
-  const title = LABEL_MAP[service];
-  // 🔌 BACKEND 연동 포인트 (홍보물 결과 화면)
-  // - 현재: localStorage에서 service별 결과를 읽어 표시
-  // - 백엔드 연동 시(명세서 기준) 결과 데이터 출처 후보:
-  //   - 포스터: GET /brands/posters
-  //   - SNS:   GET /brands/sns
-  //   - 영상:  GET /brands/videos
-  // - 실제로 service(digital/offline/video) ↔ 엔드포인트 매핑은 팀과 확정 필요
+  const selected = useMemo(() => {
+    if (!data) return null;
+    if (data.selected) return data.selected;
+    const pickedId = data.selectedId;
+    const list = Array.isArray(data.candidates) ? data.candidates : [];
+    return pickedId ? list.find((c) => c.id === pickedId) : null;
+  }, [data]);
 
-  const draft = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, [storageKey]);
+  const hasResult = Boolean(selected);
 
-  const form = draft?.form || {};
-  const lastSaved = useMemo(() => {
-    const t = draft?.updatedAt;
-    if (!t) return "-";
-    const d = new Date(t);
-    return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
-  }, [draft]);
-
-  const recommendations = useMemo(() => {
-    // UI 더미 추천(나중에 실제 AI 결과로 교체)
-    const purpose = String(form?.purpose || "").trim();
-    const target = String(form?.target || "").trim();
-    const brandAsset = String(form?.brandAsset || "").trim();
-    const avoid = String(form?.avoid || "").trim();
-
-    const out = [];
-    if (purpose)
-      out.push(
-        `목적(${purpose})에 맞게 ‘한 문장 메시지 + 핵심 CTA’를 상단에 고정하는 구성을 추천해요.`,
-      );
-    else
-      out.push(
-        "목적(사용처)을 먼저 확정하면 디자인 방향이 빨라져요. (예: SNS, 배너, 상세페이지 등)",
-      );
-
-    if (target)
-      out.push(
-        `타깃(${target})에게 통하는 톤(신뢰/캐주얼/프리미엄)을 먼저 정하고 컬러/폰트를 맞춰요.`,
-      );
-    else out.push("타깃이 정해지면 색/이미지/카피 톤이 크게 좋아져요.");
-
-    if (brandAsset)
-      out.push(
-        "브랜드 자산(로고/컬러/폰트)이 있으면 통일감이 생겨요. 가이드 유무를 체크해요.",
-      );
-    else
-      out.push(
-        "로고/컬러/폰트 가이드가 없으면 기본 세트를 먼저 정하는 걸 추천해요.",
-      );
-
-    if (avoid)
-      out.push(
-        "‘빼고 싶은 요소’를 명확히 하면 시안 품질이 빨리 올라가요. 금지 요소 리스트는 유효합니다.",
-      );
-    return out;
-  }, [form]);
-
-  const handleGoInterview = () => navigate(INTERVIEW_ROUTE[service]);
-  const handleGoPromotion = () => navigate("/promotion");
-
-  const handleReset = () => {
-    localStorage.removeItem(storageKey);
-    alert("해당 홍보물 인터뷰 데이터를 초기화했습니다.");
-    navigate(INTERVIEW_ROUTE[service], { state: { reset: true } });
-  };
+  const highlightsTitle = useMemo(() => {
+    if (service === "poster") return "포스터 산출물";
+    if (service === "staging") return "연출컷 산출물";
+    if (service === "aicut") return "AI컷 모델 산출물";
+    return "아이콘 산출물";
+  }, [service]);
 
   return (
-    <div className="promoResult">
-      <PolicyModal
-        open={openType === "privacy"}
-        title="개인정보 처리방침"
-        onClose={closeModal}
-      >
-        <PrivacyContent />
-      </PolicyModal>
-
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
-        <TermsContent />
-      </PolicyModal>
-
+    <div className="diagInterview consultingInterview">
       <SiteHeader onLogout={onLogout} />
 
-      <main className="promoResult__main">
-        <div className="promoResult__container">
-          <div className="promoResult__titleRow">
+      <main className="diagInterview__main">
+        <div className="diagInterview__container">
+          <div className="diagInterview__titleRow">
             <div>
-              <h1 className="promoResult__title">{title} 결과 리포트</h1>
-              <p className="promoResult__sub">
-                입력한 답변을 기반으로 결과 요약을 보여줍니다. (현재는 UI/연결용
-                더미 리포트)
+              <h1 className="diagInterview__title">홍보물 컨설팅 결과</h1>
+              <p className="diagInterview__sub">
+                {meta.label} 결과입니다. 선택한 1안을 기준으로 요약과 프롬프트를 확인하세요.
               </p>
             </div>
 
-            <div className="promoResult__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={handleGoPromotion}
+            <div className="diagInterview__topActions">
+              <button type="button" className="btn ghost" onClick={() => navigate("/promotion")}
               >
                 홍보물 컨설팅 홈
               </button>
-              <button type="button" className="btn" onClick={handleGoInterview}>
-                인터뷰로 돌아가기
+              <button type="button" className="btn" onClick={() => navigate(meta.interviewRoute)}>
+                다시 인터뷰
+              </button>
+              <button type="button" className="btn" onClick={() => navigate("/mypage/promotion-results")}
+              >
+                결과 히스토리
               </button>
             </div>
           </div>
 
-          <div className="promoResult__grid">
-            {/* left */}
-            <section className="promoResult__left">
-              <div className="card">
-                <div className="card__head">
-                  <h2>입력 요약</h2>
-                  <p>작성한 답변을 그대로 보여줍니다.</p>
-                </div>
-
-                <div className="qa">
-                  <div className="qa__item">
-                    <div className="q">1) 사용 목적</div>
-                    <div className="a">{form.purpose || "—"}</div>
-                  </div>
-
-                  <div className="qa__item">
-                    <div className="q">2) 타깃</div>
-                    <div className="a">{form.target || "—"}</div>
-                  </div>
-
-                  <div className="qa__item">
-                    <div className="q">3) 브랜드 자산(로고/컬러/폰트 등)</div>
-                    <div className="a">{form.brandAsset || "—"}</div>
-                  </div>
-
-                  <div className="qa__item">
-                    <div className="q">4) 피하고 싶은 요소</div>
-                    <div className="a">{form.avoid || "—"}</div>
-                  </div>
-                </div>
+          {!hasResult ? (
+            <div className="card">
+              <div className="card__head">
+                <h2>아직 결과가 없습니다</h2>
+                <p>인터뷰에서 후보 3안을 만든 뒤, 1안을 선택하면 결과가 저장됩니다.</p>
               </div>
-
-              <div className="card">
-                <div className="card__head">
-                  <h2>추천 구성(더미)</h2>
-                  <p>실제 AI 결과가 들어갈 자리입니다.</p>
-                </div>
-
-                <ul className="recoList">
-                  {recommendations.map((r, i) => (
-                    <li key={i}>{r}</li>
-                  ))}
-                </ul>
-
-                <div className="note">
-                  * 이후 “시안 생성/템플릿 추천/카피라이팅” 등으로 확장하기
-                  좋습니다.
-                </div>
-              </div>
-            </section>
-
-            {/* right sticky */}
-            <aside className="promoResult__right">
-              <div className="sideCard">
-                <div className="sideCard__titleRow">
-                  <h3>상태</h3>
-                  <span className="badge">{service}</span>
-                </div>
-
-                <div className="sideMeta">
-                  <div className="sideMeta__row">
-                    <span className="k">마지막 저장</span>
-                    <span className="v">{lastSaved}</span>
-                  </div>
-                </div>
-
-                <div className="divider" />
-
-                <button
-                  type="button"
-                  className="btn primary w100"
-                  onClick={handleGoInterview}
-                >
-                  입력 수정하기
+              <div style={{ display: "flex", gap: 10 }}>
+                <button type="button" className="btn primary" onClick={() => navigate(meta.interviewRoute)}>
+                  {meta.label} 인터뷰 하러가기
                 </button>
-
-                <button
-                  type="button"
-                  className="btn ghost w100"
-                  style={{ marginTop: 10 }}
-                  onClick={handleReset}
+                <button type="button" className="btn ghost" onClick={() => navigate("/promotion")}
                 >
-                  처음부터 다시하기(초기화)
+                  홍보물 컨설팅 홈으로
                 </button>
-
-                <p className="hint">
-                  * “분석 요청” 버튼을 누르면 이 페이지로 이동하도록 연결하면
-                  됩니다.
-                </p>
               </div>
-            </aside>
-          </div>
+            </div>
+          ) : (
+            <div className="diagInterview__grid">
+              {/* LEFT */}
+              <section className="diagInterview__left">
+                <div className="card">
+                  <div className="card__head">
+                    <h2>선택한 안</h2>
+                    <p>후보에서 선택한 1안의 핵심 요약입니다.</p>
+                  </div>
+
+                  <div className="resultCard selected" style={{ marginTop: 8 }}>
+                    <div className="resultCard__head">
+                      <div>
+                        <p className="resultBadge">선택됨</p>
+                        <h3 className="resultTitle">{selected?.name || "선택안"}</h3>
+                      </div>
+                      <div className="resultPick">
+                        <span className="pickDot on" />
+                        <span className="pickText">확정</span>
+                      </div>
+                    </div>
+
+                    {Array.isArray(selected?.summary) && selected.summary.length ? (
+                      <ul className="resultBullets">
+                        {selected.summary.map((t) => (
+                          <li key={t}>{t}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card__head">
+                    <h2>{highlightsTitle}</h2>
+                    <p>아래 프롬프트/가이드를 기반으로 제작을 진행할 수 있어요.</p>
+                  </div>
+
+                  <div className="resultGrid">
+                    <div className="resultBlock">
+                      <h4>추천 프롬프트</h4>
+                      <textarea readOnly value={selected?.prompt || ""} rows={6} style={{ width: "100%" }} />
+
+                      {Array.isArray(selected?.copy) && selected.copy.length ? (
+                        <div style={{ marginTop: 12 }}>
+                          <h4 style={{ marginBottom: 6 }}>추천 카피</h4>
+                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                            {selected.copy.map((t) => (
+                              <li key={t}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="resultBlock">
+                      <h4>가이드</h4>
+                      <div className="resultMiniGrid">
+                        <div>
+                          <p className="miniTitle">Do</p>
+                          <ul>
+                            {(selected?.do || []).map((t) => (
+                              <li key={t}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="miniTitle">Don&apos;t</p>
+                          <ul>
+                            {(selected?.dont || []).map((t) => (
+                              <li key={t}>{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card__head">
+                    <h2>입력 요약</h2>
+                    <p>인터뷰에서 입력한 핵심 값만 간단히 정리합니다.</p>
+                  </div>
+
+                  <div className="formGrid">
+                    <div className="field">
+                      <label>브랜드</label>
+                      <p>{data?.form?.brandName || "-"}</p>
+                    </div>
+                    <div className="field">
+                      <label>제품</label>
+                      <p>{data?.form?.productName || "-"}</p>
+                    </div>
+                    <div className="field">
+                      <label>타깃</label>
+                      <p>{data?.form?.targetCustomer || "-"}</p>
+                    </div>
+                    <div className="field">
+                      <label>톤/분위기</label>
+                      <p>{data?.form?.tone || "-"}</p>
+                    </div>
+                  </div>
+
+                  {data?.form?.goal ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>목표</label>
+                      <p style={{ whiteSpace: "pre-wrap" }}>{data.form.goal}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              {/* RIGHT */}
+              <aside className="diagInterview__right">
+                <div className="sideCard">
+                  <div className="sideCard__titleRow">
+                    <h3>후보 3안</h3>
+                    <span className="badge">{(data?.candidates || []).length}개</span>
+                  </div>
+
+                  <div className="divider" />
+
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {(data?.candidates || []).map((c) => {
+                      const isPicked = c.id === (data?.selectedId || selected?.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={`jumpBtn ${isPicked ? "ok" : ""}`}
+                          onClick={() => navigate(meta.interviewRoute)}
+                          title="인터뷰 페이지에서 다른 안을 선택할 수 있어요"
+                          style={{ textAlign: "left" }}
+                        >
+                          {isPicked ? "✅ " : ""}
+                          후보 {String(c.id).toUpperCase()} · {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="divider" />
+
+                  <button type="button" className="btn ghost" onClick={() => navigate(meta.interviewRoute)}>
+                    다른 안 선택하기
+                  </button>
+                </div>
+              </aside>
+            </div>
+          )}
         </div>
       </main>
 
-      <SiteFooter onOpenPolicy={setOpenType} />
+      <SiteFooter />
     </div>
   );
 }

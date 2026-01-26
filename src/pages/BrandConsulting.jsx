@@ -2,10 +2,11 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import bannerImage from "../Image/banner_image/Banner.png";
-import Logocon from "../Image/brandcon_image/logocon.png";
-import namecon from "../Image/brandcon_image/namecon.png";
-import pagecon from "../Image/brandcon_image/pagecon.png"; // ✅ story에서도 이 png 재사용
+import bannerImage from "../Image/banner_image/Banner_B.png";
+import Logocon from "../Image/brandcon_image/LOGO.png";
+import namecon from "../Image/brandcon_image/NAME.png";
+import conceptcon from "../Image/brandcon_image/CONCEPT.png"; // ✅ story에서도 이 png 재사용
+import storycon from "../Image/brandcon_image/STORY.png";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
@@ -118,14 +119,14 @@ export default function BrandConsulting({ onLogout }) {
         key: "concept",
         title: "컨셉",
         sub: "브랜드 방향/톤/차별점을 한 문장으로 정리해주는 컨셉 3안",
-        img: pagecon,
+        img: conceptcon,
         tag: "Concept",
       },
       {
         key: "story",
         title: "브랜드 스토리",
         sub: "시작 계기 → 문제 → 해결 흐름으로 설득력 있는 스토리 3안",
-        img: pagecon,
+        img: storycon,
         tag: "Story",
       },
       {
@@ -207,9 +208,8 @@ export default function BrandConsulting({ onLogout }) {
                 <h1 className="bcHero__title">브랜드 컨설팅</h1>
                 <p className="bcHero__sub">
                   네이밍 → 컨셉 → 브랜드 스토리 → 로고 순서로 진행되며,
-                  <br />
-                  각 단계마다 <b>AI 컨설팅 3안</b> 중 하나를 선택해 기업 성장을
-                  돕습니다.
+                  <br />각 단계마다 <b>AI 컨설팅 3안</b> 중 하나를 선택해 기업
+                  성장을 돕습니다.
                 </p>
 
                 {/* 상단(히어로) CTA 버튼은 중복으로 느껴질 수 있어 제거 */}
@@ -237,85 +237,100 @@ export default function BrandConsulting({ onLogout }) {
           - 현재 하드코딩이지만, 나중에 서버에서 카드 리스트로 교체 가능
          ===================================================== */}
       <main className="brand-content">
-        <h2 className="section-title">컨설팅 과정</h2>
-
-        <div className="bcStepFlow" role="list" aria-label="브랜드 컨설팅 4단계 흐름">
-          {steps.map((s, idx) => (
-            <React.Fragment key={s.key}>
-              <article className="service-card service-card--static bcStepCard" role="listitem">
-                <div className="service-image">
-                  <img src={s.img} alt={`${s.title} 예시 이미지`} />
-                </div>
-                <p className="service-tag">STEP {idx + 1} · {s.tag}</p>
-                <h3>{s.title}</h3>
-                <div className="service-meta">
-                  <span>{s.sub}</span>
-                </div>
-                <div className="bcStepHint">
-                  AI가 3안을 제안 → 1개 선택 → 다음 단계로
-                </div>
-              </article>
-
-              {idx < steps.length - 1 ? (
-                <div className="bcStepArrow" aria-hidden="true">
-                  <span className="bcStepArrow__icon">→</span>
-                </div>
-              ) : null}
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div className="bcIntroCard">
-          <div className="bcIntroCard__left">
-            <h3>한 번의 흐름으로 브랜드를 정리합니다</h3>
-            {pickedSection ? (
-              <p className="bcPicked">
-                메인에서 선택한 메뉴: <b>{labelMap[pickedSection] ?? pickedSection}</b>
-                <span className="bcPicked__note"> · 브랜드 컨설팅은 4단계 순차 진행입니다.</span>
-              </p>
-            ) : null}
-            <p>
-              브랜드 컨설팅은 <b>네이밍 → 컨셉 → 브랜드 스토리 → 로고</b> 순서로
-              진행됩니다. 각 단계에서 AI가 <b>3가지 컨설팅 결과</b>를 제안하고,
-              사용자가 1개를 선택하면 다음 단계로 이어져 결과가 점점 구체화됩니다.
+        <div className="bcFlowHeader">
+          <div>
+            <h2 className="section-title">진행 흐름</h2>
+            <p className="bcFlowSub">
+              각 단계에서 AI가 <b>3안을 제안</b>하고, 선택한 <b>1안</b>이 다음
+              단계로 이어집니다.
             </p>
-            <ul className="bcBullets">
-              <li>각 단계는 인터뷰 기반으로 진행되어 결과의 근거가 명확합니다.</li>
-              <li>선택한 결과는 다음 단계의 입력으로 사용되어 일관성이 유지됩니다.</li>
-              <li>마지막에는 4단계 결과를 한 번에 모아 리포트로 확인할 수 있습니다.</li>
-            </ul>
           </div>
 
-          <div className="bcIntroCard__right">
-            <div className="bcMiniFlow">
-              <span className="bcMiniFlow__dot" />
-              <span>4단계 진행</span>
-              <span className="bcMiniFlow__sep">·</span>
-              <span>단계별 3안 제안</span>
-            </div>
-            <div className="bcIntroCard__actions">
-              <button type="button" className="btn primary" onClick={handleStart}>
-                브랜드 컨설팅 시작하기
-              </button>
-
-              <button
-                type="button"
-                className={`btn ghost ${isBrandConsultingCompleted ? "" : "disabled"}`}
-                onClick={handleViewFinalReport}
-                disabled={!isBrandConsultingCompleted}
-              >
-                완료한 브랜드 리포트 보기
-              </button>
-
-              {!isBrandConsultingCompleted ? (
-                <p className="bcIntroHint">* 4단계를 완료한 경우에만 열 수 있어요.</p>
-              ) : null}
-            </div>
+          <div className="bcFlowMeta" aria-label="브랜드 컨설팅 요약">
+            <span className="bcMetaPill">4단계</span>
+            <span className="bcMetaPill">단계별 3안</span>
+            <span className="bcMetaPill">선택 기반 연결</span>
           </div>
         </div>
+        {/* ✅ 4단계 흐름(1개의 카드 안에 정리) */}
+        <section
+          className="bcFlowCard service-card service-card--static"
+          aria-label="브랜드 컨설팅 진행 순서"
+        >
+          <div className="bcFlowCard__head">
+            <h2>브랜드 컨설팅 진행 순서</h2>
+            <p>네이밍 → 컨셉 → 스토리 → 로고</p>
+          </div>
+
+          {/* ✅ 진행 순서(좌) + CTA(우) 를 한 카드 안에 배치 */}
+          <div className="bcFlowCard__grid">
+            <div>
+              <div
+                className="bcFlowList"
+                role="list"
+                aria-label="브랜드 컨설팅 4단계 목록"
+              >
+                {steps.map((s, idx) => (
+                  <div key={s.key} className="bcFlowItem" role="listitem">
+                    <div className="bcFlowItem__imgWrap">
+                      <div className="bcFlowBadge">STEP {idx + 1}</div>
+                      <div className="bcFlowItem__img">
+                        <img src={s.img} alt={`${s.title} 예시 이미지`} />
+                      </div>
+                    </div>
+
+                    <div className="bcFlowItem__text">
+                      <p className="bcFlowTag">{s.tag}</p>
+                      <h3 className="bcFlowTitle">{s.title}</h3>
+                      <p className="bcFlowSub">{s.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ✅ 우측 CTA 영역 */}
+            <aside
+              className="bcFlowActions"
+              aria-label="브랜드 컨설팅 시작/리포트"
+            >
+              <h3 className="bcFlowActions__title">브랜드 컨설팅</h3>
+              <p className="bcFlowActions__desc">
+                네이밍부터 로고까지 한 흐름으로 정리하고, 결과는 리포트로
+                저장됩니다.
+              </p>
+
+              <div className="bcFlowActions__actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={handleStart}
+                >
+                  브랜드 컨설팅 시작하기
+                </button>
+
+                <button
+                  type="button"
+                  className={`btn ghost ${isBrandConsultingCompleted ? "" : "disabled"}`}
+                  onClick={handleViewFinalReport}
+                  disabled={!isBrandConsultingCompleted}
+                >
+                  완료한 브랜드 리포트 보기
+                </button>
+
+                {!isBrandConsultingCompleted ? (
+                  <p className="bcFlowActions__hint">
+                    * 4단계를 완료한 경우에만 열 수 있어요.
+                  </p>
+                ) : null}
+              </div>
+            </aside>
+          </div>
+        </section>
 
         <p className="bcBottomCTA__hint" style={{ marginTop: 18 }}>
-          * 시작 후에는 각 인터뷰 화면 상단의 “전체 단계 표시”에서 진행 상황을 확인할 수 있어요.
+          * 시작 후에는 각 인터뷰 화면 상단의 “전체 단계 표시”에서 진행 상황을
+          확인할 수 있어요.
         </p>
       </main>
 

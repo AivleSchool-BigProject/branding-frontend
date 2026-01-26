@@ -11,241 +11,206 @@ import ConsultingFlowMini from "../components/ConsultingFlowMini.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-/**
- * ✅ 변경사항(요청 반영)
- * - 후보 3안 중 1개 선택(selectedId 존재) 시
- *   "다음 단계로" 버튼이 결과 카드 아래에 나타나며, 클릭하면 다음 인터뷰로 이동
- */
-
 const STORAGE_KEY = "conceptInterviewDraft_homepage_v6";
 const RESULT_KEY = "conceptInterviewResult_homepage_v6";
-// ✅ 통합 결과 페이지(BrandAllResults) 호환용 legacy 키
 const LEGACY_KEY = "brandInterview_homepage_v1";
-
-// ✅ 여기만 너희 라우팅에 맞게 수정하면 됨
-// 컨셉(현재 페이지) 다음 단계: 브랜드 스토리
 const NEXT_PATH = "/brand/story";
 
+const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
+
+function safeText(v, fallback = "") {
+  const s = String(v ?? "").trim();
+  return s ? s : fallback;
+}
+
+function pickKeywords(text, max = 10) {
+  const raw = String(text || "")
+    .split(/[,\n\t]/g)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const uniq = Array.from(new Set(raw));
+  return uniq.slice(0, max);
+}
+
+function stageLabel(v) {
+  const s = String(v || "").trim().toLowerCase();
+  if (!s) return "-";
+  if (s === "idea") return "아이디어";
+  if (s === "mvp") return "MVP";
+  if (s === "pmf") return "PMF";
+  if (s === "revenue" || s === "early_revenue") return "매출";
+  if (s === "invest") return "투자";
+  if (s === "scaleup" || s === "scaling") return "스케일업";
+  if (s === "rebrand") return "리브랜딩";
+  return String(v);
+}
+
+function safeParse(raw) {
+  try {
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readDiagnosisForm() {
+  for (const k of DIAG_KEYS) {
+    const parsed = safeParse(localStorage.getItem(k));
+    if (!parsed) continue;
+    const form = parsed?.form && typeof parsed.form === "object" ? parsed.form : parsed;
+    if (form && typeof form === "object") return form;
+  }
+  return null;
+}
+
+function generateConceptCandidates(form, seed = 0) {
+  const brandName = safeText(form?.brandName, "브랜드");
+  const category = safeText(form?.category, "분야");
+  const stage = stageLabel(form?.stage);
+  const oneLine = safeText(form?.oneLine, "");
+  const target = safeText(form?.targetCustomer, "고객");
+  const pains = pickKeywords(form?.painsTop3, 6);
+  const desired = pickKeywords(form?.desiredKeywords, 8);
+  const avoid = pickKeywords(form?.avoidKeywords, 8);
+  const promise = safeText(form?.brandPromise, "핵심 약속");
+  const value = safeText(form?.valueProposition, "가치 제안");
+
+  const pick = (arr, idx) => arr[(idx + seed) % arr.length];
+
+  const tones = ["미니멀/신뢰", "테크/선명", "따뜻/친근", "프리미엄/정제"];
+  const archetypes = ["가이드", "메이커", "파운더", "파트너", "엔진", "스튜디오"];
+  const slogans = [
+    "계획을 실행으로 바꾸다",
+    "복잡함을 단순하게",
+    "성장을 설계하다",
+    "작은 시작을 크게",
+    "신뢰로 연결하다",
+  ];
+
+  const base = (tone, arche) => ({
+    id: `${tone}-${arche}`.replace(/\s+/g, "").toLowerCase(),
+    title: `${brandName} · ${tone} 컨셉`,
+    summary: `${category}(${stage})에서 ${target}을 위해 '${promise}'를 전달하는 ${arche}형 브랜드`,
+    positioning: `우리는 ${category}에서 ${target}이 ${pains.length ? pains[0] : "문제"}를 해결하도록 돕는 ${arche}입니다.`,
+    valueProposition: value,
+    tone,
+    keywords: Array.from(new Set([...desired, tone.split("/")[0], arche])).slice(0, 10),
+    avoid,
+    slogan: pick(slogans, 0),
+    oneLine: oneLine ? `“${oneLine}”` : `“${pick(slogans, 1)}”`,
+  });
+
+  const c1 = base(pick(tones, 0), pick(archetypes, 0));
+  const c2 = base(pick(tones, 1), pick(archetypes, 2));
+  const c3 = base(pick(tones, 3), pick(archetypes, 4));
+
+  // 약간 변주
+  c2.slogan = pick(slogans, 2);
+  c3.slogan = pick(slogans, 3);
+
+  return [c1, c2, c3].map((c, i) => ({ ...c, id: `concept_${i + 1}` }));
+}
+
 const INITIAL_FORM = {
+  // ✅ 기업 진단에서 자동 반영(편집 X)
   brandName: "",
   category: "",
   stage: "",
   oneLine: "",
-
   targetCustomer: "",
-  painsTop3: "",
+  referenceLink: "",
 
+  // ✅ 컨셉 컨설팅 질문(편집 O)
+  painsTop3: "",
   valueProposition: "",
   brandPromise: "",
-
   desiredKeywords: "",
   avoidKeywords: "",
-
-  referenceLink: "",
   notes: "",
 };
-
-const CATEGORY_OPTIONS = [
-  "IT/SaaS",
-  "브랜딩/마케팅",
-  "컨설팅/에이전시",
-  "이커머스/리테일",
-  "교육/에듀테크",
-  "헬스케어/바이오",
-  "금융/핀테크",
-  "부동산/프롭테크",
-  "푸드/프랜차이즈",
-  "콘텐츠/미디어",
-  "제조/하드웨어",
-  "모빌리티/물류",
-  "여행/레저",
-  "공공/지자체",
-];
-
-const TARGET_OPTIONS = [
-  "초기 창업자/대표",
-  "마케팅/브랜딩 담당자",
-  "B2B 구매/도입 담당자",
-  "소상공인/자영업자",
-  "중소기업 실무자",
-  "개인 크리에이터",
-  "학생/취업준비생",
-  "일반 소비자(B2C)",
-];
-
-function stageLabel(stage) {
-  const s = String(stage || "");
-  if (s === "idea") return "아이디어";
-  if (s === "mvp") return "MVP/테스트";
-  if (s === "revenue") return "운영/매출";
-  if (s === "rebrand") return "리브랜딩";
-  return s || "-";
-}
-
-function safeText(v) {
-  const t = String(v ?? "").trim();
-  return t ? t : "-";
-}
-
-function pickKeywords(text) {
-  return Array.from(
-    new Set(
-      String(text || "")
-        .split(/[,/|\n]/g)
-        .map((s) => s.trim())
-        .filter(Boolean),
-    ),
-  ).slice(0, 8);
-}
-
-// ✅ 더미 후보 생성(추후 API 연동 시 handleGenerateCandidates만 바꾸면 됨)
-function generateConceptCandidates(form, seed = 0) {
-  const desired = pickKeywords(form.desiredKeywords);
-  const avoid = pickKeywords(form.avoidKeywords);
-
-  const brand = safeText(form.brandName);
-  const cat = safeText(form.category);
-
-  const k1 = desired[0] || "미니멀";
-  const k2 = desired[1] || "신뢰";
-  const k3 = desired[2] || "혁신";
-
-  const twist = seed % 2 === 0 ? "정제된" : "대담한";
-
-  return [
-    {
-      id: `c1_${Date.now()}_${seed}`,
-      name: `컨셉 A · ${k1} ${k2}`,
-      oneLiner: `${brand}를 “${k1}한 ${k2}”로 각인시키는 ${twist} 컨셉`,
-      keywords: [k1, k2, "명확", "핵심", "정돈", desired[3]]
-        .filter(Boolean)
-        .slice(0, 6),
-      tone: "짧고 명료한 문장 · 과장 없이 근거 중심",
-      visual: "여백 많은 레이아웃 · 단색+포인트 · 선명한 타이포",
-      slogans: [`${brand}, 핵심만 남기다`, `${brand}로 ${k2}를 설계하다`],
-      doNot: avoid.slice(0, 3),
-    },
-    {
-      id: `c2_${Date.now()}_${seed}`,
-      name: `컨셉 B · 친근한 파트너`,
-      oneLiner: `고객의 고민을 “함께 풀어주는” 동행자 이미지의 컨셉`,
-      keywords: ["친근", "공감", "현실적", "따뜻", k2, desired[0]]
-        .filter(Boolean)
-        .slice(0, 6),
-      tone: "대화하듯 설명 · 예시 중심 · 쉬운 단어",
-      visual: "부드러운 라운드 · 사람 중심 이미지 · 따뜻한 톤",
-      slogans: [`혼자 고민하지 마세요, ${brand}`, `${brand}와 함께 한 걸음씩`],
-      doNot: avoid.slice(0, 3),
-    },
-    {
-      id: `c3_${Date.now()}_${seed}`,
-      name: `컨셉 C · ${k3} 리더`,
-      oneLiner: `${cat} 시장에서 “새 기준”을 제시하는 리더 컨셉`,
-      keywords: [k3, "대담", "속도", "기준", "임팩트", desired[1]]
-        .filter(Boolean)
-        .slice(0, 6),
-      tone: "선언형 문장 · 수치/근거 강조 · 자신감 있는 어조",
-      visual: "대비 강한 컬러 · 굵은 타이포 · 강한 히어로 메시지",
-      slogans: [`${brand}, 새로운 기준`, `지금, ${brand}로 바꾸다`],
-      doNot: avoid.slice(0, 3),
-    },
-  ];
-}
 
 export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
 
-  // 약관 모달
+  // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // 폼
-  const [form, setForm] = useState(() => ({ ...INITIAL_FORM }));
+  // ✅ 폼 상태
+  const [form, setForm] = useState(INITIAL_FORM);
 
-  // select + custom
-  const [categoryMode, setCategoryMode] = useState("select");
-  const [categorySelect, setCategorySelect] = useState("");
-
-  const [targetMode, setTargetMode] = useState("select");
-  const [targetSelect, setTargetSelect] = useState("");
-
-  // 자동저장 상태
+  // ✅ 저장 상태 UI
   const [saveMsg, setSaveMsg] = useState("");
   const [lastSaved, setLastSaved] = useState("-");
 
-  // 결과
+  // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
-
   const refResult = useRef(null);
 
-  // 진행률 계산용 필수 키
-  const requiredKeys = useMemo(
+  // 섹션 ref
+  const refBasic = useRef(null);
+  const refCore = useRef(null);
+  const refKeywords = useRef(null);
+  const refNotes = useRef(null);
+
+  const sections = useMemo(
     () => [
-      "brandName",
-      "category",
-      "stage",
-      "oneLine",
-      "targetCustomer",
-      "painsTop3",
-      "valueProposition",
-      "brandPromise",
-      "desiredKeywords",
-      "avoidKeywords",
+      { id: "basic", label: "기본 정보", ref: refBasic },
+      { id: "core", label: "컨셉 핵심", ref: refCore },
+      { id: "keywords", label: "키워드", ref: refKeywords },
+      { id: "notes", label: "추가 요청", ref: refNotes },
     ],
     [],
   );
 
-  const completedRequired = useMemo(() => {
-    return requiredKeys.filter((k) => Boolean(String(form?.[k] || "").trim()))
-      .length;
+  // ✅ 필수 항목(컨셉에서 사용자가 입력해야 하는 것만)
+  const requiredKeys = useMemo(() => ["painsTop3", "valueProposition", "brandPromise", "desiredKeywords", "avoidKeywords"], []);
+  const requiredStatus = useMemo(() => {
+    const status = {};
+    requiredKeys.forEach((k) => {
+      status[k] = Boolean(String(form?.[k] || "").trim());
+    });
+    return status;
   }, [form, requiredKeys]);
 
+  const completedRequired = useMemo(
+    () => requiredKeys.filter((k) => requiredStatus[k]).length,
+    [requiredKeys, requiredStatus],
+  );
+
   const progress = useMemo(() => {
-    if (!requiredKeys.length) return 0;
+    if (requiredKeys.length === 0) return 0;
     return Math.round((completedRequired / requiredKeys.length) * 100);
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
   const hasResult = candidates.length > 0;
-
-  // ✅ 후보 1개 선택하면 다음 단계로 버튼 노출
   const canGoNext = Boolean(hasResult && selectedId);
 
-  // draft 로드
+  const setValue = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+
+  const scrollToSection = (ref) => {
+    if (!ref?.current) return;
+    ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const scrollToResult = () => {
+    if (!refResult?.current) return;
+    refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // ✅ draft 로드
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-
-      if (parsed?.form) {
-        const f = parsed.form;
-        setForm((prev) => ({ ...prev, ...f }));
-
-        if (typeof f.category === "string" && f.category.trim()) {
-          if (CATEGORY_OPTIONS.includes(f.category)) {
-            setCategoryMode("select");
-            setCategorySelect(f.category);
-          } else {
-            setCategoryMode("custom");
-            setCategorySelect("__custom__");
-          }
-        }
-
-        if (typeof f.targetCustomer === "string" && f.targetCustomer.trim()) {
-          if (TARGET_OPTIONS.includes(f.targetCustomer)) {
-            setTargetMode("select");
-            setTargetSelect(f.targetCustomer);
-          } else {
-            setTargetMode("custom");
-            setTargetSelect("__custom__");
-          }
-        }
+      if (parsed?.form && typeof parsed.form === "object") {
+        setForm((prev) => ({ ...prev, ...parsed.form }));
       }
-
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
         if (!Number.isNaN(d.getTime())) setLastSaved(d.toLocaleString());
@@ -255,13 +220,41 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // 결과 로드
+  // ✅ 기업 진단&인터뷰 값 자동 반영(중복 질문 제거)
+  useEffect(() => {
+    try {
+      const diag = readDiagnosisForm();
+      if (!diag) return;
+
+      const next = {
+        brandName: safeText(diag.companyName || diag.brandName || diag.projectName, ""),
+        category: safeText(diag.industry || diag.category || diag.field, ""),
+        stage: safeText(diag.stage, ""),
+        oneLine: safeText(diag.oneLine || diag.companyIntro || diag.intro || diag.serviceIntro || diag.shortIntro, ""),
+        targetCustomer: safeText(diag.targetCustomer || diag.target || diag.customerTarget || diag.primaryCustomer, ""),
+        referenceLink: safeText(diag.website || diag.homepage || diag.siteUrl, ""),
+      };
+
+      setForm((prev) => ({
+        ...prev,
+        brandName: next.brandName || prev.brandName,
+        category: next.category || prev.category,
+        stage: next.stage || prev.stage,
+        oneLine: next.oneLine || prev.oneLine,
+        targetCustomer: next.targetCustomer || prev.targetCustomer,
+        referenceLink: next.referenceLink || prev.referenceLink,
+      }));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(RESULT_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
       if (parsed?.selectedId) setSelectedId(parsed.selectedId);
       if (typeof parsed?.regenSeed === "number") setRegenSeed(parsed.regenSeed);
@@ -270,7 +263,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // 자동 저장
+  // ✅ 자동 저장(디바운스)
   useEffect(() => {
     setSaveMsg("");
     const t = setTimeout(() => {
@@ -287,15 +280,20 @@ export default function ConceptConsultingInterview({ onLogout }) {
     return () => clearTimeout(t);
   }, [form]);
 
-  const setValue = (key, value) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
-
-  const scrollToResult = () => {
-    if (!refResult?.current) return;
-    refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleTempSave = () => {
+    try {
+      const payload = { form, updatedAt: Date.now() };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      setLastSaved(new Date(payload.updatedAt).toLocaleString());
+      setSaveMsg("임시 저장 완료");
+    } catch {
+      setSaveMsg("저장 실패");
+    }
   };
 
   const persistResult = (nextCandidates, nextSelectedId, nextSeed) => {
+    const updatedAt = Date.now();
+
     try {
       localStorage.setItem(
         RESULT_KEY,
@@ -303,30 +301,37 @@ export default function ConceptConsultingInterview({ onLogout }) {
           candidates: nextCandidates,
           selectedId: nextSelectedId,
           regenSeed: nextSeed,
-          updatedAt: Date.now(),
+          updatedAt,
         }),
       );
-      // ✅ legacy 저장: 통합 결과 페이지에서 완료 여부를 판단할 때 form이 필요합니다.
-      try {
-        localStorage.setItem(
-          LEGACY_KEY,
-          JSON.stringify({
-            form,
-            candidates: nextCandidates,
-            selectedId: nextSelectedId,
-            regenSeed: nextSeed,
-            updatedAt: Date.now(),
-          }),
-        );
-      } catch {
-        // ignore
-      }
-} catch {
+    } catch {
+      // ignore
+    }
+
+    // ✅ legacy 저장(통합 결과/결과 리포트 페이지 호환)
+    try {
+      const selected = nextCandidates.find((c) => c.id === nextSelectedId) || null;
+      localStorage.setItem(
+        LEGACY_KEY,
+        JSON.stringify({
+          form,
+          candidates: nextCandidates,
+          selectedId: nextSelectedId,
+          selected,
+          regenSeed: nextSeed,
+          updatedAt,
+        }),
+      );
+    } catch {
       // ignore
     }
   };
 
   const handleGenerateCandidates = async (mode = "generate") => {
+    // 🔌 BACKEND 연동 포인트 (컨셉 컨설팅 - AI 분석 요청 버튼)
+    // - 백엔드 연동 시(명세서 기준):
+    //   A) 인터뷰 저장(공통): POST /brands/interview
+    //   B) 컨셉 생성:       POST /brands/concept (또는 유사)
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
@@ -337,19 +342,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
+      await new Promise((r) => setTimeout(r, 450));
       const nextCandidates = generateConceptCandidates(form, nextSeed);
 
-      // 재요청이면 선택 초기화(새 후보군)
-      const nextSelectedId = mode === "regen" ? null : selectedId;
-
       setCandidates(nextCandidates);
-      setSelectedId(nextSelectedId);
-
-      persistResult(nextCandidates, nextSelectedId, nextSeed);
-
-      setTimeout(() => scrollToResult(), 0);
-    } catch {
-      alert("컨셉 생성 중 오류가 발생했습니다.");
+      setSelectedId(null);
+      persistResult(nextCandidates, null, nextSeed);
+      scrollToResult();
     } finally {
       setAnalyzing(false);
     }
@@ -360,132 +359,72 @@ export default function ConceptConsultingInterview({ onLogout }) {
     persistResult(candidates, id, regenSeed);
   };
 
-  // ✅ 다음 단계로 이동
   const handleGoNext = () => {
-    if (!canGoNext) return;
-
-    // 선택한 후보 객체도 저장해두고 싶으면(추천) 아래처럼 추가 저장 가능
-    // 하지만 일단은 기존 RESULT_KEY 안에 selectedId만 저장하니까 그대로 이동만 해도 됨.
-    // 추후 최종 리포트에 합칠거면 선택 후보 전체를 저장하는 구조로 바꾸는 게 좋음.
     navigate(NEXT_PATH);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleResetAll = () => {
-    const ok = window.confirm(
-      "입력 내용을 모두 초기화할까요?\n(자동저장/컨셉 결과/선택도 함께 삭제됩니다.)",
-    );
+    const ok = window.confirm("입력/결과를 모두 초기화할까요?");
     if (!ok) return;
-
-    setForm({ ...INITIAL_FORM });
-
-    setCategoryMode("select");
-    setCategorySelect("");
-
-    setTargetMode("select");
-    setTargetSelect("");
-
-    setAnalyzing(false);
-    setCandidates([]);
-    setSelectedId(null);
-    setRegenSeed(0);
-
-    setLastSaved("-");
-    setSaveMsg("전체 초기화 완료");
 
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(RESULT_KEY);
+      localStorage.removeItem(LEGACY_KEY);
     } catch {
       // ignore
     }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    const diag = (() => {
+      try {
+        return readDiagnosisForm();
+      } catch {
+        return null;
+      }
+    })();
+
+    const base = { ...INITIAL_FORM };
+    if (diag) {
+      base.brandName = safeText(diag.companyName || diag.brandName || diag.projectName, "");
+      base.category = safeText(diag.industry || diag.category || diag.field, "");
+      base.stage = safeText(diag.stage, "");
+      base.oneLine = safeText(diag.oneLine || diag.companyIntro || diag.intro || diag.serviceIntro || diag.shortIntro, "");
+      base.targetCustomer = safeText(diag.targetCustomer || diag.target || diag.customerTarget || diag.primaryCustomer, "");
+      base.referenceLink = safeText(diag.website || diag.homepage || diag.siteUrl, "");
+    }
+
+    setForm(base);
+    setCandidates([]);
+    setSelectedId(null);
+    setRegenSeed(0);
+    setSaveMsg("");
+    setLastSaved("-");
   };
 
-  const handleCategorySelect = (v) => {
-    if (!v) {
-      setCategorySelect("");
-      setCategoryMode("select");
-      setValue("category", "");
+  const handleNextSection = () => {
+    if (
+      !String(form.painsTop3 || "").trim() ||
+      !String(form.valueProposition || "").trim() ||
+      !String(form.brandPromise || "").trim()
+    ) {
+      scrollToSection(refCore);
       return;
     }
-    if (v === "__custom__") {
-      setCategorySelect("__custom__");
-      setCategoryMode("custom");
-      setValue("category", "");
+    if (!String(form.desiredKeywords || "").trim() || !String(form.avoidKeywords || "").trim()) {
+      scrollToSection(refKeywords);
       return;
     }
-    setCategorySelect(v);
-    setCategoryMode("select");
-    setValue("category", v);
-  };
-
-  const handleTargetSelect = (v) => {
-    if (!v) {
-      setTargetSelect("");
-      setTargetMode("select");
-      setValue("targetCustomer", "");
-      return;
-    }
-    if (v === "__custom__") {
-      setTargetSelect("__custom__");
-      setTargetMode("custom");
-      setValue("targetCustomer", "");
-      return;
-    }
-    setTargetSelect(v);
-    setTargetMode("select");
-    setValue("targetCustomer", v);
-  };
-
-  // 결과 강조 스타일
-  const resultCardStyle = {
-    border: "1px solid rgba(99,102,241,0.22)",
-    boxShadow: "0 10px 30px rgba(99,102,241,0.08)",
-  };
-
-  const resultBannerStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-    padding: "10px 12px",
-    borderRadius: 12,
-    background: "rgba(99,102,241,0.08)",
-    border: "1px dashed rgba(99,102,241,0.25)",
-    marginTop: 10,
-  };
-
-  const pillStyle = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "6px 10px",
-    borderRadius: 999,
-    background: "rgba(99,102,241,0.12)",
-    border: "1px solid rgba(99,102,241,0.22)",
-    fontSize: 12,
-    fontWeight: 800,
-    letterSpacing: 0.2,
-    whiteSpace: "nowrap",
+    scrollToResult();
   };
 
   return (
     <div className="diagInterview consultingInterview">
-      <PolicyModal
-        open={openType === "privacy"}
-        title="개인정보 처리방침"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "privacy"} title="개인정보 처리방침" onClose={closeModal}>
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
@@ -497,432 +436,265 @@ export default function ConceptConsultingInterview({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                (실험) 브랜드 컨셉 3안을 생성하기 위한 간단 인터뷰입니다.
+                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 컨셉 방향(문제·가치·약속·키워드)만 입력합니다.
               </p>
             </div>
 
             <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/brandconsulting")}
-              >
+              <button type="button" className="btn ghost" onClick={() => navigate("/brandconsulting")}>
                 브랜드 컨설팅으로
               </button>
             </div>
           </div>
 
-          {/* ✅ 전체 4단계 진행 표시 */}
           <ConsultingFlowPanel activeKey="concept" />
 
           <div className="diagInterview__grid">
-            {/* 왼쪽 */}
             <section className="diagInterview__left">
-              {/* 1) 기본 */}
-              <div className="card">
+              {/* 1) BASIC (자동 반영) */}
+              <div className="card" ref={refBasic}>
                 <div className="card__head">
-                  <h2>1. 기본</h2>
-                  <p>핵심 정보만 입력해주세요.</p>
+                  <h2>1. 기본 정보 (자동 반영)</h2>
+                  <p>기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이 페이지에서 수정하지 않아요)</p>
                 </div>
 
                 <div className="formGrid">
                   <div className="field">
-                    <label>
-                      브랜드/프로젝트명 <span className="req">*</span>
-                    </label>
-                    <input
-                      value={form.brandName}
-                      onChange={(e) => setValue("brandName", e.target.value)}
-                      placeholder="예) 스튜디오 라이트"
-                    />
+                    <label>회사/프로젝트명</label>
+                    <input value={form.brandName} disabled placeholder="기업 진단에서 자동 반영" />
                   </div>
 
                   <div className="field">
-                    <label>
-                      현재 단계 <span className="req">*</span>
-                    </label>
-                    <select
-                      value={form.stage}
-                      onChange={(e) => setValue("stage", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      <option value="idea">아이디어</option>
-                      <option value="mvp">MVP/테스트</option>
-                      <option value="revenue">운영/매출</option>
-                      <option value="rebrand">리브랜딩</option>
-                    </select>
+                    <label>산업/분야</label>
+                    <input value={form.category} disabled placeholder="기업 진단에서 자동 반영" />
+                  </div>
+
+                  <div className="field">
+                    <label>성장 단계</label>
+                    <input value={stageLabel(form.stage)} disabled placeholder="기업 진단에서 자동 반영" />
+                  </div>
+
+                  <div className="field">
+                    <label>웹사이트/소개 링크</label>
+                    <input value={form.referenceLink} disabled placeholder="기업 진단에서 자동 반영" />
                   </div>
                 </div>
 
-                <div className="formGrid">
+                {String(form.targetCustomer || "").trim() ? (
                   <div className="field">
-                    <label>
-                      업종/카테고리 <span className="req">*</span>
-                    </label>
-                    <div
-                      className="formGrid"
-                      style={{ gridTemplateColumns: "1fr 1fr" }}
-                    >
-                      <select
-                        value={categorySelect}
-                        onChange={(e) => handleCategorySelect(e.target.value)}
-                      >
-                        <option value="">선택</option>
-                        {CATEGORY_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                        <option value="__custom__">직접 입력</option>
-                      </select>
-
-                      <input
-                        value={categoryMode === "custom" ? form.category : ""}
-                        onChange={(e) => setValue("category", e.target.value)}
-                        placeholder="직접 입력"
-                        disabled={categoryMode !== "custom"}
-                      />
-                    </div>
+                    <label>타깃(진단 기준)</label>
+                    <input value={form.targetCustomer} disabled />
                   </div>
+                ) : null}
 
-                  <div className="field">
-                    <label>참고 링크 (선택)</label>
-                    <input
-                      value={form.referenceLink}
-                      onChange={(e) =>
-                        setValue("referenceLink", e.target.value)
-                      }
-                      placeholder="예) 노션/인스타/소개서 링크"
-                    />
-                  </div>
+                <div className="field">
+                  <label>회사/서비스 한 줄 소개</label>
+                  <textarea value={form.oneLine} disabled placeholder="기업 진단에서 자동 반영" rows={3} />
+                </div>
+              </div>
+
+              {/* 2) CORE */}
+              <div className="card" ref={refCore}>
+                <div className="card__head">
+                  <h2>2. 컨셉 핵심</h2>
+                  <p>문제·가치·약속을 명확히 하면 컨셉이 선명해져요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    한 줄 소개 <span className="req">*</span>
+                    고객의 핵심 문제 TOP 3 <span className="req">*</span>
                   </label>
                   <textarea
-                    value={form.oneLine}
-                    onChange={(e) => setValue("oneLine", e.target.value)}
-                    placeholder="예) 초기 창업자를 위한 AI 브랜딩 컨설팅"
+                    value={form.painsTop3}
+                    onChange={(e) => setValue("painsTop3", e.target.value)}
+                    placeholder="예) 정보가 흩어져서 결정이 느림, 실행이 이어지지 않음, 신뢰할 근거가 부족함"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    가치 제안(무엇이 달라지나) <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.valueProposition}
+                    onChange={(e) => setValue("valueProposition", e.target.value)}
+                    placeholder="예) 입력만 하면 실행 체크리스트/로드맵이 자동 생성되어 바로 실행 가능"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    브랜드 약속(브랜드가 지키는 1문장) <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.brandPromise}
+                    onChange={(e) => setValue("brandPromise", e.target.value)}
+                    placeholder="예) 우리는 당신의 아이디어를 실행 가능한 계획으로 바꿔줍니다."
                     rows={3}
                   />
                 </div>
               </div>
 
-              {/* 2) 고객/문제 */}
-              <div className="card">
+              {/* 3) KEYWORDS */}
+              <div className="card" ref={refKeywords}>
                 <div className="card__head">
-                  <h2>2. 고객/문제</h2>
-                  <p>
-                    컨셉은 “누구의 어떤 문제”를 어떻게 보이게 할지에서 시작해요.
-                  </p>
+                  <h2>3. 키워드</h2>
+                  <p>원하는 느낌/피하고 싶은 느낌을 분리하면 결과가 좋아져요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    핵심 타깃 <span className="req">*</span>
-                  </label>
-                  <div
-                    className="formGrid"
-                    style={{ gridTemplateColumns: "1fr 1fr" }}
-                  >
-                    <select
-                      value={targetSelect}
-                      onChange={(e) => handleTargetSelect(e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {TARGET_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                      <option value="__custom__">직접 입력</option>
-                    </select>
-
-                    <input
-                      value={targetMode === "custom" ? form.targetCustomer : ""}
-                      onChange={(e) =>
-                        setValue("targetCustomer", e.target.value)
-                      }
-                      placeholder="직접 입력"
-                      disabled={targetMode !== "custom"}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>
-                    문제 TOP3 <span className="req">*</span>
+                    포함하고 싶은 키워드(3~10개) <span className="req">*</span>
                   </label>
                   <textarea
-                    value={form.painsTop3}
-                    onChange={(e) => setValue("painsTop3", e.target.value)}
-                    placeholder={
-                      "예)\n1) 방향이 불명확\n2) 메시지 정리가 안 됨\n3) 신뢰가 부족"
-                    }
+                    value={form.desiredKeywords}
+                    onChange={(e) => setValue("desiredKeywords", e.target.value)}
+                    placeholder="예) 신뢰, 미니멀, 실행, 구조, 성장, 정확"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    피하고 싶은 키워드(3~10개) <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.avoidKeywords}
+                    onChange={(e) => setValue("avoidKeywords", e.target.value)}
+                    placeholder="예) 유치함, 과장, 복잡함, 딱딱함"
                     rows={4}
                   />
                 </div>
               </div>
 
-              {/* 3) 방향 */}
-              <div className="card">
+              {/* 4) NOTES */}
+              <div className="card" ref={refNotes}>
                 <div className="card__head">
-                  <h2>3. 컨셉 방향</h2>
-                  <p>이 답변들이 컨셉 3안을 만드는 재료가 됩니다.</p>
+                  <h2>4. 추가 요청 (선택)</h2>
+                  <p>참고할 톤/레퍼런스가 있으면 적어주세요.</p>
                 </div>
 
                 <div className="field">
-                  <label>
-                    핵심 가치(왜 우리인가?) <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.valueProposition}
-                    onChange={(e) =>
-                      setValue("valueProposition", e.target.value)
-                    }
-                    placeholder="예) 진단→전략→실행 체크리스트까지 한 번에"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    Brand Promise(약속 한 문장) <span className="req">*</span>
-                  </label>
-                  <input
-                    value={form.brandPromise}
-                    onChange={(e) => setValue("brandPromise", e.target.value)}
-                    placeholder="예) 불확실한 창업 초기에 ‘브랜드 기준’을 만든다"
-                  />
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>
-                      원하는 키워드 <span className="req">*</span>
-                    </label>
-                    <input
-                      value={form.desiredKeywords}
-                      onChange={(e) =>
-                        setValue("desiredKeywords", e.target.value)
-                      }
-                      placeholder="예) 미니멀 / 신뢰 / 혁신"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>
-                      피하고 싶은 키워드 <span className="req">*</span>
-                    </label>
-                    <input
-                      value={form.avoidKeywords}
-                      onChange={(e) =>
-                        setValue("avoidKeywords", e.target.value)
-                      }
-                      placeholder="예) 촌스러움 / 과한 감성"
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>추가 메모(선택)</label>
+                  <label>추가 메모</label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 너무 캐주얼한 느낌은 피하고, 신뢰를 최우선으로"
-                    rows={3}
+                    placeholder="예) 슬로건은 한 문장으로, 톤은 차분하고 고급스럽게"
+                    rows={5}
                   />
                 </div>
               </div>
 
-              {/* 결과 anchor */}
+              {/* 결과 영역 */}
               <div ref={refResult} />
 
               {analyzing ? (
-                <div className="card" style={resultCardStyle}>
+                <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <h2 style={{ margin: 0 }}>컨셉 후보 생성 중</h2>
-                      <span style={pillStyle}>⏳ 생성 중</span>
-                    </div>
-                    <p>입력 내용을 바탕으로 컨셉 3안을 만들고 있어요.</p>
+                    <h2>컨셉 후보 생성 중</h2>
+                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
                   </div>
-
-                  <div style={resultBannerStyle}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8 }}
-                    >
-                      <span style={{ fontSize: 18 }}>🧠</span>
-                      <div style={{ fontWeight: 900 }}>
-                        잠시만 기다려주세요…
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 12, opacity: 0.85 }}>
-                      완료되면 아래에 컨셉 3안이 표시됩니다
-                    </div>
-                  </div>
+                  <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
-                <div className="card" style={resultCardStyle}>
+                <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <h2 style={{ margin: 0 }}>컨셉 후보 3안</h2>
-                      <span style={pillStyle}>✅ 결과</span>
-                    </div>
-                    <p>
-                      마음에 드는 컨셉 1개를 선택해 주세요. (선택 표시만 됩니다)
-                    </p>
-
-                    <div style={resultBannerStyle}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <span style={{ fontSize: 18 }}>✨</span>
-                        <div style={{ fontWeight: 900 }}>
-                          결과가 생성되었습니다
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="btn ghost"
-                        onClick={() =>
-                          window.scrollTo({ top: 0, behavior: "smooth" })
-                        }
-                      >
-                        위로
-                      </button>
-                    </div>
+                    <h2>컨셉 후보 3안</h2>
+                    <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요. (현재는 더미 생성)</p>
                   </div>
 
-                  <div className="divider" />
-
-                  {/* 세로 1열 */}
-                  <div
-                    className="summaryGrid"
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 12,
-                    }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {candidates.map((c) => {
-                      const isSelected = c.id === selectedId;
-
+                      const isSelected = selectedId === c.id;
                       return (
                         <div
                           key={c.id}
-                          className="summaryItem"
                           style={{
-                            width: "100%",
+                            borderRadius: 16,
                             padding: 14,
-                            borderRadius: 14,
-                            border: isSelected
-                              ? "1px solid rgba(99,102,241,0.5)"
-                              : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
+                            border: isSelected ? "1px solid rgba(99,102,241,0.45)" : "1px solid rgba(0,0,0,0.08)",
+                            boxShadow: isSelected ? "0 12px 30px rgba(99,102,241,0.10)" : "none",
+                            background: "rgba(255,255,255,0.6)",
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
-                                {c.name}
-                              </div>
-                              <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                {c.oneLiner}
-                              </div>
+                              <div style={{ fontWeight: 900, fontSize: 15 }}>{c.title}</div>
+                              <div style={{ marginTop: 6, opacity: 0.9 }}>{c.summary}</div>
                             </div>
                             <span
-                              style={{ ...pillStyle, height: "fit-content" }}
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 800,
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                background: isSelected ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
+                                border: isSelected ? "1px solid rgba(99,102,241,0.25)" : "1px solid rgba(0,0,0,0.06)",
+                                color: "rgba(0,0,0,0.75)",
+                                height: "fit-content",
+                              }}
                             >
                               {isSelected ? "선택됨" : "후보"}
                             </span>
                           </div>
 
-                          <div style={{ marginTop: 10 }}>
-                            <div
-                              className="k"
-                              style={{ fontWeight: 800, marginBottom: 6 }}
-                            >
-                              키워드
-                            </div>
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: 6,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              {c.keywords.map((kw) => (
-                                <span key={kw} style={pillStyle}>
-                                  #{kw}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              marginTop: 10,
-                              fontSize: 13,
-                              opacity: 0.9,
-                            }}
-                          >
+                          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.92 }}>
                             <div>
+                              <b>포지셔닝</b> · {c.positioning}
+                            </div>
+                            <div style={{ marginTop: 6 }}>
+                              <b>가치</b> · {c.valueProposition}
+                            </div>
+                            <div style={{ marginTop: 6 }}>
                               <b>톤</b> · {c.tone}
                             </div>
-                            <div style={{ marginTop: 4 }}>
-                              <b>비주얼</b> · {c.visual}
+                            <div style={{ marginTop: 10 }}>
+                              <b>키워드</b>
+                              <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                {c.keywords.map((kw) => (
+                                  <span
+                                    key={kw}
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight: 800,
+                                      padding: "4px 10px",
+                                      borderRadius: 999,
+                                      background: "rgba(0,0,0,0.04)",
+                                      border: "1px solid rgba(0,0,0,0.06)",
+                                      color: "rgba(0,0,0,0.75)",
+                                    }}
+                                  >
+                                    #{kw}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                            <div style={{ marginTop: 4 }}>
-                              <b>슬로건</b> · {c.slogans.join(" / ")}
-                            </div>
-                            {c.doNot?.length ? (
-                              <div style={{ marginTop: 6, opacity: 0.85 }}>
-                                <b>피해야 할 키워드</b> · {c.doNot.join(", ")}
+
+                            {c.avoid?.length ? (
+                              <div style={{ marginTop: 8, opacity: 0.85 }}>
+                                <b>피해야 할 키워드</b> · {c.avoid.join(", ")}
                               </div>
                             ) : null}
+
+                            <div style={{ marginTop: 10, opacity: 0.9 }}>
+                              <b>슬로건</b> · {c.slogan}
+                            </div>
+
+                            <div style={{ marginTop: 6, opacity: 0.9 }}>
+                              <b>원라인</b> · {c.oneLine}
+                            </div>
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 컨셉 선택"}
+                              {isSelected ? "선택 완료" : "이 방향 선택"}
                             </button>
                           </div>
                         </div>
@@ -930,20 +702,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     })}
                   </div>
 
-                  {/* ✅ 선택 완료 시에만 다음 단계 버튼 노출 */}
                   {canGoNext ? (
-                    <div
-                      style={{
-                        marginTop: 14,
-                        display: "flex",
-                        justifyContent: "flex-end",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className="btn primary"
-                        onClick={handleGoNext}
-                      >
+                    <div style={{ marginTop: 14, display: "flex", justifyContent: "flex-end" }}>
+                      <button type="button" className="btn primary" onClick={handleGoNext}>
                         다음 단계로
                       </button>
                     </div>
@@ -954,29 +715,29 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   )}
                 </div>
               ) : null}
+
+              <div className="bottomBar">
+                <button type="button" className="btn ghost" onClick={handleTempSave}>
+                  임시 저장
+                </button>
+                <button type="button" className="btn ghost" onClick={handleNextSection}>
+                  다음 섹션
+                </button>
+              </div>
             </section>
 
-            {/* 오른쪽 */}
+            {/* ✅ 오른쪽: 진행률 */}
             <aside className="diagInterview__right">
               <div className="sideCard">
-                {/* ✅ 전체 단계(네이밍→컨셉→스토리→로고) 미니 표시 */}
                 <ConsultingFlowMini activeKey="concept" />
+
                 <div className="sideCard__titleRow">
                   <h3>진행 상태</h3>
                   <span className="badge">{progress}%</span>
                 </div>
 
-                <div
-                  className="progressBar"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={progress}
-                >
-                  <div
-                    className="progressBar__fill"
-                    style={{ width: `${progress}%` }}
-                  />
+                <div className="progressBar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+                  <div className="progressBar__fill" style={{ width: `${progress}%` }} />
                 </div>
 
                 <div className="sideMeta">
@@ -1004,28 +765,15 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary ${
-                    canAnalyze && !analyzing ? "" : "disabled"
-                  }`}
-                  onClick={() =>
-                    handleGenerateCandidates(hasResult ? "regen" : "generate")
-                  }
+                  className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
+                  onClick={() => handleGenerateCandidates(hasResult ? "regen" : "generate")}
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : "AI 분석 요청"}
+                  {analyzing ? "생성 중..." : hasResult ? "AI 분석 재요청" : "AI 분석 요청"}
                 </button>
 
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
-                >
+                <button type="button" className="btn ghost" onClick={handleResetAll} style={{ width: "100%" }}>
                   전체 초기화
                 </button>
 
@@ -1034,6 +782,17 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
                   </p>
                 ) : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">섹션 바로가기</h4>
+                <div className="jumpGrid">
+                  {sections.map((s) => (
+                    <button key={s.id} type="button" className="jumpBtn" onClick={() => scrollToSection(s.ref)}>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </aside>
           </div>

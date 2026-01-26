@@ -8,11 +8,14 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
+// ✅ 배너 이미지(요청 반영): 기업진단 & 인터뷰 홈 배너 → Banner_D 사용
+import bannerImage from "../Image/banner_image/Banner_D.png";
+
 /**
  * [DiagnosisHome] 기업진단 홈 페이지
  * ------------------------------------------------------------
  * ✅ 화면 목적
- * - 기업진단 프로세스 소개(4단계)
+ * - 기업진단 & 인터뷰 홈 배너 노출
  * - "진단 시작하기" / "이어서 진행하기" / "처음부터 다시" 제공
  * - 현재까지 저장된 draft 기반 진행률/단계/마지막 저장시간 표시
  *
@@ -83,36 +86,9 @@ export default function DiagnosisHome({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  /**
-   * UI: 4칸 프로세스(표시용)
-   * - steps는 변하지 않는 상수성 데이터이므로 useMemo로 고정
-   * - 백 연동과 직접 관련 없음(프론트 안내용)
-   */
-  const steps = useMemo(
-    () => [
-      {
-        n: 1,
-        title: "기본 정보 입력",
-        bullets: ["성장단계/산업/아이템 입력", "문제·예산·팀·12개월 목표 정리"],
-      },
-      {
-        n: 2,
-        title: "AI 분석",
-        bullets: ["리스크/병목 자동 분석", "영역별 점수화 + 이슈 요약"],
-      },
-      {
-        n: 3,
-        title: "우선순위 & 로드맵",
-        bullets: ["핵심 과제 우선순위 도출", "4~12주 실행 로드맵 초안 생성"],
-      },
-      {
-        n: 4,
-        title: "결과 및 전략",
-        bullets: ["체크리스트/KPI 제안", "맞춤 컨설팅 추천"],
-      },
-    ],
-    [],
-  );
+  // ✅ 요청 반영
+  // - 기업진단 홈에서 '기업 진단 프로세스(단계 카드)' 섹션 제거
+  // - 대신 상단에 배너 이미지를 사용해 목적/톤을 한 번에 전달
 
   // =========================================================
   // ✅ 홈 표시용 draft
@@ -396,44 +372,29 @@ export default function DiagnosisHome({ onLogout }) {
           - 토큰 삭제/세션 종료 API 등을 onLogout에서 처리할 가능성이 큼
          ===================================================== */}
       <SiteHeader onLogout={onLogout} />
+      {/* ✅ Hero: 브랜드/홍보물 컨설팅 배너와 동일한 크기(높이)로 맞춤 */}
+      <section className="diagHome__hero">
+        <div className="diagHome__heroInner">
+          {/* ✅ 기업진단 & 인터뷰 홈 배너 (Banner_D) */}
+          <div className="diagHome__banner" aria-label="기업 진단 & 인터뷰 배너">
+            <img
+              className="diagHome__bannerImg"
+              src={bannerImage}
+              alt="기업 진단 & 인터뷰 배너"
+            />
+            <div className="diagHome__bannerOverlay">
+              <p className="diagHome__bannerKicker">Company Analyze</p>
+              <h1 className="diagHome__bannerTitle">기업 진단 &amp; 인터뷰</h1>
+              <p className="diagHome__bannerSub">
+                간단한 정보를 입력하면 AI가 빠르게 분석하고, 주요 문제와 추천 전략을
+                제공합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <main className="diagHome__main">
-        {/* =====================================================
-            UI: 안내(프로세스 카드) 영역
-            - steps map으로 4단계 프로세스 렌더링
-           ===================================================== */}
-        <section className="diagHome__heroCard">
-          <p className="diagHome__heroText">
-            간단한 정보를 입력하면 AI가 빠르게 분석하고, 주요 문제와 추천 전략을
-            제공합니다.
-          </p>
-
-          <div className="processCard">
-            <div className="processCard__head">
-              <h3 className="processCard__title">기업 진단 프로세스</h3>
-              <div className="processCard__sub">
-                입력 → 분석 → 우선순위 → 전략까지 한 번에
-              </div>
-            </div>
-
-            <ol className="processGrid" aria-label="기업 진단 단계">
-              {steps.map((s) => (
-                <li className="processItem" key={s.n}>
-                  <div className="processItem__top">
-                    <span className="processItem__badge">{s.n}</span>
-                    <div className="processItem__title">{s.title}</div>
-                  </div>
-                  <ul className="processItem__list">
-                    {s.bullets.map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
         {/* =====================================================
             UI: 시작하기 카드 + 가이드 카드
            ===================================================== */}

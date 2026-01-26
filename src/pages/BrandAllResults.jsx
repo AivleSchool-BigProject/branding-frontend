@@ -16,37 +16,11 @@ function safeParse(raw) {
   }
 }
 
-function readFirstExisting(keys) {
-  for (const k of keys) {
-    const raw = localStorage.getItem(k);
-    if (!raw) continue;
-    const parsed = safeParse(raw);
-    if (parsed && parsed.form) return { storageKey: k, ...parsed };
-  }
-  return null;
-}
-
 function fmtDate(updatedAt) {
   if (!updatedAt) return "-";
   const d = new Date(updatedAt);
   if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleString();
-}
-
-function stageLabel(stage) {
-  const s = String(stage || "");
-  if (s === "idea") return "아이디어 단계";
-  if (s === "mvp") return "MVP/테스트 중";
-  if (s === "pmf") return "PMF 탐색";
-  if (s === "revenue") return "매출 발생";
-  if (s === "invest") return "투자 유치 진행";
-  return s || "-";
-}
-
-function pick(form, key) {
-  const v = form?.[key];
-  const str = String(v ?? "").trim();
-  return str ? str : "-";
 }
 
 export default function BrandAllResults({ onLogout }) {
@@ -55,114 +29,98 @@ export default function BrandAllResults({ onLogout }) {
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
-  // 🔌 BACKEND 연동 포인트 (마이페이지용: 브랜드 컨설팅 전체 결과)
-  // - 현재: localStorage(brandInterview_*_v1) 존재 여부로 완료/미진행 판단 + 화면 렌더
-  // - 백엔드 연동 시(명세서 기준) 대체 흐름:
-  //   1) 마이페이지 기본정보:        GET /mypage
-  //   2) 생성한 브랜드 목록:        GET /mypage/brands
-  //   3) 선택 브랜드 산출물(전체):  GET /mypage/brands/{brandId}/outputs
-  //   4) 서비스별 산출물(상세):
-  //      - 스토리: GET /mypage/brands/{brandId}/outputs/story
-  //      - 네이밍: GET /mypage/brands/{brandId}/outputs/naming
-  //      - 로고:   GET /mypage/brands/{brandId}/outputs/logo
-  //   5) (옵션) 진단 리포트:        GET /mypage/brands/{brandId}/report
-  // - 구현은 useEffect에서 호출 → state 저장 → 완료 여부는 응답 존재 여부로 판단
 
-  const BRAND_SERVICES = useMemo(
+  /**
+   * ✅ 브랜드 통합 결과(모아보기)
+   * - 완료 기준: legacyKey(brandInterview_*_v1)에 selectedId가 존재하면 "완료"
+   * - 진행중 기준: 완료는 아니지만 draftKey에 form이 있으면 "진행중"
+   * - 미시작 기준: 둘 다 없으면 "미시작"
+   *
+   * 🔔 컨셉은 내부적으로 service=homepage 로 결과 페이지가 연결됨
+   * - 결과보기: /brand/result?service=homepage
+   * - 인터뷰: /brand/concept/interview
+   */
+  const SERVICES = useMemo(
     () => [
       {
-        key: "logo",
-        title: "로고 컨설팅",
-        desc: "브랜드 성격/키워드 기반 로고 방향 요약",
-        // ✅ 결과 저장 키 (브랜드 결과 페이지에서 쓰던 키)
-        storageKeys: ["brandInterview_logo_v1"],
-        // ✅ 인터뷰 이동 경로(네 프로젝트 기준)
-        interviewPath: "/logoconsulting",
-        // 요약으로 보여줄 필드(가능하면)
-        summary: [
-          "companyName",
-          "industry",
-          "stage",
-          "oneLine",
-          "targetCustomer",
-          "brandPersonality",
-          "keywords",
-          "goal",
-        ],
-      },
-      {
         key: "naming",
-        title: "네이밍 컨설팅",
-        desc: "타깃/톤/키워드 기반 네이밍 방향 요약",
-        storageKeys: ["brandInterview_naming_v1"],
-        interviewPath: "/nameconsulting",
-        summary: [
-          "companyName",
-          "industry",
-          "stage",
-          "oneLine",
-          "targetCustomer",
-          "tone",
-          "keywords",
-          "goal",
-        ],
+        title: "네이밍",
+        desc: "타깃/톤/키워드 기반 네이밍 3안 + 선택",
+        legacyKey: "brandInterview_naming_v1",
+        draftKey: "namingConsultingInterviewDraft_v1",
+        interviewRoute: "/brand/naming/interview",
+        resultRoute: "/brand/result?service=naming",
       },
       {
-        key: "homepage",
-        title: "컨셉 컨설팅",
-        desc: "사이트 목적/CTA/섹션 기반 구성 요약",
-        storageKeys: ["brandInterview_homepage_v1"],
-        interviewPath: "/conceptconsulting",
-        summary: [
-          "companyName",
-          "industry",
-          "stage",
-          "oneLine",
-          "siteGoal",
-          "primaryAction",
-          "mainSections",
-        ],
+        key: "concept",
+        title: "컨셉",
+        desc: "사이트 목적/CTA/섹션 기반 컨셉 3안 + 선택",
+        legacyKey: "brandInterview_homepage_v1",
+        draftKey: "conceptInterviewDraft_homepage_v6",
+        interviewRoute: "/brand/concept/interview",
+        resultRoute: "/brand/result?service=homepage",
       },
       {
         key: "story",
-        title: "브랜드 스토리 컨설팅",
-        desc: "브랜드 시작 계기/문제/해결/목표 기반 스토리 요약",
-        storageKeys: ["brandInterview_story_v1"],
-        // ✅ App.jsx에 /brand/story가 있고, alias로 /brandstoryconsulting도 추가(아래 App.jsx 수정본 참고)
-        interviewPath: "/brand/story",
-        summary: [
-          "companyName",
-          "industry",
-          "stage",
-          "oneLine",
-          "targetCustomer",
-          "brandCore",
-          "goal",
-          "originStory",
-          "problemStory",
-          "solutionStory",
-        ],
+        title: "스토리",
+        desc: "Origin/Problem/Solution 기반 스토리 3안 + 선택",
+        legacyKey: "brandInterview_story_v1",
+        draftKey: "brandStoryConsultingInterviewDraft_v1",
+        interviewRoute: "/brand/story",
+        resultRoute: "/brand/result?service=story",
+      },
+      {
+        key: "logo",
+        title: "로고",
+        desc: "브랜드 성격/키워드 기반 로고 방향 3안 + 선택",
+        legacyKey: "brandInterview_logo_v1",
+        draftKey: "logoConsultingInterviewDraft_v1",
+        interviewRoute: "/brand/logo/interview",
+        resultRoute: "/brand/result?service=logo",
       },
     ],
     [],
   );
 
-  const results = useMemo(() => {
-    return BRAND_SERVICES.map((svc) => {
-      const saved = readFirstExisting(svc.storageKeys);
-      return { ...svc, saved };
+  const cards = useMemo(() => {
+    return SERVICES.map((s) => {
+      const legacy = safeParse(localStorage.getItem(s.legacyKey));
+      const draft = safeParse(localStorage.getItem(s.draftKey));
+
+      const selectedId = legacy?.selectedId || legacy?.selected?.id;
+
+      const selected =
+        legacy?.selected ||
+        (Array.isArray(legacy?.candidates)
+          ? legacy.candidates.find((c) => c.id === selectedId)
+          : null);
+
+      const isDone = Boolean(selectedId);
+      const inProgress =
+        !isDone &&
+        Boolean(draft?.form || legacy?.form || legacy?.candidates?.length);
+
+      const updatedAt = legacy?.updatedAt || draft?.updatedAt;
+
+      return {
+        ...s,
+        isDone,
+        inProgress,
+        updatedLabel: fmtDate(updatedAt),
+        selectedTitle: selected?.name || "",
+      };
     });
-  }, [BRAND_SERVICES]);
+  }, [SERVICES]);
 
   const doneCount = useMemo(
-    () => results.filter((r) => Boolean(r.saved)).length,
-    [results],
+    () => cards.filter((c) => c.isDone).length,
+    [cards],
   );
 
   const progress = useMemo(() => {
-    if (results.length === 0) return 0;
-    return Math.round((doneCount / results.length) * 100);
-  }, [doneCount, results.length]);
+    if (!cards.length) return 0;
+    return Math.round((doneCount / cards.length) * 100);
+  }, [doneCount, cards.length]);
 
   return (
     <div className="brandAll-page">
@@ -188,10 +146,9 @@ export default function BrandAllResults({ onLogout }) {
         <div className="brandAll-container">
           <div className="brandAll-titleRow">
             <div>
-              <h1 className="brandAll-title">브랜드 컨설팅 통합 결과 리포트</h1>
+              <h1 className="brandAll-title">브랜드 컨설팅 결과 모아보기</h1>
               <p className="brandAll-sub">
-                로고 · 네이밍 · 컨셉 · 브랜드 스토리 결과를 한곳에서
-                확인합니다. (저장된 localStorage 기준)
+                네이밍 · 컨셉 · 스토리 · 로고 결과를 한 곳에서 확인할 수 있어요.
               </p>
             </div>
 
@@ -199,116 +156,91 @@ export default function BrandAllResults({ onLogout }) {
               <button
                 type="button"
                 className="btn ghost"
-                onClick={() => navigate("/mypage")}
+                onClick={() => navigate("/brandconsulting")}
               >
-                마이페이지로
+                브랜드 컨설팅 홈
               </button>
               <button
                 type="button"
                 className="btn"
-                onClick={() => navigate("/brandconsulting")}
+                onClick={() => navigate("/mypage")}
               >
-                브랜드 컨설팅 홈
+                마이페이지
               </button>
             </div>
           </div>
 
           <div className="brandAll-grid">
-            {/* Left */}
+            {/* Left: 서비스 카드 리스트 */}
             <section className="brandAll-left">
-              {results.map((svc) => {
-                const saved = svc.saved;
-                const form = saved?.form || {};
-                const lastSaved = fmtDate(saved?.updatedAt);
-
-                return (
-                  <article className="card brandAll-card" key={svc.key}>
-                    <div className="card__head brandAll-cardHead">
-                      <div>
-                        <h2 className="brandAll-cardTitle">{svc.title}</h2>
-                        <p className="brandAll-cardDesc">{svc.desc}</p>
-                      </div>
-
-                      {saved ? (
-                        <span className="status-pill success">완료</span>
-                      ) : (
-                        <span className="status-pill ghost">미진행</span>
-                      )}
+              {cards.map((c) => (
+                <article
+                  key={c.key}
+                  id={`svc-${c.key}`}
+                  className="card brandAll-card"
+                >
+                  <div className="card__head brandAll-cardHead">
+                    <div>
+                      <h2 className="brandAll-cardTitle">{c.title}</h2>
+                      <p className="brandAll-cardDesc">{c.desc}</p>
                     </div>
 
-                    {!saved ? (
-                      <div className="brandAll-empty">
-                        <p className="brandAll-emptyText">
-                          아직 {svc.title} 결과가 없습니다. 인터뷰를
-                          진행하시겠어요?
-                        </p>
+                    {c.isDone ? (
+                      <span className="status-pill success">완료</span>
+                    ) : c.inProgress ? (
+                      <span className="status-pill progress">진행중</span>
+                    ) : (
+                      <span className="status-pill ghost">미시작</span>
+                    )}
+                  </div>
+
+                  <div className="brandAll-meta">
+                    <div className="brandAll-metaRow">
+                      <span className="k">마지막 저장</span>
+                      <span className="v">{c.updatedLabel}</span>
+                    </div>
+
+                    {c.isDone && c.selectedTitle ? (
+                      <div className="brandAll-metaRow">
+                        <span className="k">선택한 안</span>
+                        <span className="v">{c.selectedTitle}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="brandAll-cardActions">
+                    {c.isDone ? (
+                      <>
                         <button
                           type="button"
                           className="btn primary"
-                          onClick={() => navigate(svc.interviewPath)}
+                          onClick={() => navigate(c.resultRoute)}
                         >
-                          컨설팅 진행하기
+                          결과 보기
                         </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="brandAll-meta">
-                          <div className="brandAll-metaRow">
-                            <span className="k">마지막 저장</span>
-                            <span className="v">{lastSaved}</span>
-                          </div>
-                        </div>
-
-                        <div className="brandAll-summary">
-                          {svc.summary.map((key) => {
-                            const value =
-                              key === "stage"
-                                ? stageLabel(form.stage)
-                                : pick(form, key);
-                            return (
-                              <div className="brandAll-sItem" key={key}>
-                                <div className="k">{key}</div>
-                                <div className="v">{value}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <div className="brandAll-cardActions">
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            onClick={() => navigate(svc.interviewPath)}
-                          >
-                            인터뷰 수정하기
-                          </button>
-
-                          <button
-                            type="button"
-                            className="btn"
-                            onClick={() => {
-                              // ✅ “해당 서비스 결과만 초기화”
-                              const ok = window.confirm(
-                                `${svc.title} 결과를 초기화할까요?`,
-                              );
-                              if (!ok) return;
-                              svc.storageKeys.forEach((k) =>
-                                localStorage.removeItem(k),
-                              );
-                              window.location.reload();
-                            }}
-                          >
-                            결과 초기화
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          onClick={() => navigate(c.interviewRoute)}
+                        >
+                          다시 인터뷰
+                        </button>
                       </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => navigate(c.interviewRoute)}
+                      >
+                        {c.inProgress ? "인터뷰 진행하기" : "인터뷰 시작"}
+                      </button>
                     )}
-                  </article>
-                );
-              })}
+                  </div>
+                </article>
+              ))}
             </section>
 
-            {/* Right */}
+            {/* Right: 사이드 요약 */}
             <aside className="brandAll-right">
               <div className="sideCard">
                 <div className="sideCard__titleRow">
@@ -333,7 +265,7 @@ export default function BrandAllResults({ onLogout }) {
                   <div className="sideMeta__row">
                     <span className="k">완료</span>
                     <span className="v">
-                      {doneCount}/{results.length}
+                      {doneCount}/{cards.length}
                     </span>
                   </div>
                 </div>
@@ -342,31 +274,21 @@ export default function BrandAllResults({ onLogout }) {
 
                 <h4 className="sideSubTitle">빠른 이동</h4>
                 <div className="jumpGrid">
-                  {results.map((svc) => (
+                  {cards.map((c) => (
                     <button
-                      key={svc.key}
+                      key={c.key}
                       type="button"
                       className="jumpBtn"
                       onClick={() => {
-                        const el = document.getElementById(`svc-${svc.key}`);
+                        const el = document.getElementById(`svc-${c.key}`);
                         if (el)
                           el.scrollIntoView({
                             behavior: "smooth",
                             block: "start",
                           });
-                        else {
-                          // fallback: 첫 카드부터
-                          const first =
-                            document.querySelector(".brandAll-card");
-                          if (first)
-                            first.scrollIntoView({
-                              behavior: "smooth",
-                              block: "start",
-                            });
-                        }
                       }}
                     >
-                      {svc.title}
+                      {c.title}
                     </button>
                   ))}
                 </div>
@@ -382,18 +304,11 @@ export default function BrandAllResults({ onLogout }) {
                 </button>
 
                 <p className="hint">
-                  * 이 페이지는 localStorage에 저장된
-                  결과(brandInterview_*_v1)가 있을 때만 “완료”로 표시됩니다.
+                  * 이 페이지는 localStorage에 저장된 brandInterview_*_v1 /
+                  Draft 값을 기준으로 상태를 표시합니다.
                 </p>
               </div>
             </aside>
-          </div>
-
-          {/* id 부여(빠른 이동) */}
-          <div style={{ display: "none" }}>
-            {results.map((svc) => (
-              <div key={svc.key} id={`svc-${svc.key}`} />
-            ))}
           </div>
         </div>
       </main>

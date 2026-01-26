@@ -1,12 +1,9 @@
 // src/pages/PromotionAllResults.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
-
-import PolicyModal from "../components/PolicyModal.jsx";
-import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 function safeParse(raw) {
   try {
@@ -16,16 +13,6 @@ function safeParse(raw) {
   }
 }
 
-function readFirstExisting(keys) {
-  for (const k of keys) {
-    const raw = localStorage.getItem(k);
-    if (!raw) continue;
-    const parsed = safeParse(raw);
-    if (parsed && parsed.form) return { storageKey: k, ...parsed };
-  }
-  return null;
-}
-
 function fmtDate(updatedAt) {
   if (!updatedAt) return "-";
   const d = new Date(updatedAt);
@@ -33,142 +20,95 @@ function fmtDate(updatedAt) {
   return d.toLocaleString();
 }
 
-function pick(form, key) {
-  const v = form?.[key];
-  const str = String(v ?? "").trim();
-  return str ? str : "-";
-}
-
-/** ✅ 요약으로 보여줄 키 후보(홍보물 폼이 서로 달라도 공통으로 잡히게) */
-const SUMMARY_PRIORITY = [
-  "companyName",
-  "brandName",
-  "industry",
-  "targetCustomer",
-  "oneLine",
-  "goal",
-  "concept",
-  "tone",
-  "message",
-  "keywords",
-  "notes",
+const SERVICES = [
+  {
+    key: "icon",
+    title: "제품 아이콘 컨설팅",
+    desc: "아이콘 콘셉트 3안 + 이미지 프롬프트",
+    resultKey: "promoInterviewResult_icon_v1",
+    draftKey: "promoInterviewDraft_icon_v1",
+    interviewRoute: "/promotion/icon/interview",
+    resultRoute: "/promotion/result?service=icon",
+  },
+  {
+    key: "aicut",
+    title: "AI컷 모델 컨설팅",
+    desc: "모델 컷 콘셉트 3안 + 촬영/프롬프트 가이드",
+    resultKey: "promoInterviewResult_aicut_v1",
+    draftKey: "promoInterviewDraft_aicut_v1",
+    interviewRoute: "/promotion/aicut/interview",
+    resultRoute: "/promotion/result?service=aicut",
+  },
+  {
+    key: "staging",
+    title: "제품 연출컷 컨설팅",
+    desc: "연출 장면 3안 + 소품/구도/프롬프트",
+    resultKey: "promoInterviewResult_staging_v1",
+    draftKey: "promoInterviewDraft_staging_v1",
+    interviewRoute: "/promotion/staging/interview",
+    resultRoute: "/promotion/result?service=staging",
+  },
+  {
+    key: "poster",
+    title: "SNS 제품 포스터 컨설팅",
+    desc: "카피/레이아웃 3안 + 포스터 프롬프트",
+    resultKey: "promoInterviewResult_poster_v1",
+    draftKey: "promoInterviewDraft_poster_v1",
+    interviewRoute: "/promotion/poster/interview",
+    resultRoute: "/promotion/result?service=poster",
+  },
 ];
 
 export default function PromotionAllResults({ onLogout }) {
   const navigate = useNavigate();
 
-  const [openType, setOpenType] = useState(null);
-  const closeModal = () => setOpenType(null);
-  // 🔌 BACKEND 연동 포인트 (마이페이지용: 홍보물 컨설팅 전체 결과)
-  // - 현재: localStorage(promotionInterview_*_v1) 존재 여부로 완료/미진행 판단 + 화면 렌더
-  // - 백엔드 연동 시(명세서 기준) 대체 흐름:
-  //   - 포스터: GET /brands/posters
-  //   - SNS:   GET /brands/sns
-  //   - 영상:  GET /brands/videos
-  //   (마이페이지에서 브랜드별로 구분해야 하면 /mypage/brands/{brandId}/outputs 쪽으로 확장 필요)
-  // - 구현은 useEffect에서 호출 → state 저장 → 완료 여부는 응답 존재 여부로 판단
+  const cards = useMemo(() => {
+    return SERVICES.map((s) => {
+      const result = safeParse(localStorage.getItem(s.resultKey));
+      const draft = safeParse(localStorage.getItem(s.draftKey));
 
-  const PROMO_SERVICES = useMemo(
-    () => [
-      {
-        key: "digital",
-        title: "디지털 이미지 컨설팅",
-        desc: "SNS/배너/썸네일 등 디지털 소재 방향",
-        // ✅ 키 후보들(프로젝트 실제 키가 다르면 여기에 추가)
-        storageKeys: [
-          "promotionInterview_digital_v1",
-          "promoInterview_digital_v1",
-          "promotion_digital_v1",
-        ],
-        interviewPath: "/promotion/digital/interview",
-      },
-      {
-        key: "offline",
-        title: "오프라인 이미지 컨설팅",
-        desc: "전단/포스터/현수막 등 오프라인 소재 방향",
-        storageKeys: [
-          "promotionInterview_offline_v1",
-          "promoInterview_offline_v1",
-          "promotion_offline_v1",
-        ],
-        interviewPath: "/promotion/offline/interview",
-      },
-      {
-        key: "video",
-        title: "홍보 영상 컨설팅",
-        desc: "광고 영상/숏폼 등 영상 소재 방향",
-        storageKeys: [
-          "promotionInterview_video_v1",
-          "promoInterview_video_v1",
-          "promotion_video_v1",
-        ],
-        interviewPath: "/promotion/video/interview",
-      },
-    ],
-    [],
-  );
+      const selectedId = result?.selectedId || result?.selected?.id;
+      const selected =
+        result?.selected ||
+        (Array.isArray(result?.candidates)
+          ? result.candidates.find((c) => c.id === selectedId)
+          : null);
 
-  const results = useMemo(() => {
-    return PROMO_SERVICES.map((svc) => {
-      const saved = readFirstExisting(svc.storageKeys);
-      return { ...svc, saved };
+      const isDone = Boolean(selectedId);
+      const inProgress = !isDone && Boolean(draft?.form);
+      const updatedAt = result?.updatedAt || draft?.updatedAt;
+
+      return {
+        ...s,
+        isDone,
+        inProgress,
+        updatedLabel: fmtDate(updatedAt),
+        selectedTitle: selected?.name || "",
+      };
     });
-  }, [PROMO_SERVICES]);
+  }, []);
 
   const doneCount = useMemo(
-    () => results.filter((r) => Boolean(r.saved)).length,
-    [results],
+    () => cards.filter((c) => c.isDone).length,
+    [cards],
   );
 
   const progress = useMemo(() => {
-    if (results.length === 0) return 0;
-    return Math.round((doneCount / results.length) * 100);
-  }, [doneCount, results.length]);
-
-  const buildSummary = (form) => {
-    const items = [];
-    for (const k of SUMMARY_PRIORITY) {
-      const v = String(form?.[k] ?? "").trim();
-      if (!v) continue;
-      items.push({ k, v });
-      if (items.length >= 8) break;
-    }
-    if (items.length === 0) {
-      // 폼 구조가 달라도 최소 표시
-      const keys = Object.keys(form || {});
-      return keys.slice(0, 8).map((k) => ({ k, v: pick(form, k) }));
-    }
-    return items;
-  };
+    if (!cards.length) return 0;
+    return Math.round((doneCount / cards.length) * 100);
+  }, [doneCount, cards.length]);
 
   return (
     <div className="promoAll-page">
-      <PolicyModal
-        open={openType === "privacy"}
-        title="개인정보 처리방침"
-        onClose={closeModal}
-      >
-        <PrivacyContent />
-      </PolicyModal>
-
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
-        <TermsContent />
-      </PolicyModal>
-
       <SiteHeader onLogout={onLogout} />
 
       <main className="promoAll-main">
         <div className="promoAll-container">
           <div className="promoAll-titleRow">
             <div>
-              <h1 className="promoAll-title">홍보물 컨설팅 통합 결과 리포트</h1>
+              <h1 className="promoAll-title">홍보물 컨설팅 결과 모아보기</h1>
               <p className="promoAll-sub">
-                디지털 · 오프라인 · 영상 컨설팅 결과를 한곳에서 확인합니다.
-                (저장된 localStorage 기준)
+                4개의 홍보물 컨설팅 결과를 한 곳에서 확인할 수 있어요.
               </p>
             </div>
 
@@ -176,113 +116,91 @@ export default function PromotionAllResults({ onLogout }) {
               <button
                 type="button"
                 className="btn ghost"
-                onClick={() => navigate("/mypage")}
+                onClick={() => navigate("/promotion")}
               >
-                마이페이지로
+                홍보물 컨설팅 홈
               </button>
               <button
                 type="button"
                 className="btn"
-                onClick={() => navigate("/promotion")}
+                onClick={() => navigate("/mypage")}
               >
-                홍보물 컨설팅 홈
+                마이페이지
               </button>
             </div>
           </div>
 
           <div className="promoAll-grid">
-            {/* Left */}
+            {/* Left: 서비스 카드 리스트 */}
             <section className="promoAll-left">
-              {results.map((svc) => {
-                const saved = svc.saved;
-                const form = saved?.form || {};
-                const lastSaved = fmtDate(saved?.updatedAt);
-
-                return (
-                  <article className="card promoAll-card" key={svc.key}>
-                    <div className="card__head promoAll-cardHead">
-                      <div>
-                        <h2 className="promoAll-cardTitle">{svc.title}</h2>
-                        <p className="promoAll-cardDesc">{svc.desc}</p>
-                      </div>
-
-                      {saved ? (
-                        <span className="status-pill success">완료</span>
-                      ) : (
-                        <span className="status-pill ghost">미진행</span>
-                      )}
+              {cards.map((c) => (
+                <article
+                  key={c.key}
+                  id={`svc-${c.key}`}
+                  className="card promoAll-card"
+                >
+                  <div className="card__head promoAll-cardHead">
+                    <div>
+                      <h2 className="promoAll-cardTitle">{c.title}</h2>
+                      <p className="promoAll-cardDesc">{c.desc}</p>
                     </div>
 
-                    {!saved ? (
-                      <div className="promoAll-empty">
-                        <p className="promoAll-emptyText">
-                          아직 {svc.title} 결과가 없습니다. 인터뷰를
-                          진행하시겠어요?
-                        </p>
+                    {c.isDone ? (
+                      <span className="status-pill success">완료</span>
+                    ) : c.inProgress ? (
+                      <span className="status-pill progress">진행중</span>
+                    ) : (
+                      <span className="status-pill ghost">미시작</span>
+                    )}
+                  </div>
+
+                  <div className="promoAll-meta">
+                    <div className="promoAll-metaRow">
+                      <span className="k">마지막 저장</span>
+                      <span className="v">{c.updatedLabel}</span>
+                    </div>
+
+                    {c.isDone && c.selectedTitle ? (
+                      <div className="promoAll-metaRow">
+                        <span className="k">선택한 안</span>
+                        <span className="v">{c.selectedTitle}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="promoAll-cardActions">
+                    {c.isDone ? (
+                      <>
                         <button
                           type="button"
                           className="btn primary"
-                          onClick={() => navigate(svc.interviewPath)}
+                          onClick={() => navigate(c.resultRoute)}
                         >
-                          컨설팅 진행하기
+                          결과 보기
                         </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="promoAll-meta">
-                          <div className="promoAll-metaRow">
-                            <span className="k">마지막 저장</span>
-                            <span className="v">{lastSaved}</span>
-                          </div>
-                          <div className="promoAll-metaRow">
-                            <span className="k">저장 키</span>
-                            <span className="v">{saved?.storageKey}</span>
-                          </div>
-                        </div>
-
-                        <div className="promoAll-summary">
-                          {buildSummary(form).map((it) => (
-                            <div className="promoAll-sItem" key={it.k}>
-                              <div className="k">{it.k}</div>
-                              <div className="v">{it.v}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="promoAll-cardActions">
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            onClick={() => navigate(svc.interviewPath)}
-                          >
-                            인터뷰 수정하기
-                          </button>
-
-                          <button
-                            type="button"
-                            className="btn"
-                            onClick={() => {
-                              const ok = window.confirm(
-                                `${svc.title} 결과를 초기화할까요?`,
-                              );
-                              if (!ok) return;
-                              svc.storageKeys.forEach((k) =>
-                                localStorage.removeItem(k),
-                              );
-                              window.location.reload();
-                            }}
-                          >
-                            결과 초기화
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          onClick={() => navigate(c.interviewRoute)}
+                        >
+                          다시 인터뷰
+                        </button>
                       </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => navigate(c.interviewRoute)}
+                      >
+                        {c.inProgress ? "인터뷰 진행하기" : "인터뷰 시작"}
+                      </button>
                     )}
-                  </article>
-                );
-              })}
+                  </div>
+                </article>
+              ))}
             </section>
 
-            {/* Right */}
+            {/* Right: 사이드 요약 */}
             <aside className="promoAll-right">
               <div className="sideCard">
                 <div className="sideCard__titleRow">
@@ -307,9 +225,32 @@ export default function PromotionAllResults({ onLogout }) {
                   <div className="sideMeta__row">
                     <span className="k">완료</span>
                     <span className="v">
-                      {doneCount}/{results.length}
+                      {doneCount}/{cards.length}
                     </span>
                   </div>
+                </div>
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">빠른 이동</h4>
+                <div className="jumpGrid">
+                  {cards.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      className="jumpBtn"
+                      onClick={() => {
+                        const el = document.getElementById(`svc-${c.key}`);
+                        if (el)
+                          el.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      }}
+                    >
+                      {c.title}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="divider" />
@@ -323,8 +264,8 @@ export default function PromotionAllResults({ onLogout }) {
                 </button>
 
                 <p className="hint">
-                  * 저장 키가 다르면 이 페이지에서 “미진행”으로 보일 수 있어요.
-                  (위 storageKeys 후보에 실제 키 추가하면 해결)
+                  * 이 페이지는 localStorage에 저장된 결과/임시저장 값을
+                  기준으로 “완료/진행중/미시작”을 표시합니다.
                 </p>
               </div>
             </aside>
@@ -332,7 +273,7 @@ export default function PromotionAllResults({ onLogout }) {
         </div>
       </main>
 
-      <SiteFooter onOpenPolicy={setOpenType} />
+      <SiteFooter />
     </div>
   );
 }

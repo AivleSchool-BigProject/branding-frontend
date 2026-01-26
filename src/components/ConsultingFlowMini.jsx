@@ -67,9 +67,7 @@ export default function ConsultingFlowMini({ activeKey = "naming" }) {
           const done = doneMap[s.key] || i < activeIndex;
           const cls = isActive ? "active" : done ? "done" : "todo";
           return (
-            <span
-              key={s.key}
-              className={`flowMini__pill ${cls}`}
+            <span key={s.key} className={`flowMini__pill ${cls}`}
               title={done ? "완료" : isActive ? "진행 중" : "대기"}
             >
               {done && !isActive ? "✓" : i + 1}. {s.label}

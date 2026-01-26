@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import analyzeCompany from "../Image/main_image/companyanalyze.png";
 import makeset from "../Image/main_image/Brandingconsult.png";
 import story from "../Image/main_image/PromotionalConsulting.png";
+import mainBanner from "../Image/banner_image/AI_CONSULTING.png";
 
 // UI: 약관/개인정보 모달 + 공통 헤더/푸터
 import PolicyModal from "../components/PolicyModal.jsx";
@@ -122,6 +123,22 @@ export default function MainPage({ onLogout }) {
       />
 
       <main className="main-content">
+        {/* ✅ 메인 배너 */}
+        <section className="main-hero" aria-label="AI 컨설팅 배너">
+          <img
+            className="main-hero__img"
+            src={mainBanner}
+            alt="AI 컨설팅 배너"
+          />
+          <div className="main-hero__overlay">
+            <p className="main-hero__kicker">AI 기반 컨설팅</p>
+
+            <p className="main-hero__sub">
+              기업 진단 → 브랜드 → 홍보물 컨설팅까지 한 흐름으로.
+            </p>
+          </div>
+        </section>
+
         <h2 className="section-title">컨설팅 시작하기</h2>
 
         {/* =====================================================

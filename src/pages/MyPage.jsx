@@ -25,6 +25,12 @@ function hasAnyStorage(keys) {
   });
 }
 
+function hasCompletedResult(key) {
+  const parsed = safeParse(localStorage.getItem(key));
+  if (!parsed) return false;
+  return Boolean(parsed.selected || parsed.selectedId);
+}
+
 export default function MyPage({ onLogout }) {
   const navigate = useNavigate();
 
@@ -90,35 +96,32 @@ export default function MyPage({ onLogout }) {
   const promoServices = useMemo(
     () => [
       {
-        key: "digital",
-        title: "디지털 이미지",
-        // ✅ 프로젝트 실제 저장 키가 다르면 여기에 추가하면 됨
-        storageKeys: [
-          "promotionInterview_digital_v1",
-          "promoInterview_digital_v1",
-          "promotion_digital_v1",
-        ],
-        goPath: "/promotion/digital/interview",
+        key: "icon",
+        title: "제품 아이콘 컨설팅",
+        resultKey: "promoInterviewResult_icon_v1",
+        storageKeys: ["promoInterviewDraft_icon_v1", "promoInterviewResult_icon_v1", "promo_icon_v1"],
+        goPath: "/promotion/icon/interview",
       },
       {
-        key: "offline",
-        title: "오프라인 이미지",
-        storageKeys: [
-          "promotionInterview_offline_v1",
-          "promoInterview_offline_v1",
-          "promotion_offline_v1",
-        ],
-        goPath: "/promotion/offline/interview",
+        key: "aicut",
+        title: "AI컷 모델 컨설팅",
+        resultKey: "promoInterviewResult_aicut_v1",
+        storageKeys: ["promoInterviewDraft_aicut_v1", "promoInterviewResult_aicut_v1", "promo_aicut_v1"],
+        goPath: "/promotion/aicut/interview",
       },
       {
-        key: "video",
-        title: "홍보 영상",
-        storageKeys: [
-          "promotionInterview_video_v1",
-          "promoInterview_video_v1",
-          "promotion_video_v1",
-        ],
-        goPath: "/promotion/video/interview",
+        key: "staging",
+        title: "제품 연출컷 컨설팅",
+        resultKey: "promoInterviewResult_staging_v1",
+        storageKeys: ["promoInterviewDraft_staging_v1", "promoInterviewResult_staging_v1", "promo_staging_v1"],
+        goPath: "/promotion/staging/interview",
+      },
+      {
+        key: "poster",
+        title: "SNS 제품 포스터 컨설팅",
+        resultKey: "promoInterviewResult_poster_v1",
+        storageKeys: ["promoInterviewDraft_poster_v1", "promoInterviewResult_poster_v1", "promo_poster_v1"],
+        goPath: "/promotion/poster/interview",
       },
     ],
     [],
@@ -133,10 +136,15 @@ export default function MyPage({ onLogout }) {
   }, [brandServices]);
 
   const promoStatus = useMemo(() => {
-    return promoServices.map((s) => ({
-      ...s,
-      done: hasAnyStorage(s.storageKeys),
-    }));
+    return promoServices.map((s) => {
+      const done = hasCompletedResult(s.resultKey);
+      const inProgress = !done && hasAnyStorage(s.storageKeys);
+      return {
+        ...s,
+        done,
+        inProgress,
+      };
+    });
   }, [promoServices]);
 
   const brandDoneCount = useMemo(
@@ -309,9 +317,11 @@ export default function MyPage({ onLogout }) {
                 <div className="statusTop">
                   <div className="statusName">{s.title}</div>
                   <span
-                    className={`status-pill ${s.done ? "success" : "ghost"}`}
+                    className={`status-pill ${
+                      s.done ? "success" : s.inProgress ? "progress" : "ghost"
+                    }`}
                   >
-                    {s.done ? "완료" : "미진행"}
+                    {s.done ? "완료" : s.inProgress ? "진행중" : "미진행"}
                   </span>
                 </div>
 
@@ -367,9 +377,11 @@ export default function MyPage({ onLogout }) {
                 <div className="statusTop">
                   <div className="statusName">{s.title}</div>
                   <span
-                    className={`status-pill ${s.done ? "success" : "ghost"}`}
+                    className={`status-pill ${
+                      s.done ? "success" : s.inProgress ? "progress" : "ghost"
+                    }`}
                   >
-                    {s.done ? "완료" : "미진행"}
+                    {s.done ? "완료" : s.inProgress ? "진행중" : "미진행"}
                   </span>
                 </div>
 
@@ -388,7 +400,7 @@ export default function MyPage({ onLogout }) {
                       className="btn primary"
                       onClick={() => navigate(s.goPath)}
                     >
-                      지금 진행
+                      {s.inProgress ? "인터뷰 이어하기" : "지금 진행"}
                     </button>
                   )}
                 </div>

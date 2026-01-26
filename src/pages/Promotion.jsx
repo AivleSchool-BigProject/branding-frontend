@@ -2,10 +2,11 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import bannerImage from "../Image/banner_image/Banner.png";
-import digitalImage from "../Image/promotion_image/Digital image.png";
-import offlineImage from "../Image/promotion_image/Offline image.png";
-import promoVideoImage from "../Image/promotion_image/PromoVideo.png";
+import bannerImage from "../Image/banner_image/Banner_P.png";
+import iconImage from "../Image/promotion_image/ProductIcon.png";
+import aiCutImage from "../Image/promotion_image/AICutModel.png";
+import stagingImage from "../Image/promotion_image/ProductStaging.png";
+import posterImage from "../Image/promotion_image/SNSPoster.png";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
@@ -30,16 +31,18 @@ export default function PromotionPage({ onLogout }) {
   }, [searchParams, location.state]);
 
   // ✅ 카드 클릭 이동
-  const handleDigital = () => navigate("/promotion/digital/interview");
-  const handleOffline = () => navigate("/promotion/offline/interview");
-  const handleVideo = () => navigate("/promotion/video/interview");
+  const handleIcon = () => navigate("/promotion/icon/interview");
+  const handleAICut = () => navigate("/promotion/aicut/interview");
+  const handleStaging = () => navigate("/promotion/staging/interview");
+  const handlePoster = () => navigate("/promotion/poster/interview");
 
   const onPromoPick = (action) => {
     // 필요하면 여기서 추가 동작 가능 (지금은 알럿만 유지)
     const map = {
-      digital: "디지털 디자인",
-      offline: "오프라인 디자인",
-      video: "홍보 영상",
+      icon: "제품 아이콘",
+      aicut: "AI컷 모델",
+      staging: "제품 연출컷",
+      poster: "SNS 제품 포스터",
     };
     // alert(`${map[action]} 이동(테스트)`);
   };
@@ -77,21 +80,25 @@ export default function PromotionPage({ onLogout }) {
             />
             <div className="promo-banner-text">
               <div className="promo-carousel">
-                <div className="promo-slide">
+                {/* <div className="promo-slide">
                   <strong>홍보물컨설팅</strong>
                   <span>브랜드 메시지를 효과적으로 전달합니다.</span>
+                </div> */}
+                <div className="promo-slide">
+                  <strong>제품 아이콘 컨설팅</strong>
+                  <span>앱/상품 아이콘 방향·키워드·프롬프트를 제안합니다.</span>
                 </div>
                 <div className="promo-slide">
-                  <strong>디지털 디자인</strong>
-                  <span>SNS에 맞는 비주얼을 제안합니다.</span>
+                  <strong>AI컷 모델 컨설팅</strong>
+                  <span>모델 톤, 스타일, 배경/조명을 설계합니다.</span>
                 </div>
                 <div className="promo-slide">
-                  <strong>오프라인 디자인</strong>
-                  <span>인쇄 매체에 최적화된 구성을 제안합니다.</span>
+                  <strong>제품 연출컷 컨설팅</strong>
+                  <span>연출 컨셉, 소품, 구도, 무드를 구성합니다.</span>
                 </div>
                 <div className="promo-slide">
-                  <strong>홍보 영상</strong>
-                  <span>영상 스토리라인과 모션을 함께 제공합니다.</span>
+                  <strong>SNS 제품 포스터 컨설팅</strong>
+                  <span>카피/레이아웃/CTA까지 한 장으로 정리합니다.</span>
                 </div>
               </div>
 
@@ -109,7 +116,11 @@ export default function PromotionPage({ onLogout }) {
       {/* ✅ Content */}
       <main className="promo-content">
         <section className="promo-intro">
-          <h2 className="section-title">컨설팅 시작하기</h2>
+          <h2 className="section-title">서비스 선택</h2>
+          <p className="promo-subtitle">
+            홍보물 컨설팅은 <b>4개의 독립 서비스</b>로 구성됩니다. 필요한
+            서비스만 선택해서 진행하세요.
+          </p>
         </section>
 
         <section className="promo-grid">
@@ -118,18 +129,18 @@ export default function PromotionPage({ onLogout }) {
               className="promo-card"
               role="button"
               tabIndex={0}
-              onClick={handleDigital}
+              onClick={handleIcon}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleDigital();
+                if (e.key === "Enter" || e.key === " ") handleIcon();
               }}
             >
               <div className="promo-card-image">
-                <img src={digitalImage} alt="디지털 디자인" />
+                <img src={iconImage} alt="제품 아이콘 컨설팅" />
               </div>
-              <p className="promo-card-tag">Digital Consulting</p>
-              <h3>디지털 디자인</h3>
+              <p className="promo-card-tag">Icon Consulting</p>
+              <h3>제품 아이콘 컨설팅</h3>
               <div className="promo-card-meta">
-                <span>채널에 최적화된 비주얼과 카피를 구성합니다.</span>
+                <span>아이콘 방향·키워드·스타일·프롬프트를 제안합니다.</span>
                 <span>↗</span>
               </div>
             </article>
@@ -138,18 +149,18 @@ export default function PromotionPage({ onLogout }) {
               className="promo-card"
               role="button"
               tabIndex={0}
-              onClick={handleOffline}
+              onClick={handleAICut}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleOffline();
+                if (e.key === "Enter" || e.key === " ") handleAICut();
               }}
             >
               <div className="promo-card-image">
-                <img src={offlineImage} alt="오프라인 디자인" />
+                <img src={aiCutImage} alt="AI컷 모델 컨설팅" />
               </div>
-              <p className="promo-card-tag">Offline Consulting</p>
-              <h3>오프라인 디자인</h3>
+              <p className="promo-card-tag">AI Cut Model</p>
+              <h3>AI컷 모델 컨설팅</h3>
               <div className="promo-card-meta">
-                <span>인쇄물에 맞춘 비주얼과 메시지를 구성합니다.</span>
+                <span>모델/의상/포즈/배경/조명까지 한 번에 설계합니다.</span>
                 <span>↗</span>
               </div>
             </article>
@@ -158,18 +169,38 @@ export default function PromotionPage({ onLogout }) {
               className="promo-card"
               role="button"
               tabIndex={0}
-              onClick={handleVideo}
+              onClick={handleStaging}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleVideo();
+                if (e.key === "Enter" || e.key === " ") handleStaging();
               }}
             >
               <div className="promo-card-image">
-                <img src={promoVideoImage} alt="홍보 영상" />
+                <img src={stagingImage} alt="제품 연출컷 컨설팅" />
               </div>
-              <p className="promo-card-tag">Promo Video Consulting</p>
-              <h3>홍보 영상</h3>
+              <p className="promo-card-tag">Staging Cut</p>
+              <h3>제품 연출컷 컨설팅</h3>
               <div className="promo-card-meta">
-                <span>영상 스토리라인과 모션을 함께 제공합니다.</span>
+                <span>연출 컨셉·소품·구도·무드·프롬프트를 제안합니다.</span>
+                <span>↗</span>
+              </div>
+            </article>
+
+            <article
+              className="promo-card"
+              role="button"
+              tabIndex={0}
+              onClick={handlePoster}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handlePoster();
+              }}
+            >
+              <div className="promo-card-image">
+                <img src={posterImage} alt="SNS 제품 포스터 컨설팅" />
+              </div>
+              <p className="promo-card-tag">SNS Poster</p>
+              <h3>SNS 제품 포스터 컨설팅</h3>
+              <div className="promo-card-meta">
+                <span>카피/레이아웃/CTA까지 ‘한 장’ 구성으로 정리합니다.</span>
                 <span>↗</span>
               </div>
             </article>

@@ -1,5 +1,6 @@
 /* src/styles/BrandAllResults.css */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
+
 .brandAll-main {
   padding: 28px 0 52px;
 }
@@ -34,6 +35,7 @@
   flex-wrap: wrap;
 }
 
+/* 좌: 카드 리스트 / 우: 사이드 요약 */
 .brandAll-grid {
   display: grid;
   grid-template-columns: 1fr 320px;
@@ -44,6 +46,11 @@
   .brandAll-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.brandAll-left {
+  display: grid;
+  gap: 14px;
 }
 
 .brandAll-cardHead {
@@ -64,20 +71,6 @@
   font-size: 13px;
 }
 
-.brandAll-empty {
-  margin-top: 12px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-
-.brandAll-emptyText {
-  margin: 0;
-  color: #6b7280;
-}
-
 .brandAll-meta {
   margin-top: 10px;
   font-size: 12px;
@@ -87,6 +80,7 @@
 .brandAll-metaRow {
   display: flex;
   gap: 8px;
+  margin-top: 4px;
 }
 
 .brandAll-metaRow .k {
@@ -98,38 +92,6 @@
   color: #111827;
 }
 
-.brandAll-summary {
-  margin-top: 12px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-@media (max-width: 720px) {
-  .brandAll-summary {
-    grid-template-columns: 1fr;
-  }
-}
-
-.brandAll-sItem {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-
-.brandAll-sItem .k {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 6px;
-}
-
-.brandAll-sItem .v {
-  font-size: 14px;
-  color: #111827;
-  white-space: pre-wrap;
-  line-height: 1.5;
-}
-
 .brandAll-cardActions {
   display: flex;
   gap: 10px;
@@ -137,7 +99,7 @@
   flex-wrap: wrap;
 }
 
-/* status pill (없으면 대비용) */
+/* status pill (안전장치: 다른 CSS에 없더라도 보이게) */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -149,6 +111,10 @@
 
 .status-pill.success {
   background: rgba(34, 197, 94, 0.16);
+}
+
+.status-pill.progress {
+  background: rgba(234, 179, 8, 0.18);
 }
 
 .status-pill.ghost {

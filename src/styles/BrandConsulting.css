@@ -182,6 +182,56 @@
   color: #0f172a;
 }
 
+
+/* ✅ Flow header (minimal + structured) */
+.bcFlowHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 14px;
+}
+
+.bcFlowHeader .section-title {
+  margin: 0;
+}
+
+.bcFlowSub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.bcFlowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bcMetaPill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #e6e9f1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 980px) {
+  .bcFlowHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bcFlowMeta {
+    justify-content: flex-start;
+  }
+}
+
+
 /* ✅ Intro Card */
 .bcIntroCard {
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
@@ -222,6 +272,40 @@
   color: #334155;
   line-height: 1.75;
 }
+
+
+/* ✅ Intro stats (compact info blocks) */
+.bcIntroStats {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.bcStat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #e6e9f1;
+  background: #ffffff;
+}
+
+.bcStat__k {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.bcStat__v {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: right;
+}
+
 
 .bcBullets {
   margin: 0;
@@ -276,6 +360,170 @@
 
 
 /* ✅ Step Flow (4 steps in a single row with arrows) */
+
+
+/* ✅ 4단계 흐름: 1개의 카드 안에 정리 */
+.bcFlowCard {
+  margin-top: 8px;
+  margin-bottom: 18px;
+  padding: 16px 16px 10px;
+}
+
+.bcFlowCard__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bcFlowCard__head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.1px;
+}
+
+.bcFlowCard__head p {
+  margin: 0;
+  color: #5b6476;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ✅ 진행 순서(좌) + CTA(우) 를 한 카드 안에 배치 */
+.bcFlowCard__grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.bcFlowActions {
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e6e9f1;
+  padding: 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.bcFlowActions__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.bcFlowActions__desc {
+  margin: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4e5668;
+}
+
+.bcFlowActions__actions {
+  display: grid;
+  gap: 10px;
+}
+
+.bcFlowActions__hint {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.bcFlowList {
+  display: grid;
+  gap: 10px;
+}
+
+.bcFlowItem {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 8px;
+  border-radius: 14px;
+}
+
+.bcFlowItem:not(:last-child) {
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+  padding-bottom: 14px;
+}
+
+.bcFlowItem__imgWrap {
+  position: relative;
+}
+
+.bcFlowBadge {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.36);
+  padding: 6px 10px;
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+}
+
+.bcFlowItem__img {
+  height: 120px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eef2f8;
+  border: 1px solid #e5e7ef;
+}
+
+.bcFlowItem__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bcFlowTag {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2b69ff;
+}
+
+.bcFlowTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.bcFlowSub {
+  margin: 6px 0 0;
+  color: #4e5668;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .bcFlowCard__head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bcFlowCard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bcFlowItem {
+    grid-template-columns: 1fr;
+  }
+  .bcFlowItem__img {
+    height: 150px;
+  }
+}
 .bcStepFlow {
   margin-top: 6px;
   margin-bottom: 18px;

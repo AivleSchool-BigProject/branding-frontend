@@ -13,17 +13,32 @@ import { clearCurrentUserId, clearIsLoggedIn } from "../api/auth.js";
 // import * as authApi from "../api/authApi";
 
 // ✅ 컴포넌트 밖으로 빼면 렌더마다 객체 새로 안 만들어짐
-const BRAND_INTERVIEW_ROUTES = {
-  logo: "/logoconsulting",
-  naming: "/nameconsulting",
-  homepage: "/conceptconsulting",
-  story: "/brandstoryconsulting",
+// 브랜드 컨설팅은 "네이밍 → 컨셉 → 스토리 → 로고" 순서로 "원큐" 진행(헤더 메뉴도 이에 맞게 정리)
+const BRAND_STEP_ROUTES = {
+  // 소개/허브
+  home: "/brandconsulting",
+
+  // 유저 리포트(통합 결과)
+  report: "/mypage/brand-results",
+
+  // 단계 바로가기(인터뷰/진행)
+  naming: "/brand/naming/interview",
+  concept: "/brand/concept/interview",
+  story: "/brand/story",
+  logo: "/brand/logo/interview",
 };
 
 const PROMO_INTERVIEW_ROUTES = {
-  digital: "/promotion/digital/interview",
-  offline: "/promotion/offline/interview",
-  video: "/promotion/video/interview",
+  icon: "/promotion/icon/interview",
+  aicut: "/promotion/aicut/interview",
+  staging: "/promotion/staging/interview",
+  poster: "/promotion/poster/interview",
+};
+
+// ✅ 홍보물 컨설팅: 소개/리포트 라우트
+const PROMO_ROUTES = {
+  home: "/promotion",
+  report: "/mypage/promotion-results",
 };
 
 export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
@@ -36,19 +51,15 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     pathname === "/diagnosisinterview" ||
     pathname.startsWith("/diagnosis/");
 
+  // ✅ 브랜드 컨설팅 관련 라우트는 전부 active 처리
   const isBrandRoute =
-    pathname === "/brandconsulting" ||
-    pathname === BRAND_INTERVIEW_ROUTES.logo ||
-    pathname === BRAND_INTERVIEW_ROUTES.naming ||
-    pathname === BRAND_INTERVIEW_ROUTES.homepage ||
+    pathname === BRAND_STEP_ROUTES.home ||
+    pathname === "/logoconsulting" ||
+    pathname === "/nameconsulting" ||
+    pathname === "/conceptconsulting" ||
     pathname === "/homepageconsulting" ||
-    pathname === BRAND_INTERVIEW_ROUTES.story ||
+    pathname === "/brandstoryconsulting" ||
     pathname === "/namingconsulting" ||
-    pathname === "/brand/naming/interview" ||
-    pathname === "/brand/logo/interview" ||
-    pathname === "/brand/homepage/interview" ||
-    pathname === "/brand/concept/interview" ||
-    pathname === "/brand/story/interview" ||
     pathname.startsWith("/brand/") ||
     pathname.startsWith("/brandconsulting/");
 
@@ -115,18 +126,32 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
   const handleBrandClick = () => {
     setPromoOpen(false);
     setBrandOpen(false);
-    navigate("/brandconsulting");
+    navigate(BRAND_STEP_ROUTES.home);
   };
 
-  const handleBrandItem = (action) => {
+  const closeAllMenus = () => {
     setBrandOpen(false);
     setPromoOpen(false);
+  };
 
-    const to = BRAND_INTERVIEW_ROUTES[action];
+  const handleBrandNavigate = (to, pickKey) => {
+    closeAllMenus();
     if (!to) return;
-
     navigate(to);
-    if (typeof onBrandPick === "function") onBrandPick(action);
+    if (typeof onBrandPick === "function" && pickKey) onBrandPick(pickKey);
+  };
+
+  const handleBrandStep = (stepKey) => {
+    const to = BRAND_STEP_ROUTES[stepKey];
+    handleBrandNavigate(to, stepKey);
+  };
+
+  // ✅ 홍보물 컨설팅: 공용 네비게이션(소개/리포트)
+  const handlePromoNavigate = (to, pickKey) => {
+    closeAllMenus();
+    if (!to) return;
+    navigate(to);
+    if (typeof onPromoPick === "function" && pickKey) onPromoPick(pickKey);
   };
 
   const handlePromoClick = () => {
@@ -238,34 +263,59 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
             <button
               type="button"
               className="nav-dropdown__item"
-              onClick={() => handleBrandItem("logo")}
+              onClick={() =>
+                handleBrandNavigate(BRAND_STEP_ROUTES.home, "home")
+              }
             >
-              로고 컨설팅
+              브랜드 컨설팅 소개 및 홈
             </button>
 
             <button
               type="button"
               className="nav-dropdown__item"
-              onClick={() => handleBrandItem("naming")}
+              onClick={() =>
+                handleBrandNavigate(BRAND_STEP_ROUTES.report, "report")
+              }
             >
-              네이밍 컨설팅
+              내 리포트
             </button>
 
-            <button
-              type="button"
-              className="nav-dropdown__item"
-              onClick={() => handleBrandItem("homepage")}
-            >
-              컨셉 컨설팅
-            </button>
+            <div className="nav-dropdown__divider" aria-hidden="true" />
 
-            <button
-              type="button"
-              className="nav-dropdown__item"
-              onClick={() => handleBrandItem("story")}
-            >
-              브랜드 스토리 컨설팅
-            </button>
+            <div className="nav-dropdown__section-title">단계 바로가기</div>
+            <div className="nav-dropdown__grid" role="none">
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handleBrandStep("naming")}
+              >
+                네이밍
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handleBrandStep("concept")}
+              >
+                컨셉
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handleBrandStep("story")}
+              >
+                스토리
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handleBrandStep("logo")}
+              >
+                로고
+              </button>
+            </div>
           </div>
         </div>
 
@@ -308,26 +358,55 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
             <button
               type="button"
               className="nav-dropdown__item"
-              onClick={() => handlePromoItem("digital")}
+              onClick={() => handlePromoNavigate(PROMO_ROUTES.home, "home")}
             >
-              디지털 이미지
+              홍보물 컨설팅 소개 및 홈
             </button>
 
             <button
               type="button"
               className="nav-dropdown__item"
-              onClick={() => handlePromoItem("offline")}
+              onClick={() => handlePromoNavigate(PROMO_ROUTES.report, "report")}
             >
-              오프라인 이미지
+              내 리포트
             </button>
 
-            <button
-              type="button"
-              className="nav-dropdown__item"
-              onClick={() => handlePromoItem("video")}
-            >
-              홍보 영상
-            </button>
+            <div className="nav-dropdown__divider" aria-hidden="true" />
+
+            <div className="nav-dropdown__section-title">단계 바로가기</div>
+            <div className="nav-dropdown__grid" role="none">
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handlePromoItem("icon")}
+              >
+                제품 아이콘
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handlePromoItem("aicut")}
+              >
+                AI컷 모델
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handlePromoItem("staging")}
+              >
+                제품 연출컷
+              </button>
+
+              <button
+                type="button"
+                className="nav-dropdown__item nav-dropdown__item--mini"
+                onClick={() => handlePromoItem("poster")}
+              >
+                SNS 제품 포스터
+              </button>
+            </div>
           </div>
         </div>
 
