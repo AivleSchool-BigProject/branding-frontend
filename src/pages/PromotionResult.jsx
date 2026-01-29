@@ -6,7 +6,11 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../utils/userLocalStorage.js";
 
 const SERVICE_MAP = {
   icon: {
@@ -50,11 +54,17 @@ export default function PromotionResult({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const query = useMemo(
+    () => new URLSearchParams(location.search),
+    [location.search],
+  );
   const service = query.get("service") || "icon";
   const meta = SERVICE_MAP[service] || SERVICE_MAP.icon;
 
-  const data = useMemo(() => safeParse(userGetItem(meta.resultKey)), [meta.resultKey]);
+  const data = useMemo(
+    () => safeParse(userGetItem(meta.resultKey)),
+    [meta.resultKey],
+  );
 
   const selected = useMemo(() => {
     if (!data) return null;
@@ -83,19 +93,30 @@ export default function PromotionResult({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">홍보물 컨설팅 결과</h1>
               <p className="diagInterview__sub">
-                {meta.label} 결과입니다. 선택한 1안을 기준으로 요약과 프롬프트를 확인하세요.
+                {meta.label} 결과입니다. 선택한 1안을 기준으로 요약과 프롬프트를
+                확인하세요.
               </p>
             </div>
 
             <div className="diagInterview__topActions">
-              <button type="button" className="btn ghost" onClick={() => navigate("/promotion")}
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate("/promotion")}
               >
                 홍보물 컨설팅 홈
               </button>
-              <button type="button" className="btn" onClick={() => navigate(meta.interviewRoute)}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate(meta.interviewRoute)}
+              >
                 다시 인터뷰
               </button>
-              <button type="button" className="btn" onClick={() => navigate("/mypage/promotion-results")}
+              <button
+                type="button"
+                className="btn"
+                onClick={() => navigate("/mypage?tab=promo")}
               >
                 결과 히스토리
               </button>
@@ -106,13 +127,23 @@ export default function PromotionResult({ onLogout }) {
             <div className="card">
               <div className="card__head">
                 <h2>아직 결과가 없습니다</h2>
-                <p>인터뷰에서 후보 3안을 만든 뒤, 1안을 선택하면 결과가 저장됩니다.</p>
+                <p>
+                  인터뷰에서 후보 3안을 만든 뒤, 1안을 선택하면 결과가
+                  저장됩니다.
+                </p>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
-                <button type="button" className="btn primary" onClick={() => navigate(meta.interviewRoute)}>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => navigate(meta.interviewRoute)}
+                >
                   {meta.label} 인터뷰 하러가기
                 </button>
-                <button type="button" className="btn ghost" onClick={() => navigate("/promotion")}
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => navigate("/promotion")}
                 >
                   홍보물 컨설팅 홈으로
                 </button>
@@ -132,7 +163,9 @@ export default function PromotionResult({ onLogout }) {
                     <div className="resultCard__head">
                       <div>
                         <p className="resultBadge">선택됨</p>
-                        <h3 className="resultTitle">{selected?.name || "선택안"}</h3>
+                        <h3 className="resultTitle">
+                          {selected?.name || "선택안"}
+                        </h3>
                       </div>
                       <div className="resultPick">
                         <span className="pickDot on" />
@@ -140,7 +173,8 @@ export default function PromotionResult({ onLogout }) {
                       </div>
                     </div>
 
-                    {Array.isArray(selected?.summary) && selected.summary.length ? (
+                    {Array.isArray(selected?.summary) &&
+                    selected.summary.length ? (
                       <ul className="resultBullets">
                         {selected.summary.map((t) => (
                           <li key={t}>{t}</li>
@@ -153,13 +187,20 @@ export default function PromotionResult({ onLogout }) {
                 <div className="card">
                   <div className="card__head">
                     <h2>{highlightsTitle}</h2>
-                    <p>아래 프롬프트/가이드를 기반으로 제작을 진행할 수 있어요.</p>
+                    <p>
+                      아래 프롬프트/가이드를 기반으로 제작을 진행할 수 있어요.
+                    </p>
                   </div>
 
                   <div className="resultGrid">
                     <div className="resultBlock">
                       <h4>추천 프롬프트</h4>
-                      <textarea readOnly value={selected?.prompt || ""} rows={6} style={{ width: "100%" }} />
+                      <textarea
+                        readOnly
+                        value={selected?.prompt || ""}
+                        rows={6}
+                        style={{ width: "100%" }}
+                      />
 
                       {Array.isArray(selected?.copy) && selected.copy.length ? (
                         <div style={{ marginTop: 12 }}>
@@ -236,14 +277,17 @@ export default function PromotionResult({ onLogout }) {
                 <div className="sideCard">
                   <div className="sideCard__titleRow">
                     <h3>후보 3안</h3>
-                    <span className="badge">{(data?.candidates || []).length}개</span>
+                    <span className="badge">
+                      {(data?.candidates || []).length}개
+                    </span>
                   </div>
 
                   <div className="divider" />
 
                   <div style={{ display: "grid", gap: 10 }}>
                     {(data?.candidates || []).map((c) => {
-                      const isPicked = c.id === (data?.selectedId || selected?.id);
+                      const isPicked =
+                        c.id === (data?.selectedId || selected?.id);
                       return (
                         <button
                           key={c.id}
@@ -262,7 +306,11 @@ export default function PromotionResult({ onLogout }) {
 
                   <div className="divider" />
 
-                  <button type="button" className="btn ghost" onClick={() => navigate(meta.interviewRoute)}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => navigate(meta.interviewRoute)}
+                  >
                     다른 안 선택하기
                   </button>
                 </div>

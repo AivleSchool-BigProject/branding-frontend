@@ -10,7 +10,17 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../utils/userLocalStorage.js";
+
+// ✅ 마이페이지 카드(히스토리) 저장
+import {
+  addPromoReport,
+  createPromoReportSnapshot,
+} from "../utils/reportHistory.js";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)
@@ -54,9 +64,15 @@ function buildPosterPrompt({
   const platform = targetPlatform?.trim() ? targetPlatform.trim() : "SNS";
   const mood = tone?.trim() ? tone.trim() : "미니멀하고 현대적인";
   const msg = keyMessage?.trim() ? keyMessage.trim() : "핵심 메시지";
-  const colors = colorPref?.trim() ? `Color palette: ${colorPref}` : "Color palette: neutral + brand accent";
-  const layout = layoutPref?.trim() ? `Layout: ${layoutPref}` : "Layout: clean grid, large product area, clear CTA area";
-  const ratio = aspectRatio?.trim() ? `Aspect ratio: ${aspectRatio}` : "Aspect ratio: 1:1";
+  const colors = colorPref?.trim()
+    ? `Color palette: ${colorPref}`
+    : "Color palette: neutral + brand accent";
+  const layout = layoutPref?.trim()
+    ? `Layout: ${layoutPref}`
+    : "Layout: clean grid, large product area, clear CTA area";
+  const ratio = aspectRatio?.trim()
+    ? `Aspect ratio: ${aspectRatio}`
+    : "Aspect ratio: 1:1";
 
   return (
     `High-quality product poster for ${platform}. ` +
@@ -89,9 +105,14 @@ function makeCandidates(form) {
       ],
       prompt: buildPosterPrompt({
         ...form,
-        layoutPref: form.layoutPref || "product hero large + minimal copy + clear CTA",
+        layoutPref:
+          form.layoutPref || "product hero large + minimal copy + clear CTA",
       }),
-      do: ["제품 영역을 60% 이상 확보", "카피 3줄 이내", "CTA는 버튼/스티커로 분리"],
+      do: [
+        "제품 영역을 60% 이상 확보",
+        "카피 3줄 이내",
+        "CTA는 버튼/스티커로 분리",
+      ],
       dont: ["요소 과다", "과한 장식 프레임", "복잡한 배경 텍스처"],
     },
     {
@@ -109,9 +130,15 @@ function makeCandidates(form) {
       ],
       prompt: buildPosterPrompt({
         ...form,
-        layoutPref: form.layoutPref || "promo badge + big numbers + benefit bullets + CTA",
+        layoutPref:
+          form.layoutPref ||
+          "promo badge + big numbers + benefit bullets + CTA",
       }),
-      do: ["숫자(혜택)를 가장 크게", "기간/조건은 작은 영역에 정리", "혜택 3개 이내"],
+      do: [
+        "숫자(혜택)를 가장 크게",
+        "기간/조건은 작은 영역에 정리",
+        "혜택 3개 이내",
+      ],
       dont: ["너무 많은 조건 문구", "가독성 낮은 폰트", "강한 색 4개 이상"],
     },
     {
@@ -130,9 +157,14 @@ function makeCandidates(form) {
       prompt: buildPosterPrompt({
         ...form,
         layoutPref:
-          form.layoutPref || "lifestyle scene background + product integrated + soft typography + subtle CTA",
+          form.layoutPref ||
+          "lifestyle scene background + product integrated + soft typography + subtle CTA",
       }),
-      do: ["배경은 단순한 무드(1개 장면)", "제품은 자연스럽게 포함", "카피는 감성 1문장+서브"],
+      do: [
+        "배경은 단순한 무드(1개 장면)",
+        "제품은 자연스럽게 포함",
+        "카피는 감성 1문장+서브",
+      ],
       dont: ["배경 정보 과다", "제품이 묻히는 구도", "과도한 필터/노이즈"],
     },
   ];
@@ -215,7 +247,8 @@ export default function SNSPosterConsultingInterview({ onLogout }) {
     [],
   );
 
-  const setValue = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const setValue = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const requiredStatus = useMemo(() => {
     const status = {};
@@ -263,7 +296,8 @@ export default function SNSPosterConsultingInterview({ onLogout }) {
     const result = safeParse(userGetItem(RESULT_KEY));
     if (result?.form) setForm((prev) => ({ ...prev, ...result.form }));
     if (Array.isArray(result?.candidates)) setCandidates(result.candidates);
-    if (typeof result?.selectedId === "string") setSelectedId(result.selectedId);
+    if (typeof result?.selectedId === "string")
+      setSelectedId(result.selectedId);
   }, []);
 
   // ✅ 자동 저장(디바운스)
@@ -282,8 +316,6 @@ export default function SNSPosterConsultingInterview({ onLogout }) {
 
     return () => clearTimeout(t);
   }, [form, candidates, selectedId]);
-
-  
 
   // ✅ 기업 진단&인터뷰 기본 정보 자동 반영 (중복 질문 제거)
   useEffect(() => {
@@ -304,7 +336,7 @@ export default function SNSPosterConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
-const handleTempSave = () => {
+  const handleTempSave = () => {
     try {
       const payload = { form, candidates, selectedId, updatedAt: Date.now() };
       userSetItem(STORAGE_KEY, JSON.stringify(payload));
@@ -402,16 +434,38 @@ const handleTempSave = () => {
       }),
     );
 
+    try {
+      // ✅ 완료 시점의 결과 스냅샷 저장(카드 히스토리)
+      addPromoReport(
+        createPromoReportSnapshot({
+          serviceKey: "poster",
+          serviceLabel: "SNS 제품 포스터 컨설팅",
+          interviewRoute: "/promotion/poster/interview",
+          result: payload,
+        }),
+      );
+    } catch {
+      // ignore
+    }
+
     navigate("/promotion/result?service=poster");
   };
 
   return (
     <div className="diagInterview consultingInterview">
-      <PolicyModal open={openType === "privacy"} title="개인정보 처리방침" onClose={closeModal}>
+      <PolicyModal
+        open={openType === "privacy"}
+        title="개인정보 처리방침"
+        onClose={closeModal}
+      >
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
+      <PolicyModal
+        open={openType === "terms"}
+        title="이용약관"
+        onClose={closeModal}
+      >
         <TermsContent />
       </PolicyModal>
 
@@ -421,14 +475,21 @@ const handleTempSave = () => {
         <div className="diagInterview__container">
           <div className="diagInterview__titleRow">
             <div>
-              <h1 className="diagInterview__title">SNS 제품 포스터 컨설팅 인터뷰</h1>
+              <h1 className="diagInterview__title">
+                SNS 제품 포스터 컨설팅 인터뷰
+              </h1>
               <p className="diagInterview__sub">
-                SNS에서 클릭/전환을 높이기 위한 포스터 카피·레이아웃 방향(후보 3안)과 이미지 프롬프트를 정리합니다.
+                SNS에서 클릭/전환을 높이기 위한 포스터 카피·레이아웃 방향(후보
+                3안)과 이미지 프롬프트를 정리합니다.
               </p>
             </div>
 
             <div className="diagInterview__topActions">
-              <button type="button" className="btn ghost" onClick={() => navigate("/promotion")}>
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate("/promotion")}
+              >
                 홍보물 컨설팅으로
               </button>
               <button type="button" className="btn" onClick={handleTempSave}>
@@ -446,7 +507,9 @@ const handleTempSave = () => {
               <div className="card" ref={refBasic}>
                 <div className="card__head">
                   <h2>기본 정보</h2>
-                  <p>제품/플랫폼/타깃이 명확할수록 카피와 레이아웃이 좋아져요.</p>
+                  <p>
+                    제품/플랫폼/타깃이 명확할수록 카피와 레이아웃이 좋아져요.
+                  </p>
                 </div>
 
                 <div className="formGrid">
@@ -472,7 +535,9 @@ const handleTempSave = () => {
                     <label>제품 카테고리 (선택)</label>
                     <input
                       value={form.productCategory}
-                      onChange={(e) => setValue("productCategory", e.target.value)}
+                      onChange={(e) =>
+                        setValue("productCategory", e.target.value)
+                      }
                       placeholder="예) 생활/주방, 뷰티, IT기기"
                     />
                   </div>
@@ -480,7 +545,12 @@ const handleTempSave = () => {
                     <label>
                       타깃 플랫폼 <span className="req">*</span>
                     </label>
-                    <select value={form.targetPlatform} onChange={(e) => setValue("targetPlatform", e.target.value)}>
+                    <select
+                      value={form.targetPlatform}
+                      onChange={(e) =>
+                        setValue("targetPlatform", e.target.value)
+                      }
+                    >
                       <option value="">선택</option>
                       <option value="Instagram">Instagram</option>
                       <option value="Facebook">Facebook</option>
@@ -550,7 +620,9 @@ const handleTempSave = () => {
                   <textarea
                     value={form.benefits}
                     onChange={(e) => setValue("benefits", e.target.value)}
-                    placeholder={"예)\n- 온도 유지 12시간\n- 앱 연동 알림\n- BPA Free"}
+                    placeholder={
+                      "예)\n- 온도 유지 12시간\n- 앱 연동 알림\n- BPA Free"
+                    }
                     rows={4}
                   />
                 </div>
@@ -595,7 +667,10 @@ const handleTempSave = () => {
                 <div className="formGrid">
                   <div className="field">
                     <label>비율(권장) (선택)</label>
-                    <select value={form.aspectRatio} onChange={(e) => setValue("aspectRatio", e.target.value)}>
+                    <select
+                      value={form.aspectRatio}
+                      onChange={(e) => setValue("aspectRatio", e.target.value)}
+                    >
                       <option value="1:1">1:1 (정사각)</option>
                       <option value="4:5">4:5 (인스타 피드)</option>
                       <option value="9:16">9:16 (스토리/릴스)</option>
@@ -713,13 +788,17 @@ const handleTempSave = () => {
               <div className="card" ref={refResult}>
                 <div className="card__head">
                   <h2>후보 3안</h2>
-                  <p>“AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는 1안을 선택해 결과를 확인하세요.</p>
+                  <p>
+                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는
+                    1안을 선택해 결과를 확인하세요.
+                  </p>
                 </div>
 
                 {candidates.length === 0 ? (
                   <div className="emptyHint">
                     <p style={{ margin: 0, color: "#6b7280" }}>
-                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을 눌러 주세요.
+                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을
+                      눌러 주세요.
                     </p>
                   </div>
                 ) : (
@@ -734,18 +813,25 @@ const handleTempSave = () => {
                           tabIndex={0}
                           onClick={() => setSelectedId(c.id)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") setSelectedId(c.id);
+                            if (e.key === "Enter" || e.key === " ")
+                              setSelectedId(c.id);
                           }}
                           style={{ marginBottom: 14 }}
                         >
                           <div className="resultCard__head">
                             <div>
-                              <p className="resultBadge">후보 {c.id.toUpperCase()}</p>
+                              <p className="resultBadge">
+                                후보 {c.id.toUpperCase()}
+                              </p>
                               <h3 className="resultTitle">{c.name}</h3>
                             </div>
                             <div className="resultPick">
-                              <span className={`pickDot ${picked ? "on" : ""}`} />
-                              <span className="pickText">{picked ? "선택됨" : "선택"}</span>
+                              <span
+                                className={`pickDot ${picked ? "on" : ""}`}
+                              />
+                              <span className="pickText">
+                                {picked ? "선택됨" : "선택"}
+                              </span>
                             </div>
                           </div>
 
@@ -758,7 +844,12 @@ const handleTempSave = () => {
                           <div className="resultGrid">
                             <div className="resultBlock">
                               <h4>추천 프롬프트</h4>
-                              <textarea readOnly value={c.prompt} rows={4} style={{ width: "100%" }} />
+                              <textarea
+                                readOnly
+                                value={c.prompt}
+                                rows={4}
+                                style={{ width: "100%" }}
+                              />
                               <div style={{ marginTop: 10 }}>
                                 <h4 style={{ marginBottom: 6 }}>추천 카피</h4>
                                 <ul style={{ margin: 0, paddingLeft: 18 }}>
@@ -796,7 +887,11 @@ const handleTempSave = () => {
                     })}
 
                     <div className="bottomBar" style={{ marginTop: 10 }}>
-                      <button type="button" className="btn ghost" onClick={handleAnalyze}>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={handleAnalyze}
+                      >
                         후보 다시 생성
                       </button>
                       <button
@@ -814,7 +909,11 @@ const handleTempSave = () => {
 
               {/* Bottom bar */}
               <div className="bottomBar">
-                <button type="button" className="btn ghost" onClick={handleNext}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleNext}
+                >
                   다음 섹션
                 </button>
                 <button type="button" className="btn" onClick={handleTempSave}>
@@ -839,8 +938,17 @@ const handleTempSave = () => {
                   <span className="badge">{progress}%</span>
                 </div>
 
-                <div className="progressBar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-                  <div className="progressBar__fill" style={{ width: `${progress}%` }} />
+                <div
+                  className="progressBar"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress}
+                >
+                  <div
+                    className="progressBar__fill"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
 
                 <div className="sideMeta">
@@ -865,11 +973,20 @@ const handleTempSave = () => {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList"><li className={requiredStatus.productName ? "ok" : ""}>제품명</li>
-                  <li className={requiredStatus.targetPlatform ? "ok" : ""}>플랫폼</li>
-                  <li className={requiredStatus.targetCustomer ? "ok" : ""}>타깃 고객</li>
+                <ul className="checkList">
+                  <li className={requiredStatus.productName ? "ok" : ""}>
+                    제품명
+                  </li>
+                  <li className={requiredStatus.targetPlatform ? "ok" : ""}>
+                    플랫폼
+                  </li>
+                  <li className={requiredStatus.targetCustomer ? "ok" : ""}>
+                    타깃 고객
+                  </li>
                   <li className={requiredStatus.tone ? "ok" : ""}>톤/분위기</li>
-                  <li className={requiredStatus.keyMessage ? "ok" : ""}>핵심 메시지</li>
+                  <li className={requiredStatus.keyMessage ? "ok" : ""}>
+                    핵심 메시지
+                  </li>
                   <li className={requiredStatus.goal ? "ok" : ""}>목표</li>
                 </ul>
 
@@ -878,7 +995,12 @@ const handleTempSave = () => {
                 <h4 className="sideSubTitle">빠른 이동</h4>
                 <div className="jumpGrid">
                   {sections.map((s) => (
-                    <button key={s.id} type="button" className="jumpBtn" onClick={() => scrollToSection(s.ref)}>
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="jumpBtn"
+                      onClick={() => scrollToSection(s.ref)}
+                    >
                       {s.label}
                     </button>
                   ))}
@@ -893,7 +1015,11 @@ const handleTempSave = () => {
                   AI 분석 요청
                 </button>
 
-                {!canAnalyze ? <p className="hint">* 필수 항목을 모두 입력하면 분석 버튼이 활성화됩니다.</p> : null}
+                {!canAnalyze ? (
+                  <p className="hint">
+                    * 필수 항목을 모두 입력하면 분석 버튼이 활성화됩니다.
+                  </p>
+                ) : null}
               </div>
             </aside>
           </div>

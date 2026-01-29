@@ -29,6 +29,11 @@ import {
   completeBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
+import {
+  addBrandReport,
+  createBrandReportSnapshot,
+} from "../utils/reportHistory.js";
+
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
@@ -634,11 +639,17 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   const handleFinish = () => {
     try {
+      // ✅ 완료 시점의 결과 스냅샷을 히스토리에 저장(카드가 쌓이는 구조)
+      addBrandReport(createBrandReportSnapshot());
+    } catch {
+      // ignore
+    }
+    try {
       completeBrandFlow();
     } catch {
       // ignore
     }
-    navigate("/mypage/brand-results");
+    navigate("/mypage");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

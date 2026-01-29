@@ -10,7 +10,16 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../utils/userLocalStorage.js";
+
+import {
+  addPromoReport,
+  createPromoReportSnapshot,
+} from "../utils/reportHistory.js";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)
@@ -58,8 +67,12 @@ function buildAICutPrompt({
   const product = productName?.trim() ? productName.trim() : "제품";
   const cat = productCategory?.trim() ? productCategory.trim() : "product";
   const mood = tone?.trim() ? tone.trim() : "clean lifestyle";
-  const platform = targetPlatform?.trim() ? targetPlatform.trim() : "e-commerce";
-  const customer = targetCustomer?.trim() ? targetCustomer.trim() : "target customer";
+  const platform = targetPlatform?.trim()
+    ? targetPlatform.trim()
+    : "e-commerce";
+  const customer = targetCustomer?.trim()
+    ? targetCustomer.trim()
+    : "target customer";
 
   const parts = [
     `High-quality realistic photo of a professional model showcasing ${brand}'s ${product} (${cat}).`,
@@ -81,7 +94,8 @@ function buildAICutPrompt({
 
 function makeCandidates(form) {
   const baseTone = form.tone?.trim() || "클린·라이프스타일";
-  const keyTop = compactList(form.keywords).slice(0, 5).join(" · ") || "핵심 키워드";
+  const keyTop =
+    compactList(form.keywords).slice(0, 5).join(" · ") || "핵심 키워드";
 
   const variants = [
     {
@@ -93,7 +107,11 @@ function makeCandidates(form) {
         "상세페이지 메인컷/썸네일에 최적화",
       ],
       prompt: buildAICutPrompt({ ...form, tone: `${baseTone}, clean studio` }),
-      do: ["제품이 화면 중심에 오게", "손/표정 과장 없이 자연스럽게", "배경 요소 최소화"],
+      do: [
+        "제품이 화면 중심에 오게",
+        "손/표정 과장 없이 자연스럽게",
+        "배경 요소 최소화",
+      ],
       dont: ["과한 필터", "텍스트/로고 삽입", "제품 가림/흐림"],
     },
     {
@@ -104,8 +122,15 @@ function makeCandidates(form) {
         `키워드: ${keyTop}`,
         "SNS/광고 소재로 ‘공감’과 ‘체험감’ 강화",
       ],
-      prompt: buildAICutPrompt({ ...form, tone: `${baseTone}, natural lifestyle` }),
-      do: ["사용 상황을 1~2개로 좁히기", "소품은 기능을 보조하는 수준", "자연스러운 포즈"],
+      prompt: buildAICutPrompt({
+        ...form,
+        tone: `${baseTone}, natural lifestyle`,
+      }),
+      do: [
+        "사용 상황을 1~2개로 좁히기",
+        "소품은 기능을 보조하는 수준",
+        "자연스러운 포즈",
+      ],
       dont: ["배경이 너무 복잡", "제품이 작은 비중", "과도한 과장 연출"],
     },
     {
@@ -116,8 +141,15 @@ function makeCandidates(form) {
         "재질/반사/입체감을 강조해 ‘프리미엄’ 포지셔닝",
         "고가 제품/리미티드/브랜드 캠페인에 적합",
       ],
-      prompt: buildAICutPrompt({ ...form, tone: `${baseTone}, premium cinematic` }),
-      do: ["색상 대비를 2~3개로 제한", "광원 방향을 명확히", "제품 질감이 살아나게"],
+      prompt: buildAICutPrompt({
+        ...form,
+        tone: `${baseTone}, premium cinematic`,
+      }),
+      do: [
+        "색상 대비를 2~3개로 제한",
+        "광원 방향을 명확히",
+        "제품 질감이 살아나게",
+      ],
       dont: ["노이즈/저해상도", "과한 렌즈 왜곡", "불필요한 텍스트"],
     },
   ];
@@ -231,8 +263,6 @@ export default function AICutModelConsultingInterview({ onLogout }) {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  
-
   // ✅ 기업 진단&인터뷰 기본 정보 자동 반영 (중복 질문 제거)
   useEffect(() => {
     try {
@@ -252,7 +282,7 @@ export default function AICutModelConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
-const handleTempSave = () => {
+  const handleTempSave = () => {
     try {
       const payload = { form, candidates, selectedId, updatedAt: Date.now() };
       userSetItem(STORAGE_KEY, JSON.stringify(payload));
@@ -344,6 +374,19 @@ const handleTempSave = () => {
         },
       }),
     );
+    try {
+      // ✅ 완료 시점의 결과 스냅샷 저장(카드 히스토리)
+      addPromoReport(
+        createPromoReportSnapshot({
+          serviceKey: "aicut",
+          serviceLabel: "AI컷 모델 컨설팅",
+          interviewRoute: "/promotion/aicut/interview",
+          result: payload,
+        }),
+      );
+    } catch {
+      // ignore
+    }
     navigate(`/promotion/result?service=aicut`);
   };
 
@@ -363,7 +406,8 @@ const handleTempSave = () => {
     const result = rawResult ? safeParse(rawResult) : null;
     if (result?.form) setForm((prev) => ({ ...prev, ...result.form }));
     if (Array.isArray(result?.candidates)) setCandidates(result.candidates);
-    if (typeof result?.selectedId === "string") setSelectedId(result.selectedId);
+    if (typeof result?.selectedId === "string")
+      setSelectedId(result.selectedId);
   }, []);
 
   // ✅ 자동 저장(디바운스)
@@ -408,7 +452,8 @@ const handleTempSave = () => {
             <div>
               <h1 className="diagInterview__title">AI컷 모델 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                제품에 어울리는 모델 컷 방향(후보 3안)과 생성 프롬프트를 정리합니다.
+                제품에 어울리는 모델 컷 방향(후보 3안)과 생성 프롬프트를
+                정리합니다.
               </p>
             </div>
 
@@ -571,9 +616,7 @@ const handleTempSave = () => {
                     <label>피하고 싶은 색상(선택)</label>
                     <input
                       value={form.colorAvoid}
-                      onChange={(e) =>
-                        setValue("colorAvoid", e.target.value)
-                      }
+                      onChange={(e) => setValue("colorAvoid", e.target.value)}
                       placeholder="예) 형광색, 과한 빨강"
                     />
                   </div>
@@ -592,9 +635,7 @@ const handleTempSave = () => {
                     <label>반드시 포함할 요소(선택)</label>
                     <input
                       value={form.mustInclude}
-                      onChange={(e) =>
-                        setValue("mustInclude", e.target.value)
-                      }
+                      onChange={(e) => setValue("mustInclude", e.target.value)}
                       placeholder="예) 이니셜 BP / 특정 심볼"
                     />
                   </div>
@@ -644,16 +685,16 @@ const handleTempSave = () => {
                 <div className="card__head">
                   <h2>후보 3안</h2>
                   <p>
-                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는 1안을
-                    선택해 결과를 확인하세요.
+                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는
+                    1안을 선택해 결과를 확인하세요.
                   </p>
                 </div>
 
                 {candidates.length === 0 ? (
                   <div className="emptyHint">
                     <p style={{ margin: 0, color: "#6b7280" }}>
-                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을 눌러
-                      주세요.
+                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을
+                      눌러 주세요.
                     </p>
                   </div>
                 ) : (
@@ -668,17 +709,22 @@ const handleTempSave = () => {
                           tabIndex={0}
                           onClick={() => setSelectedId(c.id)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") setSelectedId(c.id);
+                            if (e.key === "Enter" || e.key === " ")
+                              setSelectedId(c.id);
                           }}
                           style={{ marginBottom: 14 }}
                         >
                           <div className="resultCard__head">
                             <div>
-                              <p className="resultBadge">후보 {c.id.toUpperCase()}</p>
+                              <p className="resultBadge">
+                                후보 {c.id.toUpperCase()}
+                              </p>
                               <h3 className="resultTitle">{c.name}</h3>
                             </div>
                             <div className="resultPick">
-                              <span className={`pickDot ${picked ? "on" : ""}`} />
+                              <span
+                                className={`pickDot ${picked ? "on" : ""}`}
+                              />
                               <span className="pickText">
                                 {picked ? "선택됨" : "선택"}
                               </span>
@@ -750,7 +796,11 @@ const handleTempSave = () => {
 
               {/* 하단 버튼 */}
               <div className="bottomBar">
-                <button type="button" className="btn ghost" onClick={handleNext}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleNext}
+                >
                   다음 섹션
                 </button>
                 <button type="button" className="btn" onClick={handleTempSave}>
@@ -810,7 +860,8 @@ const handleTempSave = () => {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList"><li className={requiredStatus.productName ? "ok" : ""}>
+                <ul className="checkList">
+                  <li className={requiredStatus.productName ? "ok" : ""}>
                     제품명
                   </li>
                   <li className={requiredStatus.productCategory ? "ok" : ""}>
@@ -819,9 +870,7 @@ const handleTempSave = () => {
                   <li className={requiredStatus.targetPlatform ? "ok" : ""}>
                     사용 채널/플랫폼
                   </li>
-                  <li className={requiredStatus.tone ? "ok" : ""}>
-                    톤/분위기
-                  </li>
+                  <li className={requiredStatus.tone ? "ok" : ""}>톤/분위기</li>
                   <li className={requiredStatus.keywords ? "ok" : ""}>
                     핵심 키워드
                   </li>

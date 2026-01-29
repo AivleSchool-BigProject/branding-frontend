@@ -1,12 +1,17 @@
 // src/pages/BrandAllResults.jsx
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
+
+// ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
+import { userGetItem } from "../utils/userLocalStorage.js";
+
+const BRAND_HISTORY_KEY = "brandConsultingHistory_v1";
 
 function safeParse(raw) {
   try {
@@ -23,12 +28,43 @@ function fmtDate(updatedAt) {
   return d.toLocaleString();
 }
 
+function readStorageWithFallback(primaryKey, fallbackKey) {
+  const raw =
+    userGetItem(primaryKey) || (fallbackKey ? userGetItem(fallbackKey) : null);
+  return safeParse(raw);
+}
+
+function pickFromHistory(report, serviceKey) {
+  if (!report) return null;
+  const services = report?.services || {};
+  if (serviceKey === "concept") return services.concept || null;
+  return services[serviceKey] || null;
+}
+
 export default function BrandAllResults({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
+
+  const rid = useMemo(() => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get("rid") || "";
+  }, [location.search]);
+
+  const report = useMemo(() => {
+    if (!rid) return null;
+    try {
+      const raw = userGetItem(BRAND_HISTORY_KEY);
+      const parsed = safeParse(raw);
+      const list = Array.isArray(parsed) ? parsed : [];
+      return list.find((x) => String(x?.id || "") === String(rid)) || null;
+    } catch {
+      return null;
+    }
+  }, [rid]);
 
   /**
    * ✅ 브랜드 통합 결과(모아보기)
@@ -86,8 +122,12 @@ export default function BrandAllResults({ onLogout }) {
 
   const cards = useMemo(() => {
     return SERVICES.map((s) => {
-      const legacy = readStorageWithFallback(s.legacyKey, s.legacyFallbackKey);
-      const draft = readStorageWithFallback(s.draftKey, s.draftFallbackKey);
+      const legacy = report
+        ? pickFromHistory(report, s.key)
+        : readStorageWithFallback(s.legacyKey, s.legacyFallbackKey);
+      const draft = report
+        ? null
+        : readStorageWithFallback(s.draftKey, s.draftFallbackKey);
 
       const selectedId = legacy?.selectedId || legacy?.selected?.id;
 
@@ -112,7 +152,7 @@ export default function BrandAllResults({ onLogout }) {
         selectedTitle: selected?.name || "",
       };
     });
-  }, [SERVICES]);
+  }, [SERVICES, report]);
 
   const doneCount = useMemo(
     () => cards.filter((c) => c.isDone).length,
@@ -148,9 +188,15 @@ export default function BrandAllResults({ onLogout }) {
         <div className="brandAll-container">
           <div className="brandAll-titleRow">
             <div>
-              <h1 className="brandAll-title">브랜드 컨설팅 결과 모아보기</h1>
+              <h1 className="brandAll-title">
+                {report
+                  ? `${report.brandName || "브랜드"} · 저장된 결과`
+                  : "브랜드 컨설팅 결과 모아보기"}
+              </h1>
               <p className="brandAll-sub">
-                네이밍 · 컨셉 · 스토리 · 로고 결과를 한 곳에서 확인할 수 있어요.
+                {report
+                  ? `저장일: ${fmtDate(report.createdAt)}`
+                  : "네이밍 · 컨셉 · 스토리 · 로고 결과를 한 곳에서 확인할 수 있어요."}
               </p>
             </div>
 
@@ -216,7 +262,14 @@ export default function BrandAllResults({ onLogout }) {
                         <button
                           type="button"
                           className="btn primary"
-                          onClick={() => navigate(c.resultRoute)}
+                          onClick={() => {
+                            const base = c.resultRoute;
+                            const next =
+                              report && rid
+                                ? `${base}${base.includes("?") ? "&" : "?"}rid=${encodeURIComponent(rid)}`
+                                : base;
+                            navigate(next);
+                          }}
                         >
                           결과 보기
                         </button>
@@ -308,6 +361,7 @@ export default function BrandAllResults({ onLogout }) {
                 <p className="hint">
                   * 이 페이지는 localStorage에 저장된 brandInterview_*_v1 /
                   Draft 값을 기준으로 상태를 표시합니다.
+                  {report ? " (현재는 히스토리 스냅샷 보기 모드)" : ""}
                 </p>
               </div>
             </aside>

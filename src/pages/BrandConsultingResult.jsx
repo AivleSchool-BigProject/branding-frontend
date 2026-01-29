@@ -15,6 +15,8 @@ import {
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
 
+const BRAND_HISTORY_KEY = "brandConsultingHistory_v1";
+
 // ✅ 필드 라벨(공용)
 const FIELD_LABELS = {
   companyName: "회사/프로젝트명",
@@ -694,9 +696,33 @@ export default function BrandConsultingResult({ onLogout }) {
     return SERVICE_CONFIG[s] ? s : "naming";
   }, [location.search]);
 
+  const rid = useMemo(() => {
+    const sp = new URLSearchParams(location.search);
+    return sp.get("rid") || "";
+  }, [location.search]);
+
+  const isHistoryView = Boolean(rid);
+
   const config = SERVICE_CONFIG[service];
 
   const draft = useMemo(() => {
+    // ✅ 히스토리 모드: rid가 있으면 저장된 스냅샷에서 읽어서 표시
+    if (rid) {
+      try {
+        const parsed = safeParse(userGetItem(BRAND_HISTORY_KEY));
+        const list = Array.isArray(parsed) ? parsed : [];
+        const report =
+          list.find((x) => String(x?.id || "") === String(rid)) || null;
+
+        const svcKey = service === "homepage" ? "concept" : service;
+        const fromHistory = report?.services?.[svcKey] || null;
+        if (fromHistory) return fromHistory;
+      } catch {
+        // ignore
+      }
+    }
+
+    // ✅ 기본 모드: 현재 사용자 localStorage의 최신 결과를 표시
     try {
       const raw =
         userGetItem(config.storageKey) ||
@@ -707,7 +733,7 @@ export default function BrandConsultingResult({ onLogout }) {
     } catch {
       return null;
     }
-  }, [config.storageKey, config.storageKeyFallback]);
+  }, [config.storageKey, config.storageKeyFallback, rid, service]);
 
   const isBackendOnlyResult = service === "naming" || service === "homepage";
 
@@ -781,6 +807,10 @@ export default function BrandConsultingResult({ onLogout }) {
   }, [draft]);
 
   const handleResetAll = () => {
+    if (isHistoryView) {
+      alert("히스토리 보기 모드에서는 초기화를 할 수 없습니다.");
+      return;
+    }
     config.resetKeys.forEach((k) => userRemoveItem(k));
     alert("해당 컨설팅 입력/결과 데이터를 초기화했습니다.");
     navigate(config.interviewPath);
@@ -1307,19 +1337,21 @@ export default function BrandConsultingResult({ onLogout }) {
                 >
                   입력 수정하기
                 </button>
-
-                <button
-                  type="button"
-                  className="btn ghost w100"
-                  onClick={handleResetAll}
-                  style={{ marginTop: 10 }}
-                >
-                  처음부터 다시하기(초기화)
-                </button>
+                {!isHistoryView ? (
+                  <button
+                    type="button"
+                    className="btn ghost w100"
+                    onClick={handleResetAll}
+                    style={{ marginTop: 10 }}
+                  >
+                    처음부터 다시하기(초기화)
+                  </button>
+                ) : null}
 
                 <p className="hint">
                   * naming / concept(homepage)은 <b>백 응답 JSON</b>을
                   “섹션/칸”으로 자동 분리해 표시합니다.
+                  {isHistoryView ? " (현재는 히스토리 스냅샷 보기 모드)" : ""}
                 </p>
               </div>
             </aside>

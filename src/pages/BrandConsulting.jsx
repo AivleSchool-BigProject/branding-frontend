@@ -123,7 +123,7 @@ export default function BrandConsulting({ onLogout }) {
     if (nextStep === "concept") return "/brand/concept/interview";
     if (nextStep === "story") return "/brand/story";
     if (nextStep === "logo") return "/brand/logo/interview";
-    return "/mypage/brand-results";
+    return "/mypage";
   }, [nextStep]);
 
   const ctaText = useMemo(() => {
@@ -132,7 +132,7 @@ export default function BrandConsulting({ onLogout }) {
     if (nextStep === "concept") return "컨셉 이어서 진행하기";
     if (nextStep === "story") return "스토리 이어서 진행하기";
     if (nextStep === "logo") return "로고 이어서 진행하기";
-    return "완료한 브랜드 리포트 보기";
+    return "마이페이지에서 리포트 보기";
   }, [nextStep]);
 
   const isBrandConsultingCompleted =
@@ -155,7 +155,7 @@ export default function BrandConsulting({ onLogout }) {
 
   const handleViewFinalReport = () => {
     if (!isBrandConsultingCompleted) return;
-    navigate("/mypage/brand-results");
+    navigate("/mypage");
   };
 
   const labelMap = {
@@ -349,7 +349,7 @@ export default function BrandConsulting({ onLogout }) {
                   onClick={handleViewFinalReport}
                   aria-disabled={!isBrandConsultingCompleted}
                 >
-                  완료한 브랜드 리포트 보기
+                  마이페이지에서 리포트 보기
                   {!isBrandConsultingCompleted && (
                     <span className="bcTooltip" role="tooltip">
                       진행된 컨설팅이 없습니다.

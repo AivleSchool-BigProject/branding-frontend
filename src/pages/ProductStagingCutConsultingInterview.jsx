@@ -10,7 +10,16 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../utils/userLocalStorage.js";
+
+import {
+  addPromoReport,
+  createPromoReportSnapshot,
+} from "../utils/reportHistory.js";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)
@@ -102,7 +111,7 @@ function makeCandidates(form) {
       ],
       prompt: buildStagingPrompt(
         form,
-        "Minimal studio, clean background, soft shadow, centered composition"
+        "Minimal studio, clean background, soft shadow, centered composition",
       ),
       do: [
         "배경 색상은 1~2개 톤으로 제한",
@@ -125,7 +134,7 @@ function makeCandidates(form) {
       ],
       prompt: buildStagingPrompt(
         form,
-        "Lifestyle scene, natural props, warm atmosphere, candid but premium"
+        "Lifestyle scene, natural props, warm atmosphere, candid but premium",
       ),
       do: [
         "타깃 라이프스타일과 연결되는 소품 2~4개만 선택",
@@ -148,7 +157,7 @@ function makeCandidates(form) {
       ],
       prompt: buildStagingPrompt(
         form,
-        "High-end key visual, dramatic lighting, premium textures, cinematic composition"
+        "High-end key visual, dramatic lighting, premium textures, cinematic composition",
       ),
       do: [
         "명암 대비를 활용해 실루엣/윤곽을 선명하게",
@@ -267,7 +276,8 @@ export default function ProductStagingCutConsultingInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
 
   const currentSectionLabel = useMemo(() => {
-    if (!form.productName.trim() || !form.productCategory.trim()) return "기본 정보";
+    if (!form.productName.trim() || !form.productCategory.trim())
+      return "기본 정보";
     if (!form.targetPlatform.trim()) return "채널/타깃";
     if (
       !form.sceneConcept.trim() ||
@@ -289,8 +299,6 @@ export default function ProductStagingCutConsultingInterview({ onLogout }) {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  
-
   // ✅ 기업 진단&인터뷰 기본 정보 자동 반영 (중복 질문 제거)
   useEffect(() => {
     try {
@@ -310,7 +318,7 @@ export default function ProductStagingCutConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
-const handleTempSave = () => {
+  const handleTempSave = () => {
     try {
       const payload = { form, candidates, selectedId, updatedAt: Date.now() };
       userSetItem(STORAGE_KEY, JSON.stringify(payload));
@@ -402,6 +410,19 @@ const handleTempSave = () => {
         },
       }),
     );
+    try {
+      // ✅ 완료 시점의 결과 스냅샷 저장(카드 히스토리)
+      addPromoReport(
+        createPromoReportSnapshot({
+          serviceKey: "staging",
+          serviceLabel: "제품 연출컷 컨설팅",
+          interviewRoute: "/promotion/staging/interview",
+          result: payload,
+        }),
+      );
+    } catch {
+      // ignore
+    }
     navigate(`/promotion/result?service=staging`);
   };
 
@@ -421,7 +442,8 @@ const handleTempSave = () => {
     const result = rawResult ? safeParse(rawResult) : null;
     if (result?.form) setForm((prev) => ({ ...prev, ...result.form }));
     if (Array.isArray(result?.candidates)) setCandidates(result.candidates);
-    if (typeof result?.selectedId === "string") setSelectedId(result.selectedId);
+    if (typeof result?.selectedId === "string")
+      setSelectedId(result.selectedId);
   }, []);
 
   // ✅ 자동 저장(디바운스)
@@ -464,9 +486,12 @@ const handleTempSave = () => {
         <div className="diagInterview__container">
           <div className="diagInterview__titleRow">
             <div>
-              <h1 className="diagInterview__title">제품 연출컷 컨설팅 인터뷰</h1>
+              <h1 className="diagInterview__title">
+                제품 연출컷 컨설팅 인터뷰
+              </h1>
               <p className="diagInterview__sub">
-                제품/브랜드에 맞는 연출컷 방향(후보 3안)과 생성 프롬프트를 정리합니다.
+                제품/브랜드에 맞는 연출컷 방향(후보 3안)과 생성 프롬프트를
+                정리합니다.
               </p>
             </div>
 
@@ -586,134 +611,133 @@ const handleTempSave = () => {
                 </div>
               </div>
 
-              
-{/* 3) DIRECTION */}
-<div className="card" ref={refDirection}>
-  <div className="cardHead">
-    <h2 className="cardTitle">연출 방향</h2>
-    <p className="cardSub">
-      장면/소품/조명/톤을 정하면 AI가 연출컷 후보 3안을
-      만들어줘요.
-    </p>
-  </div>
+              {/* 3) DIRECTION */}
+              <div className="card" ref={refDirection}>
+                <div className="cardHead">
+                  <h2 className="cardTitle">연출 방향</h2>
+                  <p className="cardSub">
+                    장면/소품/조명/톤을 정하면 AI가 연출컷 후보 3안을
+                    만들어줘요.
+                  </p>
+                </div>
 
-  <div className="formStack">
-    <label className="fieldLabel">
-      연출 컨셉/상황 <span className="req">*</span>
-    </label>
-    <textarea
-      className="input"
-      rows={3}
-      placeholder="예) 화이트 스튜디오 테이블 위, 제품 단독 + 은은한 그림자 / 감성 원목 테이블 위 티타임 분위기"
-      value={form.sceneConcept}
-      onChange={(e) =>
-        setForm((p) => ({ ...p, sceneConcept: e.target.value }))
-      }
-    />
+                <div className="formStack">
+                  <label className="fieldLabel">
+                    연출 컨셉/상황 <span className="req">*</span>
+                  </label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    placeholder="예) 화이트 스튜디오 테이블 위, 제품 단독 + 은은한 그림자 / 감성 원목 테이블 위 티타임 분위기"
+                    value={form.sceneConcept}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, sceneConcept: e.target.value }))
+                    }
+                  />
 
-    <div className="formGrid">
-      <div>
-        <label className="fieldLabel">소품</label>
-        <input
-          className="input"
-          placeholder="예) 유리컵, 대리석 트레이, 자연광 커튼"
-          value={form.props}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, props: e.target.value }))
-          }
-        />
-      </div>
+                  <div className="formGrid">
+                    <div>
+                      <label className="fieldLabel">소품</label>
+                      <input
+                        className="input"
+                        placeholder="예) 유리컵, 대리석 트레이, 자연광 커튼"
+                        value={form.props}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, props: e.target.value }))
+                        }
+                      />
+                    </div>
 
-      <div>
-        <label className="fieldLabel">배경</label>
-        <input
-          className="input"
-          placeholder="예) 밝은 무지 배경 / 실내 키친 / 카페 테이블"
-          value={form.background}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, background: e.target.value }))
-          }
-        />
-      </div>
+                    <div>
+                      <label className="fieldLabel">배경</label>
+                      <input
+                        className="input"
+                        placeholder="예) 밝은 무지 배경 / 실내 키친 / 카페 테이블"
+                        value={form.background}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, background: e.target.value }))
+                        }
+                      />
+                    </div>
 
-      <div>
-        <label className="fieldLabel">조명</label>
-        <input
-          className="input"
-          placeholder="예) 소프트박스 확산광 / 역광 실루엣 / 시네마틱 조명"
-          value={form.lighting}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, lighting: e.target.value }))
-          }
-        />
-      </div>
+                    <div>
+                      <label className="fieldLabel">조명</label>
+                      <input
+                        className="input"
+                        placeholder="예) 소프트박스 확산광 / 역광 실루엣 / 시네마틱 조명"
+                        value={form.lighting}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, lighting: e.target.value }))
+                        }
+                      />
+                    </div>
 
-      <div>
-        <label className="fieldLabel">구도/각도</label>
-        <input
-          className="input"
-          placeholder="예) 45도 탑뷰 / 정면 중앙 / 로우앵글"
-          value={form.angle}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, angle: e.target.value }))
-          }
-        />
-      </div>
-    </div>
+                    <div>
+                      <label className="fieldLabel">구도/각도</label>
+                      <input
+                        className="input"
+                        placeholder="예) 45도 탑뷰 / 정면 중앙 / 로우앵글"
+                        value={form.angle}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, angle: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
 
-    <label className="fieldLabel">
-      무드/톤 <span className="req">*</span>
-    </label>
-    <input
-      className="input"
-      placeholder="예) 미니멀, 프리미엄, 따뜻한 감성, 상큼한"
-      value={form.tone}
-      onChange={(e) =>
-        setForm((p) => ({ ...p, tone: e.target.value }))
-      }
-    />
+                  <label className="fieldLabel">
+                    무드/톤 <span className="req">*</span>
+                  </label>
+                  <input
+                    className="input"
+                    placeholder="예) 미니멀, 프리미엄, 따뜻한 감성, 상큼한"
+                    value={form.tone}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, tone: e.target.value }))
+                    }
+                  />
 
-    <label className="fieldLabel">
-      키워드(3~8개) <span className="req">*</span>
-    </label>
-    <textarea
-      className="input"
-      rows={3}
-      placeholder="예) clean, soft shadow, natural, premium, texture"
-      value={form.keywords}
-      onChange={(e) =>
-        setForm((p) => ({ ...p, keywords: e.target.value }))
-      }
-    />
+                  <label className="fieldLabel">
+                    키워드(3~8개) <span className="req">*</span>
+                  </label>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    placeholder="예) clean, soft shadow, natural, premium, texture"
+                    value={form.keywords}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, keywords: e.target.value }))
+                    }
+                  />
 
-    <div className="formGrid">
-      <div>
-        <label className="fieldLabel">선호 색감</label>
-        <input
-          className="input"
-          placeholder="예) 뉴트럴/오프화이트, 파스텔, 모노톤"
-          value={form.colorPref}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, colorPref: e.target.value }))
-          }
-        />
-      </div>
-      <div>
-        <label className="fieldLabel">피하고 싶은 색감</label>
-        <input
-          className="input"
-          placeholder="예) 과한 원색, 형광톤"
-          value={form.colorAvoid}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, colorAvoid: e.target.value }))
-          }
-        />
-      </div>
-    </div>
-  </div>
-</div>
+                  <div className="formGrid">
+                    <div>
+                      <label className="fieldLabel">선호 색감</label>
+                      <input
+                        className="input"
+                        placeholder="예) 뉴트럴/오프화이트, 파스텔, 모노톤"
+                        value={form.colorPref}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, colorPref: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="fieldLabel">피하고 싶은 색감</label>
+                      <input
+                        className="input"
+                        placeholder="예) 과한 원색, 형광톤"
+                        value={form.colorAvoid}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, colorAvoid: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-{/* 4) CONSTRAINTS */}
+              {/* 4) CONSTRAINTS */}
               <div className="card" ref={refConstraints}>
                 <div className="card__head">
                   <h2>제약/참고</h2>
@@ -725,9 +749,7 @@ const handleTempSave = () => {
                     <label>반드시 포함할 요소(선택)</label>
                     <input
                       value={form.mustInclude}
-                      onChange={(e) =>
-                        setValue("mustInclude", e.target.value)
-                      }
+                      onChange={(e) => setValue("mustInclude", e.target.value)}
                       placeholder="예) 이니셜 BP / 특정 심볼"
                     />
                   </div>
@@ -777,16 +799,16 @@ const handleTempSave = () => {
                 <div className="card__head">
                   <h2>후보 3안</h2>
                   <p>
-                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는 1안을
-                    선택해 결과를 확인하세요.
+                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는
+                    1안을 선택해 결과를 확인하세요.
                   </p>
                 </div>
 
                 {candidates.length === 0 ? (
                   <div className="emptyHint">
                     <p style={{ margin: 0, color: "#6b7280" }}>
-                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을 눌러
-                      주세요.
+                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을
+                      눌러 주세요.
                     </p>
                   </div>
                 ) : (
@@ -801,17 +823,22 @@ const handleTempSave = () => {
                           tabIndex={0}
                           onClick={() => setSelectedId(c.id)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") setSelectedId(c.id);
+                            if (e.key === "Enter" || e.key === " ")
+                              setSelectedId(c.id);
                           }}
                           style={{ marginBottom: 14 }}
                         >
                           <div className="resultCard__head">
                             <div>
-                              <p className="resultBadge">후보 {c.id.toUpperCase()}</p>
+                              <p className="resultBadge">
+                                후보 {c.id.toUpperCase()}
+                              </p>
                               <h3 className="resultTitle">{c.name}</h3>
                             </div>
                             <div className="resultPick">
-                              <span className={`pickDot ${picked ? "on" : ""}`} />
+                              <span
+                                className={`pickDot ${picked ? "on" : ""}`}
+                              />
                               <span className="pickText">
                                 {picked ? "선택됨" : "선택"}
                               </span>
@@ -883,7 +910,11 @@ const handleTempSave = () => {
 
               {/* 하단 버튼 */}
               <div className="bottomBar">
-                <button type="button" className="btn ghost" onClick={handleNext}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleNext}
+                >
                   다음 섹션
                 </button>
                 <button type="button" className="btn" onClick={handleTempSave}>
@@ -943,7 +974,8 @@ const handleTempSave = () => {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList"><li className={requiredStatus.productName ? "ok" : ""}>
+                <ul className="checkList">
+                  <li className={requiredStatus.productName ? "ok" : ""}>
                     제품명
                   </li>
                   <li className={requiredStatus.productCategory ? "ok" : ""}>
@@ -952,9 +984,7 @@ const handleTempSave = () => {
                   <li className={requiredStatus.targetPlatform ? "ok" : ""}>
                     사용 채널/플랫폼
                   </li>
-                  <li className={requiredStatus.tone ? "ok" : ""}>
-                    톤/분위기
-                  </li>
+                  <li className={requiredStatus.tone ? "ok" : ""}>톤/분위기</li>
                   <li className={requiredStatus.keywords ? "ok" : ""}>
                     핵심 키워드
                   </li>

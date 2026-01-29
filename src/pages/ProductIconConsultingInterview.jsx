@@ -10,7 +10,16 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  userGetItem,
+  userSetItem,
+  userRemoveItem,
+} from "../utils/userLocalStorage.js";
+
+import {
+  addPromoReport,
+  createPromoReportSnapshot,
+} from "../utils/reportHistory.js";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)
@@ -39,12 +48,20 @@ function compactList(text) {
     .slice(0, 10);
 }
 
-function buildIconPrompt({ brandName, productName, keywords, tone, colorPref }) {
+function buildIconPrompt({
+  brandName,
+  productName,
+  keywords,
+  tone,
+  colorPref,
+}) {
   const keys = compactList(keywords).join(", ");
   const brand = brandName?.trim() ? brandName.trim() : "브랜드";
   const product = productName?.trim() ? productName.trim() : "제품";
   const mood = tone?.trim() ? tone.trim() : "미니멀하고 현대적인";
-  const colors = colorPref?.trim() ? `color palette: ${colorPref}` : "neutral palette";
+  const colors = colorPref?.trim()
+    ? `color palette: ${colorPref}`
+    : "neutral palette";
 
   return (
     `Flat vector icon for ${brand} / ${product}. ` +
@@ -69,7 +86,11 @@ function makeCandidates(form) {
         "앱 아이콘/파비콘/상품 썸네일에 적용 쉬움",
       ],
       prompt: buildIconPrompt({ ...form, tone: `${baseTone}, line icon` }),
-      do: ["외곽선 두께를 일정하게", "3~5개 핵심 모티프만 사용", "단색/2색 버전도 함께"],
+      do: [
+        "외곽선 두께를 일정하게",
+        "3~5개 핵심 모티프만 사용",
+        "단색/2색 버전도 함께",
+      ],
       dont: ["세부 디테일 과다", "그라데이션 남발", "텍스트/슬로건 삽입"],
     },
     {
@@ -81,8 +102,16 @@ function makeCandidates(form) {
         "패키지/라벨/포스터 등 다양한 매체 확장에 강함",
       ],
       prompt: buildIconPrompt({ ...form, tone: `${baseTone}, pictogram` }),
-      do: ["형태 대비(큰/작은 면)를 명확히", "실루엣만으로도 인식되게", "금지 요소를 미리 배제"],
-      dont: ["유사 브랜드와 너무 비슷한 형태", "복잡한 그림자", "너무 많은 색상"],
+      do: [
+        "형태 대비(큰/작은 면)를 명확히",
+        "실루엣만으로도 인식되게",
+        "금지 요소를 미리 배제",
+      ],
+      dont: [
+        "유사 브랜드와 너무 비슷한 형태",
+        "복잡한 그림자",
+        "너무 많은 색상",
+      ],
     },
     {
       id: "c",
@@ -92,8 +121,15 @@ function makeCandidates(form) {
         "컬러는 1~2개로 절제해 ‘고급감’ 강화",
         "명함/패키지/웹 헤더에 적용 시 브랜드 인상 강화",
       ],
-      prompt: buildIconPrompt({ ...form, tone: `${baseTone}, premium monogram` }),
-      do: ["균형(비율/중심)을 먼저 설계", "사이즈별(16/24/48px) 테스트", "흑백 버전 필수"],
+      prompt: buildIconPrompt({
+        ...form,
+        tone: `${baseTone}, premium monogram`,
+      }),
+      do: [
+        "균형(비율/중심)을 먼저 설계",
+        "사이즈별(16/24/48px) 테스트",
+        "흑백 버전 필수",
+      ],
       dont: ["너무 얇은 선", "가독성 떨어지는 장식", "과도한 곡선 디테일"],
     },
   ];
@@ -207,8 +243,6 @@ export default function ProductIconConsultingInterview({ onLogout }) {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  
-
   // ✅ 기업 진단&인터뷰 기본 정보 자동 반영 (중복 질문 제거)
   useEffect(() => {
     try {
@@ -228,7 +262,7 @@ export default function ProductIconConsultingInterview({ onLogout }) {
       // ignore
     }
   }, []);
-const handleTempSave = () => {
+  const handleTempSave = () => {
     try {
       const payload = { form, candidates, selectedId, updatedAt: Date.now() };
       userSetItem(STORAGE_KEY, JSON.stringify(payload));
@@ -320,6 +354,19 @@ const handleTempSave = () => {
         },
       }),
     );
+    try {
+      // ✅ 완료 시점의 결과 스냅샷 저장(카드 히스토리)
+      addPromoReport(
+        createPromoReportSnapshot({
+          serviceKey: "icon",
+          serviceLabel: "제품 아이콘 컨설팅",
+          interviewRoute: "/promotion/icon/interview",
+          result: payload,
+        }),
+      );
+    } catch {
+      // ignore
+    }
     navigate(`/promotion/result?service=icon`);
   };
 
@@ -339,7 +386,8 @@ const handleTempSave = () => {
     const result = rawResult ? safeParse(rawResult) : null;
     if (result?.form) setForm((prev) => ({ ...prev, ...result.form }));
     if (Array.isArray(result?.candidates)) setCandidates(result.candidates);
-    if (typeof result?.selectedId === "string") setSelectedId(result.selectedId);
+    if (typeof result?.selectedId === "string")
+      setSelectedId(result.selectedId);
   }, []);
 
   // ✅ 자동 저장(디바운스)
@@ -382,9 +430,12 @@ const handleTempSave = () => {
         <div className="diagInterview__container">
           <div className="diagInterview__titleRow">
             <div>
-              <h1 className="diagInterview__title">제품 아이콘 컨설팅 인터뷰</h1>
+              <h1 className="diagInterview__title">
+                제품 아이콘 컨설팅 인터뷰
+              </h1>
               <p className="diagInterview__sub">
-                제품/브랜드에 맞는 아이콘 방향(후보 3안)과 생성 프롬프트를 정리합니다.
+                제품/브랜드에 맞는 아이콘 방향(후보 3안)과 생성 프롬프트를
+                정리합니다.
               </p>
             </div>
 
@@ -547,9 +598,7 @@ const handleTempSave = () => {
                     <label>피하고 싶은 색상(선택)</label>
                     <input
                       value={form.colorAvoid}
-                      onChange={(e) =>
-                        setValue("colorAvoid", e.target.value)
-                      }
+                      onChange={(e) => setValue("colorAvoid", e.target.value)}
                       placeholder="예) 형광색, 과한 빨강"
                     />
                   </div>
@@ -568,9 +617,7 @@ const handleTempSave = () => {
                     <label>반드시 포함할 요소(선택)</label>
                     <input
                       value={form.mustInclude}
-                      onChange={(e) =>
-                        setValue("mustInclude", e.target.value)
-                      }
+                      onChange={(e) => setValue("mustInclude", e.target.value)}
                       placeholder="예) 이니셜 BP / 특정 심볼"
                     />
                   </div>
@@ -620,16 +667,16 @@ const handleTempSave = () => {
                 <div className="card__head">
                   <h2>후보 3안</h2>
                   <p>
-                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는 1안을
-                    선택해 결과를 확인하세요.
+                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는
+                    1안을 선택해 결과를 확인하세요.
                   </p>
                 </div>
 
                 {candidates.length === 0 ? (
                   <div className="emptyHint">
                     <p style={{ margin: 0, color: "#6b7280" }}>
-                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을 눌러
-                      주세요.
+                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을
+                      눌러 주세요.
                     </p>
                   </div>
                 ) : (
@@ -644,17 +691,22 @@ const handleTempSave = () => {
                           tabIndex={0}
                           onClick={() => setSelectedId(c.id)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") setSelectedId(c.id);
+                            if (e.key === "Enter" || e.key === " ")
+                              setSelectedId(c.id);
                           }}
                           style={{ marginBottom: 14 }}
                         >
                           <div className="resultCard__head">
                             <div>
-                              <p className="resultBadge">후보 {c.id.toUpperCase()}</p>
+                              <p className="resultBadge">
+                                후보 {c.id.toUpperCase()}
+                              </p>
                               <h3 className="resultTitle">{c.name}</h3>
                             </div>
                             <div className="resultPick">
-                              <span className={`pickDot ${picked ? "on" : ""}`} />
+                              <span
+                                className={`pickDot ${picked ? "on" : ""}`}
+                              />
                               <span className="pickText">
                                 {picked ? "선택됨" : "선택"}
                               </span>
@@ -726,7 +778,11 @@ const handleTempSave = () => {
 
               {/* 하단 버튼 */}
               <div className="bottomBar">
-                <button type="button" className="btn ghost" onClick={handleNext}>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleNext}
+                >
                   다음 섹션
                 </button>
                 <button type="button" className="btn" onClick={handleTempSave}>
@@ -786,7 +842,8 @@ const handleTempSave = () => {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList"><li className={requiredStatus.productName ? "ok" : ""}>
+                <ul className="checkList">
+                  <li className={requiredStatus.productName ? "ok" : ""}>
                     제품명
                   </li>
                   <li className={requiredStatus.productCategory ? "ok" : ""}>
@@ -795,9 +852,7 @@ const handleTempSave = () => {
                   <li className={requiredStatus.targetPlatform ? "ok" : ""}>
                     사용 채널/플랫폼
                   </li>
-                  <li className={requiredStatus.tone ? "ok" : ""}>
-                    톤/분위기
-                  </li>
+                  <li className={requiredStatus.tone ? "ok" : ""}>톤/분위기</li>
                   <li className={requiredStatus.keywords ? "ok" : ""}>
                     핵심 키워드
                   </li>

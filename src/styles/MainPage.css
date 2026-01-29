@@ -41,6 +41,140 @@
   margin-bottom: 14px;
 }
 
+/* ============================================================
+   ✅ 마이페이지(리뉴얼) - 프로필 카드
+   ============================================================ */
+
+.myprofileCard {
+  padding: 0;
+  overflow: hidden;
+}
+
+.myprofileBanner {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 31, 102, 0.1) 0%,
+    rgba(0, 0, 0, 0.02) 60%,
+    rgba(0, 31, 102, 0.06) 100%
+  );
+}
+
+.myprofileLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.myprofileAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+  user-select: none;
+}
+
+.myprofileText {
+  min-width: 0;
+}
+
+.myprofileNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.myprofileName {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.myprofileId {
+  font-size: 12px;
+  font-weight: 900;
+  color: #6b7280;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+
+.myprofileBio {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 740px;
+}
+
+.myprofileChips {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.myprofileActions {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.myprofileEdit {
+  padding: 14px 16px 16px;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  display: grid;
+  gap: 12px;
+}
+
+.myprofileField label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #6b7280;
+}
+
+.myprofileField input {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0 12px;
+  outline: none;
+}
+
+.myprofileField input:focus {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 640px) {
+  .myprofileBanner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .myprofileLeft {
+    align-items: flex-start;
+  }
+  .myprofileActions {
+    justify-content: flex-end;
+  }
+}
+
 .profile-card {
   display: flex;
   justify-content: space-between;
@@ -204,7 +338,6 @@
   color: #1d4ed8;
 }
 
-
 /* ---- 하단 빠른 이동 ---- */
 .mypage-navRow {
   display: flex;
@@ -231,4 +364,168 @@
   background: #ef4444;
   color: #fff;
   border: none;
+}
+
+/* ============================================================
+   ✅ 마이페이지(리뉴얼) - 리포트 카드 스택 / 탭 / 검색
+   ============================================================ */
+
+.mypage-headerActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.myhub-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.myhub-tab {
+  flex: 1;
+  height: 40px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 999px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.myhub-tab.is-active {
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.myhub-count {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 800;
+}
+
+.myhub-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.myhub-search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.myhub-search input {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0 12px;
+}
+
+.myhub-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.myhub-right select {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 0 10px;
+  background: #fff;
+}
+
+.myhub-empty {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reportStack {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reportCard {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.reportCard__top {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.reportCard__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.reportCard__sub {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.reportMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.metaChip.ghost {
+  background: rgba(0, 0, 0, 0.04);
+  color: #6b7280;
+}
+
+.reportCard__actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .reportCard__top {
+    flex-direction: column;
+  }
+  .myhub-empty {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

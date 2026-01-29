@@ -1,6 +1,6 @@
 // src/pages/MyPage.jsx
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
@@ -8,185 +8,147 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-// ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import { getCurrentUserId } from "../api/auth.js";
 
-function safeParse(raw) {
-  try {
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+import { userSafeParse, userSetJSON } from "../utils/userLocalStorage.js";
+
+import {
+  ensureBrandHistorySeeded,
+  listBrandReports,
+  listPromoReports,
+} from "../utils/reportHistory.js";
+
+function fmt(ts) {
+  if (!ts) return "-";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString();
 }
 
-function hasAnyStorage(keys) {
-  return keys.some((k) => {
-    const raw = userGetItem(k);
-    if (!raw) return false;
-    const parsed = safeParse(raw);
-    return Boolean(parsed && parsed.form);
-  });
-}
+const PROFILE_KEY = "userProfile_v1";
 
-function hasCompletedResult(key) {
-  const parsed = safeParse(userGetItem(key));
-  if (!parsed) return false;
-  return Boolean(parsed.selected || parsed.selectedId);
+function getInitialLabel(userId) {
+  const raw = String(userId ?? "").trim();
+  if (!raw) return "U";
+  // 숫자면 그대로, 문자는 첫 글자
+  const first = raw[0];
+  return first ? first.toUpperCase() : "U";
 }
 
 export default function MyPage({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ✅ 푸터 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ 브랜드 선택(임시)
-  const [brandName, setBrandName] = useState("");
-  const hasBrand = brandName.trim().length > 0;
+  // ✅ 결과 탭
+  const [tab, setTab] = useState("brand"); // brand | promo
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState("recent"); // recent | old
 
-  // 🔌 BACKEND 연동 포인트 (마이페이지)
-  // - 현재 구현: localStorage 키 존재 여부로 서비스별 완료/미진행(done) 상태를 계산
-  // - 백엔드 연동 시(명세서 기준) 이 로직을 API 응답으로 교체하면 됩니다.
-  //   1) 마이페이지 기본정보:        GET /mypage
-  //   2) 생성한 브랜드 목록:        GET /mypage/brands
-  //   3) 선택 브랜드 상세/요약:     GET /mypage/brands/{brandId}
-  //   4) 진단 리포트:              GET /mypage/brands/{brandId}/report
-  //   5) 브랜드 산출물(전체):       GET /mypage/brands/{brandId}/outputs
-  //   6) 브랜드 산출물(서비스별):  GET /mypage/brands/{brandId}/outputs/story|naming|logo
-  // - 홍보물은 현재 명세서가 brandId 분리가 없으므로( /brands/posters|sns|videos )
-  //   브랜드별로 관리하려면 백엔드 스펙 확장 여부를 팀과 논의하세요.
+  const [brandReports, setBrandReports] = useState([]);
+  const [promoReports, setPromoReports] = useState([]);
 
-  // ✅ 기업진단 결과(너 프로젝트에 결과 페이지 있다고 했으니 true/false는 나중에 실제키로 바꿔도 됨)
-  const diagnosisDone = useMemo(() => {
-    // DiagnosisResult가 어떤 key로 저장하는지 확실치 않아서,
-    // 일단 "진단을 진행했을 수 있는" 후보키를 넣어둠. 실제 키로 바꾸면 정확해짐.
-    const CANDIDATES = ["diagnosisResult_v1", "diagnosisInterview_v1"];
-    return hasAnyStorage(CANDIDATES);
+  // ✅ 기존 1회 완료된 리포트(이전 버전)도 카드로 보이게 시드 + 목록 로드
+  useEffect(() => {
+    // URL 파라미터로 탭 이동(/mypage?tab=promo)
+    try {
+      const sp = new URLSearchParams(location.search || "");
+      const t = sp.get("tab");
+      if (t === "promo") setTab("promo");
+      if (t === "brand") setTab("brand");
+    } catch {
+      // ignore
+    }
+
+    ensureBrandHistorySeeded();
+    setBrandReports(listBrandReports());
+    setPromoReports(listPromoReports());
+  }, [location.search]);
+
+  const userId = useMemo(() => {
+    try {
+      return getCurrentUserId();
+    } catch {
+      return null;
+    }
   }, []);
 
-  // ✅ 브랜드/홍보물 서비스 구성
-  const brandServices = useMemo(
-    () => [
-      {
-        key: "logo",
-        title: "로고 컨설팅",
-        storageKeys: ["brandInterview_logo_v1"],
-        goPath: "/brand/logo/interview",
-      },
-      {
-        key: "naming",
-        title: "네이밍 컨설팅",
-        storageKeys: ["brandInterview_naming_v1"],
-        goPath: "/brand/naming/interview",
-      },
-      {
-        key: "homepage",
-        title: "컨셉 컨설팅",
-        storageKeys: [
-          "brandInterview_concept_v1",
-          "brandInterview_homepage_v1",
-        ],
-        goPath: "/brand/concept/interview",
-      },
-      {
-        key: "story",
-        title: "브랜드 스토리 컨설팅",
-        storageKeys: ["brandInterview_story_v1"],
-        goPath: "/brand/story/interview",
-      },
-    ],
-    [],
+  // ✅ 프로필(사용자 스코프 localStorage)
+  const savedProfile = useMemo(() => {
+    return userSafeParse(PROFILE_KEY) || {};
+  }, []);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [displayName, setDisplayName] = useState(
+    savedProfile.displayName || "",
   );
+  const [bio, setBio] = useState(savedProfile.bio || "");
 
-  const promoServices = useMemo(
-    () => [
-      {
-        key: "icon",
-        title: "제품 아이콘 컨설팅",
-        resultKey: "promoInterviewResult_icon_v1",
-        storageKeys: [
-          "promoInterviewDraft_icon_v1",
-          "promoInterviewResult_icon_v1",
-          "promo_icon_v1",
-        ],
-        goPath: "/promotion/icon/interview",
-      },
-      {
-        key: "aicut",
-        title: "AI컷 모델 컨설팅",
-        resultKey: "promoInterviewResult_aicut_v1",
-        storageKeys: [
-          "promoInterviewDraft_aicut_v1",
-          "promoInterviewResult_aicut_v1",
-          "promo_aicut_v1",
-        ],
-        goPath: "/promotion/aicut/interview",
-      },
-      {
-        key: "staging",
-        title: "제품 연출컷 컨설팅",
-        resultKey: "promoInterviewResult_staging_v1",
-        storageKeys: [
-          "promoInterviewDraft_staging_v1",
-          "promoInterviewResult_staging_v1",
-          "promo_staging_v1",
-        ],
-        goPath: "/promotion/staging/interview",
-      },
-      {
-        key: "poster",
-        title: "SNS 제품 포스터 컨설팅",
-        resultKey: "promoInterviewResult_poster_v1",
-        storageKeys: [
-          "promoInterviewDraft_poster_v1",
-          "promoInterviewResult_poster_v1",
-          "promo_poster_v1",
-        ],
-        goPath: "/promotion/poster/interview",
-      },
-    ],
-    [],
-  );
+  const profileName = displayName.trim() || "사용자";
+  const profileIdLabel = userId ? String(userId) : "-";
+  const profileInitial = getInitialLabel(profileIdLabel);
 
-  // ✅ 완료/미진행 계산
-  const brandStatus = useMemo(() => {
-    return brandServices.map((s) => ({
-      ...s,
-      done: hasAnyStorage(s.storageKeys),
-    }));
-  }, [brandServices]);
+  const openProfileEdit = () => {
+    const cur = userSafeParse(PROFILE_KEY) || {};
+    setDisplayName(cur.displayName || "");
+    setBio(cur.bio || "");
+    setIsEditingProfile(true);
+  };
 
-  const promoStatus = useMemo(() => {
-    return promoServices.map((s) => {
-      const done = hasCompletedResult(s.resultKey);
-      const inProgress = !done && hasAnyStorage(s.storageKeys);
-      return {
-        ...s,
-        done,
-        inProgress,
-      };
+  const cancelProfileEdit = () => {
+    const cur = userSafeParse(PROFILE_KEY) || {};
+    setDisplayName(cur.displayName || "");
+    setBio(cur.bio || "");
+    setIsEditingProfile(false);
+  };
+
+  const saveProfile = () => {
+    userSetJSON(PROFILE_KEY, {
+      displayName: displayName.trim(),
+      bio: bio.trim(),
+      updatedAt: Date.now(),
     });
-  }, [promoServices]);
+    setIsEditingProfile(false);
+  };
 
-  const brandDoneCount = useMemo(
-    () => brandStatus.filter((s) => s.done).length,
-    [brandStatus],
-  );
-  const promoDoneCount = useMemo(
-    () => promoStatus.filter((s) => s.done).length,
-    [promoStatus],
-  );
+  const activeReports = tab === "brand" ? brandReports : promoReports;
 
-  const brandProgress = useMemo(() => {
-    if (brandStatus.length === 0) return 0;
-    return Math.round((brandDoneCount / brandStatus.length) * 100);
-  }, [brandDoneCount, brandStatus.length]);
+  const filtered = useMemo(() => {
+    const keyword = q.trim().toLowerCase();
+    const base = [...activeReports];
 
-  const promoProgress = useMemo(() => {
-    if (promoStatus.length === 0) return 0;
-    return Math.round((promoDoneCount / promoStatus.length) * 100);
-  }, [promoDoneCount, promoStatus.length]);
+    const sorted = base.sort((a, b) => {
+      const at = a?.createdAt || 0;
+      const bt = b?.createdAt || 0;
+      return sort === "old" ? at - bt : bt - at;
+    });
+
+    if (!keyword) return sorted;
+    return sorted.filter((r) => {
+      const t = String(r?.title || "").toLowerCase();
+      const s = String(r?.subtitle || "").toLowerCase();
+      const lab = String(r?.serviceLabel || "").toLowerCase();
+      return (
+        t.includes(keyword) || s.includes(keyword) || lab.includes(keyword)
+      );
+    });
+  }, [activeReports, q, sort]);
+
+  const goStart = () => {
+    if (tab === "promo") {
+      navigate("/promotion");
+    } else {
+      navigate("/brandconsulting");
+    }
+  };
+
+  const goDetail = (r) => {
+    if (!r?.id) return;
+    if (r.kind === "promo") navigate(`/mypage/promo-report/${r.id}`);
+    else navigate(`/mypage/brand-report/${r.id}`);
+  };
 
   return (
     <div className="mypage-page">
@@ -212,13 +174,12 @@ export default function MyPage({ onLogout }) {
       <main className="mypage-content">
         <div className="mypage-headerRow">
           <div>
-            <h2 className="mypage-title">마이 페이지</h2>
+            <h2 className="mypage-title">마이페이지</h2>
             <p className="mypage-sub">
-              진행 현황과 결과 리포트를 한 번에 확인하세요.
+              내가 만든 리포트를 모아보고, 다시 실행할 수 있어요.
             </p>
           </div>
-
-          <div className="mypage-topActions">
+          <div className="mypage-headerActions">
             <button
               type="button"
               className="btn ghost"
@@ -226,222 +187,179 @@ export default function MyPage({ onLogout }) {
             >
               홈으로
             </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => alert("개인 정보 설정 (준비중)")}
-            >
-              개인 정보 설정
+            <button type="button" className="btn" onClick={goStart}>
+              {tab === "promo" ? "홍보물 컨설팅 시작" : "브랜드 컨설팅 시작"}
             </button>
           </div>
         </div>
 
-        {/* ✅ 프로필 */}
-        <section className="mypage-card profile-card">
-          <div className="profile-left">
-            <div className="profile-avatar" aria-hidden="true" />
-            <div className="profile-text">
-              <strong className="profile-name">이름</strong>
-              <p className="profile-email">이메일</p>
+        {/* ✅ 프로필(리뉴얼) */}
+        <section className="mypage-card myprofileCard">
+          <div className="myprofileBanner">
+            <div className="myprofileLeft">
+              <div className="myprofileAvatar" aria-hidden="true">
+                {profileInitial}
+              </div>
+
+              <div className="myprofileText">
+                <div className="myprofileNameRow">
+                  <div className="myprofileName">{profileName}</div>
+                  <span className="myprofileId">ID · {profileIdLabel}</span>
+                </div>
+
+                <div className="myprofileBio">
+                  {bio.trim() || "로그인 계정 기준으로 결과가 분리 저장됩니다."}
+                </div>
+
+                <div className="myprofileChips">
+                  <span className="metaChip">브랜드 {brandReports.length}</span>
+                  <span className="metaChip">홍보물 {promoReports.length}</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <button
-            type="button"
-            className="btn"
-            onClick={() => alert("프로필 편집 (준비중)")}
-          >
-            프로필 편집
-          </button>
-        </section>
-
-        {/* ✅ 브랜드 선택 */}
-        <section className="mypage-card">
-          <div className="cardTitleRow">
-            <h3>브랜드 선택</h3>
-            <span className={`pill ${hasBrand ? "success" : "ghost"}`}>
-              {hasBrand ? "선택됨" : "미선택"}
-            </span>
-          </div>
-
-          <div className="select-row">
-            {hasBrand ? (
-              <input
-                type="text"
-                value={brandName}
-                onChange={(event) => setBrandName(event.target.value)}
-                placeholder="브랜드명"
-                aria-label="브랜드명"
-              />
-            ) : (
-              <select
-                aria-label="브랜드 선택"
-                defaultValue=""
-                onChange={(event) => setBrandName(event.target.value)}
-              >
-                <option value="" disabled>
-                  브랜드 선택
-                </option>
-                <option value="브랜드 A">브랜드 A</option>
-                <option value="브랜드 B">브랜드 B</option>
-                <option value="브랜드 C">브랜드 C</option>
-              </select>
-            )}
-          </div>
-        </section>
-
-        {/* ✅ 기업 진단 */}
-        <section className="mypage-card">
-          <div className="cardTitleRow">
-            <h3>기업 진단 결과</h3>
-            <span className={`pill ${diagnosisDone ? "success" : "ghost"}`}>
-              {diagnosisDone ? "완료" : "미진행"}
-            </span>
-          </div>
-
-          <div className="mypage-rowBetween">
-            <p className="muted">기업 진단 리포트(결과 페이지)로 이동합니다.</p>
-
-            <div className="btnRow">
-              {!diagnosisDone ? (
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => navigate("/diagnosis")}
-                >
-                  진단 진행하기
-                </button>
-              ) : null}
-
+            <div className="myprofileActions">
               <button
                 type="button"
                 className="btn ghost"
-                onClick={() => navigate("/diagnosis/result")}
+                onClick={openProfileEdit}
               >
-                리포트 보기
+                프로필 편집
               </button>
             </div>
           </div>
+
+          {isEditingProfile ? (
+            <div className="myprofileEdit">
+              <div className="myprofileField">
+                <label>표시 이름</label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="예: 홍길동 / 팀명 / 닉네임"
+                />
+              </div>
+
+              <div className="myprofileField">
+                <label>한 줄 소개</label>
+                <input
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="예: 내 리포트는 이곳에 저장돼요"
+                />
+              </div>
+
+              <div className="btnRow" style={{ marginTop: 4 }}>
+                <button type="button" className="btn" onClick={saveProfile}>
+                  저장
+                </button>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={cancelProfileEdit}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
 
-        {/* ✅ 브랜드 컨설팅 현황 */}
+        {/* ✅ 결과 섹션 */}
         <section className="mypage-card">
-          <div className="cardTitleRow">
-            <h3>브랜드 컨설팅 현황</h3>
-            <span className="pill">
-              {brandDoneCount}/{brandStatus.length} · {brandProgress}%
-            </span>
+          <div className="cardTitleRow" style={{ marginBottom: 12 }}>
+            <h3>내 리포트</h3>
+            <span className="pill ghost">카드형 히스토리</span>
           </div>
 
-          <div className="statusGrid">
-            {brandStatus.map((s) => (
-              <div className="statusItem" key={s.key}>
-                <div className="statusTop">
-                  <div className="statusName">{s.title}</div>
-                  <span
-                    className={`status-pill ${
-                      s.done ? "success" : s.inProgress ? "progress" : "ghost"
-                    }`}
-                  >
-                    {s.done ? "완료" : s.inProgress ? "진행중" : "미진행"}
-                  </span>
-                </div>
-
-                <div className="statusActions">
-                  {s.done ? (
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={() => navigate(s.goPath)}
-                    >
-                      인터뷰 수정
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={() => navigate(s.goPath)}
-                    >
-                      지금 진행
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mypage-rowBetween" style={{ marginTop: 14 }}>
-            <p className="muted">
-              브랜드 통합 리포트에서 전체 결과를 한 번에 확인할 수 있어요.
-            </p>
+          <div className="myhub-tabs" role="tablist" aria-label="리포트 종류">
             <button
               type="button"
-              className="btn"
-              onClick={() => navigate("/mypage/brand-results")}
+              className={`myhub-tab ${tab === "brand" ? "is-active" : ""}`}
+              onClick={() => setTab("brand")}
             >
-              통합 리포트 보기
+              브랜드 컨설팅 결과
+              <span className="myhub-count">{brandReports.length}</span>
             </button>
-          </div>
-        </section>
-
-        {/* ✅ 홍보물 컨설팅 현황 */}
-        <section className="mypage-card">
-          <div className="cardTitleRow">
-            <h3>홍보물 컨설팅 현황</h3>
-            <span className="pill">
-              {promoDoneCount}/{promoStatus.length} · {promoProgress}%
-            </span>
-          </div>
-
-          <div className="statusGrid">
-            {promoStatus.map((s) => (
-              <div className="statusItem" key={s.key}>
-                <div className="statusTop">
-                  <div className="statusName">{s.title}</div>
-                  <span
-                    className={`status-pill ${
-                      s.done ? "success" : s.inProgress ? "progress" : "ghost"
-                    }`}
-                  >
-                    {s.done ? "완료" : s.inProgress ? "진행중" : "미진행"}
-                  </span>
-                </div>
-
-                <div className="statusActions">
-                  {s.done ? (
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={() => navigate(s.goPath)}
-                    >
-                      인터뷰 수정
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={() => navigate(s.goPath)}
-                    >
-                      {s.inProgress ? "인터뷰 이어하기" : "지금 진행"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mypage-rowBetween" style={{ marginTop: 14 }}>
-            <p className="muted">
-              홍보물 통합 리포트에서 전체 결과를 한 번에 확인할 수 있어요.
-            </p>
             <button
               type="button"
-              className="btn"
-              onClick={() => navigate("/mypage/promotion-results")}
+              className={`myhub-tab ${tab === "promo" ? "is-active" : ""}`}
+              onClick={() => setTab("promo")}
             >
-              통합 리포트 보기
+              홍보물 컨설팅 결과
+              <span className="myhub-count">{promoReports.length}</span>
             </button>
           </div>
+
+          <div className="myhub-toolbar">
+            <div className="myhub-search">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={
+                  tab === "promo"
+                    ? "서비스/키워드로 검색"
+                    : "브랜드/키워드로 검색"
+                }
+              />
+            </div>
+            <div className="myhub-right">
+              <select value={sort} onChange={(e) => setSort(e.target.value)}>
+                <option value="recent">최신순</option>
+                <option value="old">오래된순</option>
+              </select>
+              <button type="button" className="btn" onClick={goStart}>
+                새로 만들기
+              </button>
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="myhub-empty">
+              <div>
+                <h4 style={{ margin: 0 }}>아직 저장된 리포트가 없습니다</h4>
+                <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
+                  컨설팅을 완료하면 카드가 자동으로 쌓입니다.
+                </p>
+              </div>
+              <button type="button" className="btn primary" onClick={goStart}>
+                지금 시작하기
+              </button>
+            </div>
+          ) : (
+            <div className="reportStack">
+              {filtered.map((r) => (
+                <article key={r.id} className="reportCard">
+                  <div className="reportCard__top">
+                    <div>
+                      <h4 className="reportCard__title">{r.title}</h4>
+                      {r.subtitle ? (
+                        <p className="reportCard__sub">{r.subtitle}</p>
+                      ) : null}
+                      <div className="reportMeta">
+                        {r.serviceLabel ? (
+                          <span className="metaChip">{r.serviceLabel}</span>
+                        ) : null}
+                        <span className="metaChip ghost">
+                          {fmt(r.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="reportCard__actions">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => goDetail(r)}
+                      >
+                        리포트 보기
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ✅ 계정 관리 */}
@@ -468,38 +386,6 @@ export default function MyPage({ onLogout }) {
             </button>
           </div>
         </section>
-
-        {/* ✅ 빠른 이동 */}
-        <div className="mypage-navRow">
-          <button
-            type="button"
-            className="mypage-linkBtn"
-            onClick={() => navigate("/main")}
-          >
-            홈으로
-          </button>
-          <button
-            type="button"
-            className="mypage-linkBtn"
-            onClick={() => navigate("/diagnosis")}
-          >
-            진단으로
-          </button>
-          <button
-            type="button"
-            className="mypage-linkBtn"
-            onClick={() => navigate("/brandconsulting")}
-          >
-            브랜드로
-          </button>
-          <button
-            type="button"
-            className="mypage-linkBtn"
-            onClick={() => navigate("/promotion")}
-          >
-            홍보물로
-          </button>
-        </div>
       </main>
 
       <SiteFooter onOpenPolicy={setOpenType} />

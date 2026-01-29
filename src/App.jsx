@@ -37,6 +37,8 @@ import PromotionResult from "./pages/PromotionResult.jsx";
 import PromotionAllResults from "./pages/PromotionAllResults.jsx";
 
 import MyPage from "./pages/MyPage.jsx";
+import BrandReportDetail from "./pages/BrandReportDetail.jsx";
+import PromoReportDetail from "./pages/PromoReportDetail.jsx";
 
 import InvestmentBoard from "./pages/InvestmentBoard.jsx";
 import InvestmentPostCreate from "./pages/InvestmentPostCreate.jsx";
@@ -198,6 +200,14 @@ export default function App() {
         />
         {/* ✅ 마이페이지 */}
         <Route path="/mypage" element={<MyPage />} />
+        <Route
+          path="/mypage/brand-report/:id"
+          element={<BrandReportDetail />}
+        />
+        <Route
+          path="/mypage/promo-report/:id"
+          element={<PromoReportDetail />}
+        />
         {/* ✅ 투자 라운지 */}
         <Route path="/investment" element={<InvestmentBoard />} />
         <Route path="/investment/new" element={<InvestmentPostCreate />} />
