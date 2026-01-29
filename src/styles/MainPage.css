@@ -1,531 +1,353 @@
-﻿/* src/styles/MyPage.css */
-
+﻿/* src/styles/MainPage.css */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
-.mypage-content {
-  width: min(1120px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 26px 0 52px;
+
+/* ✅ 메인 허브 페이지 스타일은 .main-page 범위로만 적용 (다른 페이지 영향 방지) */
+.main-page {
+  font-family: "Manrope", "Noto Sans KR", sans-serif;
+  background: #f6f7fb;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.mypage-headerRow {
+.main-content {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 32px 72px;
+  flex: 1;
+}
+
+.main-page .section-title {
+  margin: 24px 0 14px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* ===== Hero banner ===== */
+.main-hero {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.main-hero__img {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  display: block;
+}
+
+.main-hero__overlay {
+  position: absolute;
+  inset: 0;
+  padding: 24px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  color: #ffffff;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.28) 52%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.main-hero__kicker {
+  margin: 0;
+  display: inline-flex;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.main-hero__sub {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.92);
+  max-width: 520px;
+}
+
+/* ===== Consulting cards ===== */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.info-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+  border-color: rgba(23, 102, 229, 0.22);
+}
+
+.card-image {
+  height: 170px;
+  padding: 14px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(
+      520px 220px at 20% 10%,
+      rgba(23, 102, 229, 0.14),
+      transparent 60%
+    ),
+    #f3f6ff;
+}
+
+.card-image.alt {
+  background:
+    radial-gradient(
+      520px 220px at 20% 10%,
+      rgba(0, 31, 102, 0.14),
+      transparent 60%
+    ),
+    #f5f7ff;
+}
+
+.card-image.third {
+  background:
+    radial-gradient(
+      520px 220px at 20% 10%,
+      rgba(99, 102, 241, 0.14),
+      transparent 60%
+    ),
+    #f6f6ff;
+}
+
+.card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.card-body {
+  padding: 14px 14px 16px;
+}
+
+.card-tag {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(15, 23, 42, 0.62);
+  text-transform: uppercase;
+}
+
+.card-body h3 {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.card-desc {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #475569;
+}
+
+/* ===== Deal board ===== */
+.deal-board {
+  margin-top: 34px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  padding: 18px;
+}
+
+.deal-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.mypage-title {
-  margin: 0;
-  font-size: 28px;
-}
-
-.mypage-sub {
-  margin: 8px 0 0;
-  color: #6b7280;
-  line-height: 1.5;
-}
-
-.mypage-topActions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.mypage-card {
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  align-items: flex-end;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
-/* ============================================================
-   ✅ 마이페이지(리뉴얼) - 프로필 카드
-   ============================================================ */
-
-.myprofileCard {
-  padding: 0;
-  overflow: hidden;
-}
-
-.myprofileBanner {
-  padding: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 31, 102, 0.1) 0%,
-    rgba(0, 0, 0, 0.02) 60%,
-    rgba(0, 31, 102, 0.06) 100%
-  );
-}
-
-.myprofileLeft {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.myprofileAvatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.1);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  font-size: 18px;
-  user-select: none;
-}
-
-.myprofileText {
-  min-width: 0;
-}
-
-.myprofileNameRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.myprofileName {
-  font-size: 16px;
-  font-weight: 900;
-}
-
-.myprofileId {
-  font-size: 12px;
-  font-weight: 900;
-  color: #6b7280;
-  background: rgba(255, 255, 255, 0.75);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 6px 10px;
-  border-radius: 999px;
-}
-
-.myprofileBio {
-  margin-top: 6px;
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.45;
-  max-width: 740px;
-}
-
-.myprofileChips {
-  margin-top: 10px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.myprofileActions {
-  display: flex;
-  align-items: flex-start;
-  flex-shrink: 0;
-}
-
-.myprofileEdit {
-  padding: 14px 16px 16px;
-  background: #fff;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  display: grid;
-  gap: 12px;
-}
-
-.myprofileField label {
-  display: block;
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 900;
-  color: #6b7280;
-}
-
-.myprofileField input {
-  width: 100%;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  padding: 0 12px;
-  outline: none;
-}
-
-.myprofileField input:focus {
-  border-color: rgba(0, 0, 0, 0.25);
-}
-
-@media (max-width: 640px) {
-  .myprofileBanner {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .myprofileLeft {
-    align-items: flex-start;
-  }
-  .myprofileActions {
-    justify-content: flex-end;
-  }
-}
-
-.profile-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.profile-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.profile-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.08);
-}
-
-.profile-text strong {
-  display: block;
-  font-size: 14px;
-}
-
-.profile-text p {
-  margin: 4px 0 0;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.cardTitleRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.select-row input,
-.select-row select {
-  width: 100%;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  padding: 0 12px;
-  outline: none;
-}
-
-.select-row input:focus,
-.select-row select:focus {
-  border-color: rgba(0, 0, 0, 0.25);
-}
-
-.mypage-rowBetween {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.muted {
+.deal-eyebrow {
   margin: 0;
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.btnRow {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ---- 상태 그리드 ---- */
-.statusGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-@media (max-width: 720px) {
-  .statusGrid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.statusItem {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
-  padding: 12px;
-  background: rgba(0, 0, 0, 0.015);
-}
-
-.statusTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.statusName {
-  font-weight: 700;
-  font-size: 14px;
-  color: #111827;
-}
-
-.statusActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ---- pills ---- */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
   font-size: 12px;
-  background: rgba(0, 0, 0, 0.06);
-  color: #111827;
+  font-weight: 800;
+  color: #64748b;
 }
 
-.pill.ghost {
-  background: rgba(0, 0, 0, 0.04);
-  color: #6b7280;
+.deal-title {
+  margin: 6px 0 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
 }
 
-.pill.success {
-  background: rgba(34, 197, 94, 0.14);
-  color: #065f46;
-}
-
-/* ---- status-pill (서비스별) ---- */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: rgba(0, 0, 0, 0.06);
-  color: #111827;
-}
-
-.status-pill.ghost {
-  background: rgba(0, 0, 0, 0.04);
-  color: #6b7280;
-}
-
-.status-pill.success {
-  background: rgba(34, 197, 94, 0.14);
-  color: #065f46;
-}
-
-.status-pill.progress {
-  background: rgba(59, 130, 246, 0.14);
-  color: #1d4ed8;
-}
-
-/* ---- 하단 빠른 이동 ---- */
-.mypage-navRow {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-
-.mypage-linkBtn {
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
-  cursor: pointer;
-}
-
-.mypage-linkBtn:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-/* ---- danger 버튼 보조 (없으면 대비용) ---- */
-.btn.danger {
-  background: #ef4444;
-  color: #fff;
-  border: none;
-}
-
-/* ============================================================
-   ✅ 마이페이지(리뉴얼) - 리포트 카드 스택 / 탭 / 검색
-   ============================================================ */
-
-.mypage-headerActions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.myhub-tabs {
-  display: flex;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.myhub-tab {
-  flex: 1;
-  height: 40px;
+.deal-more {
   border: none;
   background: transparent;
   cursor: pointer;
-  border-radius: 999px;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.myhub-tab.is-active {
-  background: #fff;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
-}
-
-.myhub-count {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
-  font-weight: 800;
-}
-
-.myhub-toolbar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.myhub-search {
-  flex: 1;
-  min-width: 220px;
-}
-
-.myhub-search input {
-  width: 100%;
-  height: 44px;
+  padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  padding: 0 12px;
+  font-weight: 900;
+  color: #001f66;
 }
 
-.myhub-right {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.deal-more:hover {
+  background: rgba(0, 31, 102, 0.06);
 }
 
-.myhub-right select {
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  padding: 0 10px;
-  background: #fff;
-}
-
-.myhub-empty {
-  margin-top: 14px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px dashed rgba(0, 0, 0, 0.18);
-  background: rgba(0, 0, 0, 0.02);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.deal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.reportStack {
-  margin-top: 14px;
+.deal-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 210px;
 }
 
-.reportCard {
-  background: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 18px;
-  padding: 16px;
-}
-
-.reportCard__top {
+.deal-card-head {
   display: flex;
-  gap: 12px;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
 }
 
-.reportCard__title {
+.deal-card-head h4 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
+  color: #0f172a;
 }
 
-.reportCard__sub {
+.deal-card-head p {
   margin: 6px 0 0;
-  color: #6b7280;
-  font-size: 13px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
 }
 
-.reportMeta {
+.deal-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, #001f66, #1766e5);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  box-shadow: 0 14px 26px rgba(0, 31, 102, 0.22);
+}
+
+.deal-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
 }
 
-.metaChip {
+.deal-tags span {
   display: inline-flex;
   align-items: center;
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
   font-size: 12px;
   font-weight: 800;
+  background: rgba(0, 0, 0, 0.05);
+  color: #0f172a;
 }
 
-.metaChip.ghost {
-  background: rgba(0, 0, 0, 0.04);
-  color: #6b7280;
-}
-
-.reportCard__actions {
+.deal-footer {
+  margin-top: auto;
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 
-@media (max-width: 640px) {
-  .reportCard__top {
-    flex-direction: column;
+.deal-footer strong {
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.deal-footer button {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.deal-footer button:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 980px) {
+  .main-content {
+    padding: 24px 20px 64px;
   }
-  .myhub-empty {
+  .card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .deal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .main-hero__img {
+    height: 260px;
+  }
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  .deal-grid {
+    grid-template-columns: 1fr;
+  }
+  .deal-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+  .deal-footer button {
+    width: 100%;
   }
 }

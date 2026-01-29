@@ -14,6 +14,7 @@ import { userSafeParse, userSetJSON } from "../utils/userLocalStorage.js";
 
 import {
   ensureBrandHistorySeeded,
+  ensureBrandHistoryDummies,
   listBrandReports,
   listPromoReports,
 } from "../utils/reportHistory.js";
@@ -30,9 +31,118 @@ const PROFILE_KEY = "userProfile_v1";
 function getInitialLabel(userId) {
   const raw = String(userId ?? "").trim();
   if (!raw) return "U";
-  // 숫자면 그대로, 문자는 첫 글자
   const first = raw[0];
   return first ? first.toUpperCase() : "U";
+}
+
+function hashToInt(str) {
+  const s = String(str || "");
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+function getBrandInitials(name) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return "BR";
+
+  // 한글은 1글자만, 영문/숫자는 2글자(또는 2단어 이니셜)
+  const first = raw[0];
+  if (/[가-힣]/.test(first)) return first;
+
+  const cleaned = raw.replace(/[^A-Za-z0-9]+/g, " ").trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return raw.slice(0, 2).toUpperCase();
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || "B"}${parts[1][0] || "R"}`.toUpperCase();
+}
+
+function extractLogoUrl(r) {
+  const candidates = [
+    r?.logoUrl,
+    r?.logoImageUrl,
+    r?.thumbnailUrl,
+    r?.imageUrl,
+    r?.snapshot?.selections?.logo?.imageUrl,
+    r?.snapshot?.selections?.logo?.logoImageUrl,
+    r?.snapshot?.selections?.logo?.url,
+    r?.snapshot?.selections?.logo?.image,
+    r?.snapshot?.selections?.logo?.img,
+  ];
+  return (
+    candidates.find((v) => typeof v === "string" && v.trim().length > 0) || ""
+  );
+}
+
+function pickFirstString(...vals) {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return "";
+}
+
+function normalizeText(t) {
+  return String(t ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateText(text, maxLen = 120) {
+  const s = normalizeText(text);
+  if (!s) return "";
+  if (s.length <= maxLen) return s;
+  return `${s.slice(0, maxLen).trimEnd()}...`;
+}
+
+// ✅ 컨셉/스토리 장문 대비: 다양한 필드 후보에서 우선순위로 추출
+function extractConceptText(r) {
+  const sel = r?.snapshot?.selections || {};
+  return pickFirstString(
+    sel?.concept?.content,
+    sel?.concept?.description,
+    sel?.concept?.summary,
+    sel?.concept?.text,
+    sel?.concept?.name,
+    r?.snapshot?.concept?.content,
+    r?.snapshot?.concept?.description,
+    r?.snapshot?.concept?.summary,
+    r?.snapshot?.concept?.text,
+    r?.snapshot?.concept?.name,
+  );
+}
+
+function extractStoryText(r) {
+  const sel = r?.snapshot?.selections || {};
+  return pickFirstString(
+    sel?.story?.content,
+    sel?.story?.description,
+    sel?.story?.summary,
+    sel?.story?.text,
+    sel?.story?.name,
+    r?.snapshot?.story?.content,
+    r?.snapshot?.story?.description,
+    r?.snapshot?.story?.summary,
+    r?.snapshot?.story?.text,
+    r?.snapshot?.story?.name,
+  );
+}
+
+// ✅ 요청 반영: "한줄 소개"를 브랜드 카드에 추가
+function extractOneLineText(r) {
+  const ds = r?.snapshot?.diagnosisSummary || {};
+  const sel = r?.snapshot?.selections || {};
+  return pickFirstString(
+    ds?.oneLine,
+    ds?.tagline,
+    ds?.shortText,
+    sel?.naming?.tagline,
+    sel?.naming?.oneLine,
+    sel?.naming?.summary,
+    r?.oneLine,
+    r?.subtitle,
+  );
 }
 
 export default function MyPage({ onLogout }) {
@@ -64,6 +174,8 @@ export default function MyPage({ onLogout }) {
     }
 
     ensureBrandHistorySeeded();
+    // ✅ 백 연동 전, 결과가 여러 개 쌓였을 때 UI 확인용 더미(3개)
+    ensureBrandHistoryDummies();
     setBrandReports(listBrandReports());
     setPromoReports(listPromoReports());
   }, [location.search]);
@@ -130,8 +242,26 @@ export default function MyPage({ onLogout }) {
       const t = String(r?.title || "").toLowerCase();
       const s = String(r?.subtitle || "").toLowerCase();
       const lab = String(r?.serviceLabel || "").toLowerCase();
+
+      const company =
+        r?.snapshot?.diagnosisSummary?.companyName ||
+        r?.snapshot?.diagnosisSummary?.brandName ||
+        r?.snapshot?.diagnosisSummary?.projectName ||
+        "";
+
+      // 브랜드 카드 검색 품질: 한줄소개/컨셉/스토리까지 포함
+      const oneLine = extractOneLineText(r).toLowerCase();
+      const concept = extractConceptText(r).toLowerCase();
+      const story = extractStoryText(r).toLowerCase();
+
       return (
-        t.includes(keyword) || s.includes(keyword) || lab.includes(keyword)
+        t.includes(keyword) ||
+        s.includes(keyword) ||
+        lab.includes(keyword) ||
+        String(company).toLowerCase().includes(keyword) ||
+        oneLine.includes(keyword) ||
+        concept.includes(keyword) ||
+        story.includes(keyword)
       );
     });
   }, [activeReports, q, sort]);
@@ -172,24 +302,26 @@ export default function MyPage({ onLogout }) {
       <SiteHeader onLogout={onLogout} />
 
       <main className="mypage-content">
-        <div className="mypage-headerRow">
-          <div>
-            <h2 className="mypage-title">마이페이지</h2>
-            <p className="mypage-sub">
-              내가 만든 리포트를 모아보고, 다시 실행할 수 있어요.
-            </p>
-          </div>
-          <div className="mypage-headerActions">
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => navigate("/main")}
-            >
-              홈으로
-            </button>
-            <button type="button" className="btn" onClick={goStart}>
-              {tab === "promo" ? "홍보물 컨설팅 시작" : "브랜드 컨설팅 시작"}
-            </button>
+        <div className="mypage-hero">
+          <div className="mypage-headerRow">
+            <div>
+              <h2 className="mypage-title">마이페이지</h2>
+              <p className="mypage-sub">
+                내가 만든 리포트를 모아보고, 다시 실행할 수 있어요.
+              </p>
+            </div>
+            <div className="mypage-headerActions">
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => navigate("/main")}
+              >
+                홈으로
+              </button>
+              <button type="button" className="btn" onClick={goStart}>
+                {tab === "promo" ? "홍보물 컨설팅 시작" : "브랜드 컨설팅 시작"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -269,7 +401,7 @@ export default function MyPage({ onLogout }) {
         <section className="mypage-card">
           <div className="cardTitleRow" style={{ marginBottom: 12 }}>
             <h3>내 리포트</h3>
-            <span className="pill ghost">카드형 히스토리</span>
+            <span className="pill ghost">미리보기</span>
           </div>
 
           <div className="myhub-tabs" role="tablist" aria-label="리포트 종류">
@@ -317,8 +449,10 @@ export default function MyPage({ onLogout }) {
           {filtered.length === 0 ? (
             <div className="myhub-empty">
               <div>
-                <h4 style={{ margin: 0 }}>아직 저장된 리포트가 없습니다</h4>
-                <p style={{ margin: "6px 0 0", color: "#6b7280" }}>
+                <h4 className="myhub-empty-title">
+                  아직 저장된 리포트가 없습니다
+                </h4>
+                <p className="myhub-empty-sub">
                   컨설팅을 완료하면 카드가 자동으로 쌓입니다.
                 </p>
               </div>
@@ -328,36 +462,139 @@ export default function MyPage({ onLogout }) {
             </div>
           ) : (
             <div className="reportStack">
-              {filtered.map((r) => (
-                <article key={r.id} className="reportCard">
-                  <div className="reportCard__top">
-                    <div>
-                      <h4 className="reportCard__title">{r.title}</h4>
-                      {r.subtitle ? (
-                        <p className="reportCard__sub">{r.subtitle}</p>
-                      ) : null}
-                      <div className="reportMeta">
-                        {r.serviceLabel ? (
-                          <span className="metaChip">{r.serviceLabel}</span>
-                        ) : null}
-                        <span className="metaChip ghost">
-                          {fmt(r.createdAt)}
-                        </span>
+              {filtered.map((r) => {
+                const company =
+                  r?.snapshot?.diagnosisSummary?.companyName ||
+                  r?.snapshot?.diagnosisSummary?.brandName ||
+                  r?.snapshot?.diagnosisSummary?.projectName ||
+                  "브랜드";
+
+                const initials = getBrandInitials(company);
+                const variant = hashToInt(r?.id || company) % 6;
+                const logoUrl = extractLogoUrl(r);
+
+                // ✅ 요청 반영: 브랜드 카드에 "한줄 소개" 추가
+                const oneLineRaw =
+                  r?.kind === "brand" ? extractOneLineText(r) : "";
+                const oneLinePreview = oneLineRaw
+                  ? truncateText(oneLineRaw, 80)
+                  : "-";
+
+                // ✅ 컨셉/스토리 미리보기(장문 대비)
+                const conceptRaw =
+                  r?.kind === "brand" ? extractConceptText(r) : "";
+                const storyRaw = r?.kind === "brand" ? extractStoryText(r) : "";
+                const conceptPreview = conceptRaw
+                  ? truncateText(conceptRaw, 110)
+                  : "-";
+                const storyPreview = storyRaw
+                  ? truncateText(storyRaw, 110)
+                  : "-";
+
+                return (
+                  <article
+                    key={r.id}
+                    className={`reportCard ${r?.isDummy ? "is-dummy" : ""}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => goDetail(r)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goDetail(r);
+                      }
+                    }}
+                  >
+                    <div className="reportCard__grid">
+                      <div
+                        className={`reportLogo variant-${variant} ${logoUrl ? "hasImage" : ""}`}
+                        aria-hidden="true"
+                      >
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="" loading="lazy" />
+                        ) : (
+                          <span className="reportLogoText">{initials}</span>
+                        )}
+                      </div>
+
+                      <div className="reportInfo">
+                        {r?.kind === "brand" ? (
+                          <>
+                            <div className="reportTitleRow">
+                              <h4 className="reportCard__title">{company}</h4>
+                              {r?.isDummy ? (
+                                <span className="pill dummy">더미</span>
+                              ) : null}
+                            </div>
+
+                            <p className="reportCard__sub">
+                              <strong style={{ fontWeight: 900 }}>
+                                한줄 소개
+                              </strong>{" "}
+                              · {oneLinePreview}
+                            </p>
+
+                            <p className="reportCard__sub">
+                              <strong style={{ fontWeight: 900 }}>컨셉</strong>{" "}
+                              · {conceptPreview}
+                            </p>
+
+                            <p className="reportCard__sub">
+                              <strong style={{ fontWeight: 900 }}>
+                                스토리
+                              </strong>{" "}
+                              · {storyPreview}
+                            </p>
+
+                            <div className="reportMeta">
+                              <span className="metaChip ghost">
+                                {fmt(r.createdAt)}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="reportTitleRow">
+                              <h4 className="reportCard__title">{r.title}</h4>
+                              {r?.isDummy ? (
+                                <span className="pill dummy">더미</span>
+                              ) : null}
+                            </div>
+
+                            {r.subtitle ? (
+                              <p className="reportCard__sub">{r.subtitle}</p>
+                            ) : null}
+
+                            <div className="reportMeta">
+                              {r.serviceLabel ? (
+                                <span className="metaChip">
+                                  {r.serviceLabel}
+                                </span>
+                              ) : null}
+                              <span className="metaChip ghost">
+                                {fmt(r.createdAt)}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="reportCTA">
+                        <button
+                          type="button"
+                          className="btn primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            goDetail(r);
+                          }}
+                        >
+                          리포트 보기
+                        </button>
                       </div>
                     </div>
-
-                    <div className="reportCard__actions">
-                      <button
-                        type="button"
-                        className="btn"
-                        onClick={() => goDetail(r)}
-                      >
-                        리포트 보기
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>

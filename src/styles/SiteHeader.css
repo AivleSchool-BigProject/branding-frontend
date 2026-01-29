@@ -11,6 +11,11 @@
 
 /* ===== Header ===== */
 .main-header {
+  /* ✅ 스크롤 시에도 상단에 고정(이전 동작 복구) */
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
   background: var(--navy);
   color: #fff;
   display: grid;
