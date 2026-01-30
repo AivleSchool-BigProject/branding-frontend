@@ -267,31 +267,13 @@ export function ensureStepAccess(stepKey) {
 
 /**
  * ✅ 레거시(기존 localStorage 키들) → pipeline으로 마이그레이션(1회성)
- * - 기존 결과 페이지/통합 결과 페이지가 레거시 키를 쓰고 있어도,
- *   브랜드 컨설팅 홈의 잠금/해제 상태는 pipeline 기준으로 통일 가능
+ * - 버그 수정: next 선언 전 참조하던 부분 정리
  */
 export function migrateLegacyToPipelineIfNeeded() {
-  const p = readPipeline();
-
-  // 1) diagnosisSummary 없으면, diagnosis draft로 생성
-  if (!p?.diagnosisSummary) {
-    const diag = readDiagnosisDraftForm();
-    if (diag) {
-      const summary = buildDiagnosisSummaryFromDraft(diag);
-      upsertPipeline({ diagnosisSummary: summary });
-    }
-  }
-
-  // 2) 기존 단계 결과 키들(예전 구현)에서 pipeline 채우기
-
+  const stepDone = (obj, k) =>
+    Boolean(obj?.[k]?.selectedId || obj?.[k]?.selected);
   const prevOf = { concept: "naming", story: "concept", logo: "story" };
-  const isDone = (k) => Boolean(next?.[k]?.selectedId || next?.[k]?.selected);
 
-  // 2) 기존 단계 결과 키들(예전 구현)에서 pipeline 채우기
-  // - 주의: 이전 단계가 변경된 뒤(예: 네이밍 다시 선택) 다음 단계 결과 키가 localStorage에 남아 있으면
-  //   홈 화면에서 "완료"로 다시 복구되는 문제가 생길 수 있음
-  // - 해결: (1) 이전 단계가 완료되어야만 다음 단계 마이그레이션 허용
-  //         (2) 이전 단계 updatedAt이 더 최신이면, 다음 단계(레거시)는 '무효'로 보고 마이그레이션 스킵
   const legacyMap = [
     // naming
     { step: "naming", key: "namingConsultingInterviewResult_v1" },
@@ -314,14 +296,25 @@ export function migrateLegacyToPipelineIfNeeded() {
   ];
 
   const cur = readPipeline();
+  let next = { ...cur };
   let changed = false;
-  const next = { ...cur };
 
+  // 1) diagnosisSummary 없으면, diagnosis draft로 생성
+  if (!next?.diagnosisSummary) {
+    const diag = readDiagnosisDraftForm();
+    if (diag) {
+      const summary = buildDiagnosisSummaryFromDraft(diag);
+      next = { ...next, diagnosisSummary: summary, updatedAt: Date.now() };
+      changed = true;
+    }
+  }
+
+  // 2) 기존 단계 결과 키들(예전 구현)에서 pipeline 채우기
   for (const { step, key } of legacyMap) {
-    if (isDone(step)) continue;
+    if (stepDone(next, step)) continue;
 
     const prev = prevOf[step];
-    if (prev && !isDone(prev)) continue;
+    if (prev && !stepDone(next, prev)) continue;
 
     const raw = userSafeParse(key);
     if (!raw) continue;
@@ -355,9 +348,6 @@ export function migrateLegacyToPipelineIfNeeded() {
 
 /** =========================
  * ✅ Strict Brand Flow (네이밍 → 컨셉 → 스토리 → 로고)
- * - brandId 고정
- * - 진행 중 이탈 시: 네이밍부터 다시(단계 결과 초기화)
- * - 진행 중 이전 단계로 되돌아가기 차단
  * ========================= */
 
 export const BRAND_FLOW_STEPS = ["naming", "concept", "story", "logo"];
@@ -396,20 +386,15 @@ export function getBrandFlowRouteForStep(stepKey) {
   return BRAND_FLOW_ROUTE_BY_STEP[stepKey] || "/brand/naming/interview";
 }
 
-/**
- * ✅ 브랜드 4종(네이밍/컨셉/스토리/로고) 진행 라우트인지 판별
- */
 export function isBrandFlowRoute(pathname) {
   const p = String(pathname || "");
   if (!p) return false;
 
-  // canonical
   if (p === "/brand/naming/interview") return true;
   if (p === "/brand/concept/interview") return true;
   if (p === "/brand/story" || p === "/brand/story/interview") return true;
   if (p === "/brand/logo/interview") return true;
 
-  // legacy aliases (App.jsx 유지)
   if (p === "/nameconsulting" || p === "/namingconsulting") return true;
   if (p === "/conceptconsulting" || p === "/homepageconsulting") return true;
   if (p === "/brand/homepage/interview") return true;
@@ -419,9 +404,6 @@ export function isBrandFlowRoute(pathname) {
   return false;
 }
 
-/**
- * ✅ 진행 중 새로고침/탭닫기 등을 감지했을 때 표시(다음 진입 시 네이밍부터 리셋)
- */
 export function markBrandFlowPendingAbort(reason = "interrupted") {
   const cur = readPipeline();
   const flow = cur?.brandFlow || {};
@@ -440,16 +422,11 @@ export function markBrandFlowPendingAbort(reason = "interrupted") {
   return writePipeline(next);
 }
 
-/**
- * ✅ pendingAbort가 있으면 1회 소비하면서 true 반환
- * - 페이지에서 alert 문구를 띄운 뒤, 네이밍부터 다시 시작하도록 유도
- */
 export function consumeBrandFlowPendingAbort() {
   const cur = readPipeline();
   const flow = cur?.brandFlow;
   if (!flow?.active || !flow?.pendingAbort) return false;
 
-  // pendingAbort를 소비(해제)
   const next = {
     ...cur,
     brandFlow: {
@@ -464,13 +441,7 @@ export function consumeBrandFlowPendingAbort() {
   return true;
 }
 
-/**
- * ✅ 진단 완료 후 "브랜드 컨설팅 시작" 시 호출
- * - 단계 결과 초기화(네이밍부터)
- * - brandFlow 활성화 + currentStep=naming
- */
 export function startBrandFlow({ brandId } = {}) {
-  // 1) 단계 결과 초기화(진단/brandId는 유지)
   const cleared = clearStepsFrom("naming");
 
   const normalized =
@@ -497,9 +468,6 @@ export function startBrandFlow({ brandId } = {}) {
   return writePipeline(next);
 }
 
-/**
- * ✅ 현재 단계 갱신(이전 단계로 못 돌아가게 만드는 기준)
- */
 export function setBrandFlowCurrent(stepKey) {
   const key = String(stepKey || "naming");
   const normalized = BRAND_FLOW_STEP_INDEX[key] != null ? key : "naming";
@@ -507,7 +475,6 @@ export function setBrandFlowCurrent(stepKey) {
   const cur = readPipeline();
   const flow = cur?.brandFlow || {};
 
-  // flow가 없으면 자동으로 생성(진단 이후 직접 단계 진입했을 때)
   const next = {
     ...cur,
     brandFlow: {
@@ -523,14 +490,9 @@ export function setBrandFlowCurrent(stepKey) {
   return writePipeline(next);
 }
 
-/**
- * ✅ 진행 중 이탈(메뉴 이동/다른 페이지 이동/뒤로가기 등) 시
- * - 네이밍부터 다시 시작하도록 단계 결과를 삭제
- * - brandFlow 비활성화
- */
 export function abortBrandFlow(reason = "leave") {
   const cleared = clearStepsFrom("naming");
-  const cur = readPipeline(); // clearStepsFrom 이후 최신값
+  const cur = readPipeline();
   const flow = cur?.brandFlow || {};
 
   const next = {
@@ -550,9 +512,6 @@ export function abortBrandFlow(reason = "leave") {
   return writePipeline(next);
 }
 
-/**
- * ✅ 로고까지 완료 후 종료 처리(이탈 경고/리셋 방지)
- */
 export function completeBrandFlow() {
   const cur = readPipeline();
   const flow = cur?.brandFlow || {};
@@ -569,15 +528,10 @@ export function completeBrandFlow() {
   return writePipeline(next);
 }
 
-/**
- * ✅ Strict 접근 가드(순서 + 이전 단계 되돌아가기 차단)
- */
 export function ensureStrictStepAccess(stepKey) {
-  // 1) 기본 순서 가드(진단/선행 단계)
   const base = ensureStepAccess(stepKey);
   if (!base?.ok) return base;
 
-  // 2) 진행 중 이전 단계 진입 차단
   const cur = readPipeline();
   const flow = cur?.brandFlow;
 
@@ -611,18 +565,16 @@ export function resetBrandConsultingToDiagnosisStart(reason = "reset") {
   }
 
   // 2) 브랜드 단계별 draft/result 제거
+  const allStepKeys = Object.values(STEP_STORAGE_KEYS).flat();
   try {
-    Object.values(STEP_STORAGE_KEYS)
-      .flat()
-      .forEach((k) => userRemoveItem(k));
+    allStepKeys.forEach((k) => userRemoveItem(k));
   } catch {
     // ignore
   }
 
   // 3) 기업진단 draft/result 제거(진행률 0%로)
   const DIAG_RESET_KEYS = [
-    "diagnosisInterviewDraft_v1",
-    "diagnosisInterviewDraft",
+    ...DIAG_KEYS,
     "diagnosisDraft",
     "diagnosisResult_v1",
   ];
@@ -638,7 +590,7 @@ export function resetBrandConsultingToDiagnosisStart(reason = "reset") {
       PIPELINE_KEY,
       ...DIAG_RESET_KEYS,
       "diagnosisResult_v1_global",
-      ...Object.values(STEP_STORAGE_KEYS).flat(),
+      ...allStepKeys,
     ].forEach((k) => removeLegacyKey(k));
   } catch {
     // ignore

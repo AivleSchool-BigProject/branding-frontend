@@ -676,3 +676,50 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* ---- 마이페이지 힌트/에러 ---- */
+.mypage-page .myhub-hint {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: rgba(15, 23, 42, 0.78);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mypage-page .myhub-hint.danger {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: rgba(127, 29, 29, 0.95);
+}
+
+/* ---- 카드 우측 액션 버튼(삭제) ---- */
+.mypage-page .iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mypage-page .iconBtn:hover {
+  background: rgba(23, 102, 229, 0.06);
+  border-color: rgba(23, 102, 229, 0.35);
+}
+
+.mypage-page .iconBtn.danger:hover {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.38);
+}
+
+.mypage-page .iconBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

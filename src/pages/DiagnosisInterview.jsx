@@ -83,6 +83,7 @@ export default function DiagnosisInterview({ onLogout }) {
 
   // ✅ 제출 상태(백 요청 중)
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitOnceRef = useRef(false);
 
   // ✅ 섹션 스크롤용 ref
   const refBasic = useRef(null);
@@ -286,6 +287,8 @@ export default function DiagnosisInterview({ onLogout }) {
       return;
     }
     if (isSubmitting) return;
+    if (submitOnceRef.current) return;
+    submitOnceRef.current = true;
 
     // 홈 진행 요약 저장(기존 로직 유지)
     try {
@@ -355,6 +358,7 @@ export default function DiagnosisInterview({ onLogout }) {
         },
       });
     } catch (err) {
+      submitOnceRef.current = false;
       const status = err?.status || err?.response?.status;
       if (status === 401 || status === 403) {
         alert("세션이 만료되었어요. 다시 로그인 해주세요.");

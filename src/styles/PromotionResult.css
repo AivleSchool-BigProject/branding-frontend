@@ -61,7 +61,7 @@
 }
 
 /* 카드 톤 */
-.card {
+.promoResult .card {
   background: #fff;
   border: 1px solid #e6e9f1;
   border-radius: 14px;
@@ -69,47 +69,47 @@
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
 }
 
-.card__head h2 {
+.promoResult .card__head h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 800;
   color: #0f172a;
 }
 
-.card__head p {
+.promoResult .card__head p {
   margin: 6px 0 0;
   font-size: 12px;
   color: #5b6476;
 }
 
-.qa {
+.promoResult .qa {
   margin-top: 12px;
   display: grid;
   gap: 10px;
 }
 
-.qa__item {
+.promoResult .qa__item {
   border: 1px solid #e6e9f1;
   border-radius: 12px;
   padding: 12px;
   background: #fbfcff;
 }
 
-.q {
+.promoResult .q {
   font-size: 12px;
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 6px;
 }
 
-.a {
+.promoResult .a {
   font-size: 13px;
   color: #334155;
   line-height: 1.7;
   white-space: pre-wrap;
 }
 
-.recoList {
+.promoResult .recoList {
   margin: 12px 0 0;
   padding-left: 18px;
   display: grid;
@@ -119,14 +119,14 @@
   line-height: 1.7;
 }
 
-.note {
+.promoResult .note {
   margin-top: 12px;
   font-size: 12px;
   color: #5b6476;
 }
 
 /* right sticky */
-.sideCard {
+.promoResult .sideCard {
   position: sticky;
   top: 14px;
   background: #fff;
@@ -136,19 +136,19 @@
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
 }
 
-.sideCard__titleRow {
+.promoResult .sideCard__titleRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.sideCard h3 {
+.promoResult .sideCard h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 900;
 }
 
-.badge {
+.promoResult .badge {
   background: rgba(23, 102, 229, 0.12);
   color: #1766e5;
   padding: 4px 10px;
@@ -157,35 +157,35 @@
   font-weight: 800;
 }
 
-.sideMeta {
+.promoResult .sideMeta {
   margin-top: 12px;
   display: grid;
   gap: 6px;
 }
 
-.sideMeta__row {
+.promoResult .sideMeta__row {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: #5b6476;
 }
 
-.sideMeta__row .v {
+.promoResult .sideMeta__row .v {
   color: #0f172a;
   font-weight: 700;
 }
 
-.divider {
+.promoResult .divider {
   height: 1px;
   background: #e6e9f1;
   margin: 14px 0;
 }
 
-.w100 {
+.promoResult .w100 {
   width: 100%;
 }
 
-.hint {
+.promoResult .hint {
   margin: 10px 0 0;
   font-size: 12px;
   color: #5b6476;
@@ -193,7 +193,7 @@
 }
 
 /* 버튼 */
-.btn {
+.promoResult .btn {
   border: 1px solid #e6e9f1;
   background: #fff;
   color: #0f172a;
@@ -204,21 +204,21 @@
   cursor: pointer;
 }
 
-.btn:hover {
+.promoResult .btn:hover {
   border-color: rgba(23, 102, 229, 0.45);
 }
 
-.btn.ghost {
+.promoResult .btn.ghost {
   background: transparent;
 }
 
-.btn.primary {
+.promoResult .btn.primary {
   background: #001f66;
   color: #fff;
   border-color: #001f66;
 }
 
-.btn.primary:hover {
+.promoResult .btn.primary:hover {
   opacity: 0.92;
 }
 

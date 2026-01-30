@@ -2,7 +2,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 .diagResult {
   min-height: 100vh;
-  background: #f6f7fb;
+  background: var(--ui-bg, #f6f7fb);
   display: flex;
   flex-direction: column;
 }
@@ -64,48 +64,48 @@
 }
 
 /* 공통 카드 톤(진단 인터뷰와 동일 계열) */
-.card {
+.diagResult .card {
   background: #fff;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md, 0 14px 34px rgba(15, 23, 42, 0.08));
 }
 
-.card__head h2 {
+.diagResult .card__head h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 800;
   color: #0f172a;
 }
 
-.card__head p {
+.diagResult .card__head p {
   margin: 6px 0 0;
   font-size: 12px;
   color: #5b6476;
 }
 
-.summaryGrid {
+.diagResult .summaryGrid {
   margin-top: 12px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-.summaryItem {
-  border: 1px solid #e6e9f1;
+.diagResult .summaryItem {
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 12px;
   padding: 12px;
   background: #fbfcff;
 }
 
-.summaryItem .k {
+.diagResult .summaryItem .k {
   font-size: 11px;
   color: #5b6476;
   font-weight: 800;
 }
 
-.summaryItem .v {
+.diagResult .summaryItem .v {
   margin-top: 6px;
   font-size: 13px;
   color: #0f172a;
@@ -114,22 +114,22 @@
   word-break: break-word;
 }
 
-.block {
+.diagResult .block {
   margin-top: 12px;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 12px;
   padding: 12px;
   background: #fff;
 }
 
-.block__title {
+.diagResult .block__title {
   font-size: 12px;
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 8px;
 }
 
-.block__body {
+.diagResult .block__body {
   font-size: 13px;
   color: #334155;
   line-height: 1.7;
@@ -137,7 +137,7 @@
 }
 
 /* tips */
-.tips {
+.diagResult .tips {
   margin-top: 12px;
   border: 1px dashed rgba(23, 102, 229, 0.35);
   background: rgba(23, 102, 229, 0.06);
@@ -145,14 +145,14 @@
   padding: 12px;
 }
 
-.tips__title {
+.diagResult .tips__title {
   font-size: 12px;
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 8px;
 }
 
-.tips__list {
+.diagResult .tips__list {
   margin: 0;
   padding-left: 18px;
   display: grid;
@@ -162,38 +162,38 @@
 }
 
 /* right sticky */
-.sideCard {
+.diagResult .sideCard {
   position: static;
   top: 14px;
   background: #fff;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md, 0 14px 34px rgba(15, 23, 42, 0.08));
 }
 
-.sideCard__titleRow {
+.diagResult .sideCard__titleRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.sideCard h3 {
+.diagResult .sideCard h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 900;
 }
 
-.badge {
-  background: rgba(23, 102, 229, 0.12);
-  color: #1766e5;
+.diagResult .badge {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ui-accent, #2563eb);
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
 }
 
-.progressBar {
+.diagResult .progressBar {
   margin-top: 10px;
   height: 10px;
   background: #eef1f7;
@@ -201,42 +201,42 @@
   overflow: hidden;
 }
 
-.progressBar__fill {
+.diagResult .progressBar__fill {
   height: 100%;
-  background: #1766e5;
+  background: var(--ui-accent, #2563eb);
   width: 0%;
   transition: width 0.25s ease;
 }
 
-.sideMeta {
+.diagResult .sideMeta {
   margin-top: 12px;
   display: grid;
   gap: 6px;
 }
 
-.sideMeta__row {
+.diagResult .sideMeta__row {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: #5b6476;
 }
 
-.sideMeta__row .v {
+.diagResult .sideMeta__row .v {
   color: #0f172a;
   font-weight: 700;
 }
 
-.divider {
+.diagResult .divider {
   height: 1px;
   background: #e6e9f1;
   margin: 14px 0;
 }
 
-.w100 {
+.diagResult .w100 {
   width: 100%;
 }
 
-.hint {
+.diagResult .hint {
   margin: 10px 0 0;
   font-size: 12px;
   color: #5b6476;
@@ -244,8 +244,8 @@
 }
 
 /* 버튼(프로젝트 공통 톤 맞춤) */
-.btn {
-  border: 1px solid #e6e9f1;
+.diagResult .btn {
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   background: #fff;
   color: #0f172a;
   padding: 10px 14px;
@@ -255,21 +255,21 @@
   cursor: pointer;
 }
 
-.btn:hover {
+.diagResult .btn:hover {
   border-color: rgba(23, 102, 229, 0.45);
 }
 
-.btn.ghost {
+.diagResult .btn.ghost {
   background: transparent;
 }
 
-.btn.primary {
-  background: #001f66;
+.diagResult .btn.primary {
+  background: var(--ui-brand, #001f66);
   color: #fff;
-  border-color: #001f66;
+  border-color: var(--ui-brand, #001f66);
 }
 
-.btn.primary:hover {
+.diagResult .btn.primary:hover {
   opacity: 0.92;
 }
 

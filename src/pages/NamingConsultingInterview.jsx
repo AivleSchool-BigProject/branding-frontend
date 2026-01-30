@@ -34,8 +34,6 @@ import {
   resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
 
-import { saveCurrentBrandReportSnapshot } from "../utils/reportHistory.js";
-
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest } from "../api/client.js";
 
@@ -400,14 +398,6 @@ export default function NamingConsultingInterview({ onLogout }) {
       const hadPending = consumeBrandFlowPendingAbort();
       if (hadPending) {
         // ✅ (미완료 포함) 지금까지 진행한 내용을 마이페이지에 스냅샷으로 저장
-        try {
-          saveCurrentBrandReportSnapshot({
-            allowIncomplete: true,
-            reason: "interrupted",
-          });
-        } catch {
-          // ignore
-        }
 
         // ✅ 기업진단부터 다시 진행하도록 완전 초기화(진단 진행률 0%)
         try {
@@ -647,8 +637,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   /** ======================
-   *  ✅ 백 연동: 인터뷰 저장 + 네이밍 생성
-   *   - POST /brands/interview
+   *  ✅ 백 연동: 네이밍 생성
    *   - POST /brands/{brandId}/naming
    *  ====================== */
   const handleGenerateCandidates = async (mode = "generate") => {
@@ -678,46 +667,6 @@ export default function NamingConsultingInterview({ onLogout }) {
         p?.diagnosis?.brandId ||
         null;
 
-      const payload = buildNamingPayload(form, {
-        mode,
-        regenSeed: nextSeed,
-        brandId,
-        diagnosisSummary,
-      });
-
-      // 1) 인터뷰 저장(질문문장 포함)
-      //    - 백에서 brandId를 내려줄 수도 있어(없다면 기존 pipeline brandId 사용)
-      try {
-        const interviewRes = await apiRequest("/brands/interview", {
-          method: "POST",
-          data: payload,
-        });
-
-        const maybeBrandId =
-          interviewRes?.brandId ||
-          interviewRes?.id ||
-          interviewRes?.data?.brandId ||
-          interviewRes?.data?.id ||
-          interviewRes?.result?.brandId ||
-          interviewRes?.result?.id ||
-          interviewRes?.brand?.id ||
-          null;
-
-        // ✅ brandId는 '고정' (이미 있으면 덮어쓰지 않음)
-        if (!brandId && maybeBrandId) {
-          const normalized = Number(maybeBrandId);
-          brandId = Number.isNaN(normalized) ? maybeBrandId : normalized;
-          try {
-            upsertPipeline({ brandId });
-          } catch {
-            // ignore
-          }
-        }
-      } catch (e) {
-        // 인터뷰 저장 실패는 치명적일 수 있지만, 상황에 따라 생성만 될 수도 있어 경고만
-        console.warn("POST /brands/interview failed:", e);
-      }
-
       if (!brandId) {
         alert(
           "brandId를 확인할 수 없습니다. 기업진단 완료 후 생성된 brandId가 pipeline에 저장되어 있어야 합니다.",
@@ -725,7 +674,15 @@ export default function NamingConsultingInterview({ onLogout }) {
         return;
       }
 
-      // 2) 네이밍 생성
+      const payload = buildNamingPayload(form, {
+        mode,
+        regenSeed: nextSeed,
+        brandId,
+        diagnosisSummary,
+      });
+
+      // 1) 네이밍 생성
+
       const namingRes = await apiRequest(`/brands/${brandId}/naming`, {
         method: "POST",
         data: payload,

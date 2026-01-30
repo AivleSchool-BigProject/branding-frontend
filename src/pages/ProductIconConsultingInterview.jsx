@@ -19,7 +19,7 @@ import {
 import {
   addPromoReport,
   createPromoReportSnapshot,
-} from "../utils/reportHistory.js";
+} from "../utils/promoReportHistory.js";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)

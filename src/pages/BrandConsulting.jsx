@@ -3,6 +3,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import bannerImage from "../Image/banner_image/Banner_B.png";
+
+// ✅ 기업진단 단계(추가)
+import diagnosisImg from "../Image/main_image/companyanalyze.png";
 import Logocon from "../Image/brandcon_image/LOGO.png";
 import namecon from "../Image/brandcon_image/NAME.png";
 import conceptcon from "../Image/brandcon_image/CONCEPT.png";
@@ -21,8 +24,6 @@ import {
   resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
 
-import { saveCurrentBrandReportSnapshot } from "../utils/reportHistory.js";
-
 export default function BrandConsulting({ onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,15 +40,6 @@ export default function BrandConsulting({ onLogout }) {
     try {
       const hadPending = consumeBrandFlowPendingAbort();
       if (hadPending) {
-        try {
-          saveCurrentBrandReportSnapshot({
-            allowIncomplete: true,
-            reason: "interrupted",
-          });
-        } catch {
-          // ignore
-        }
-
         try {
           resetBrandConsultingToDiagnosisStart("interrupted");
         } catch {
@@ -72,6 +64,14 @@ export default function BrandConsulting({ onLogout }) {
 
   const steps = useMemo(
     () => [
+      {
+        key: "diagnosis",
+        title: "기업진단 & 인터뷰",
+        sub: "브랜드 컨설팅의 기준 데이터(요약)를 만들기 위한 기업진단 단계",
+        img: diagnosisImg,
+        tag: "Diagnosis",
+        route: "/diagnosis",
+      },
       {
         key: "naming",
         title: "네이밍",
@@ -262,7 +262,7 @@ export default function BrandConsulting({ onLogout }) {
           </div>
 
           <div className="bcFlowMeta" aria-label="브랜드 컨설팅 요약">
-            <span className="bcMetaPill">4단계</span>
+            <span className="bcMetaPill">5단계</span>
             <span className="bcMetaPill">단계별 3안</span>
             <span className="bcMetaPill">선택 기반 연결</span>
           </div>
@@ -282,14 +282,19 @@ export default function BrandConsulting({ onLogout }) {
               <div
                 className="bcFlowList"
                 role="list"
-                aria-label="브랜드 컨설팅 4단계 목록"
+                aria-label="브랜드 컨설팅 5단계 목록"
               >
                 {steps.map((s, idx) => {
-                  const stepUnlocked = unlocked[s.key];
-                  const stepDone = Boolean(
-                    pipeline?.[s.key]?.selectedId ||
-                    pipeline?.[s.key]?.selected,
-                  );
+                  const isDiagnosisStep = s.key === "diagnosis";
+                  const stepUnlocked = isDiagnosisStep
+                    ? true
+                    : Boolean(unlocked[s.key]);
+                  const stepDone = isDiagnosisStep
+                    ? status.hasDiagnosis
+                    : Boolean(
+                        pipeline?.[s.key]?.selectedId ||
+                        pipeline?.[s.key]?.selected,
+                      );
 
                   return (
                     <div
@@ -327,7 +332,13 @@ export default function BrandConsulting({ onLogout }) {
                             disabled={!stepUnlocked}
                             onClick={() => navigate(s.route)}
                           >
-                            {stepDone ? "결과 확인/수정" : "이 단계 진행"}
+                            {isDiagnosisStep
+                              ? stepDone
+                                ? "진단 확인/수정"
+                                : "기업진단 시작"
+                              : stepDone
+                                ? "결과 확인/수정"
+                                : "이 단계 진행"}
                           </button>
                         </div>
                       </div>

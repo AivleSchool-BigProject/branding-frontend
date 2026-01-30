@@ -2,7 +2,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 .brandResult {
   min-height: 100vh;
-  background: #f6f7fb;
+  background: var(--ui-bg, #f6f7fb);
   display: flex;
   flex-direction: column;
 }
@@ -61,55 +61,55 @@
 }
 
 /* 카드 */
-.card {
+.brandResult .card {
   background: #fff;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md, 0 14px 34px rgba(15, 23, 42, 0.08));
 }
 
-.card__head h2 {
+.brandResult .card__head h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 800;
   color: #0f172a;
 }
 
-.card__head p {
+.brandResult .card__head p {
   margin: 6px 0 0;
   font-size: 12px;
   color: #5b6476;
 }
 
-.qa {
+.brandResult .qa {
   margin-top: 12px;
   display: grid;
   gap: 10px;
 }
 
-.qa__item {
-  border: 1px solid #e6e9f1;
+.brandResult .qa__item {
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 12px;
   padding: 12px;
   background: #fbfcff;
 }
 
-.q {
+.brandResult .q {
   font-size: 12px;
   font-weight: 900;
   color: #0f172a;
   margin-bottom: 6px;
 }
 
-.a {
+.brandResult .a {
   font-size: 13px;
   color: #334155;
   line-height: 1.7;
   white-space: pre-wrap;
 }
 
-.recoList {
+.brandResult .recoList {
   margin: 12px 0 0;
   padding-left: 18px;
   display: grid;
@@ -119,73 +119,73 @@
   line-height: 1.7;
 }
 
-.note {
+.brandResult .note {
   margin-top: 12px;
   font-size: 12px;
   color: #5b6476;
 }
 
 /* right sticky */
-.sideCard {
+.brandResult .sideCard {
   position: sticky;
   top: 14px;
   background: #fff;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   border-radius: 14px;
   padding: 16px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md, 0 14px 34px rgba(15, 23, 42, 0.08));
 }
 
-.sideCard__titleRow {
+.brandResult .sideCard__titleRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.sideCard h3 {
+.brandResult .sideCard h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 900;
 }
 
-.badge {
-  background: rgba(23, 102, 229, 0.12);
-  color: #1766e5;
+.brandResult .badge {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ui-accent, #2563eb);
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
 }
 
-.sideMeta {
+.brandResult .sideMeta {
   margin-top: 12px;
   display: grid;
   gap: 6px;
 }
 
-.sideMeta__row {
+.brandResult .sideMeta__row {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: #5b6476;
 }
 
-.sideMeta__row .v {
+.brandResult .sideMeta__row .v {
   color: #0f172a;
   font-weight: 700;
 }
 
-.divider {
+.brandResult .divider {
   height: 1px;
   background: #e6e9f1;
   margin: 14px 0;
 }
 
-.w100 {
+.brandResult .w100 {
   width: 100%;
 }
 
-.hint {
+.brandResult .hint {
   margin: 10px 0 0;
   font-size: 12px;
   color: #5b6476;
@@ -193,8 +193,8 @@
 }
 
 /* 버튼(기존 결과 페이지들과 톤 통일) */
-.btn {
-  border: 1px solid #e6e9f1;
+.brandResult .btn {
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.1));
   background: #fff;
   color: #0f172a;
   padding: 10px 14px;
@@ -204,21 +204,21 @@
   cursor: pointer;
 }
 
-.btn:hover {
+.brandResult .btn:hover {
   border-color: rgba(23, 102, 229, 0.45);
 }
 
-.btn.ghost {
+.brandResult .btn.ghost {
   background: transparent;
 }
 
-.btn.primary {
-  background: #001f66;
+.brandResult .btn.primary {
+  background: var(--ui-brand, #001f66);
   color: #fff;
-  border-color: #001f66;
+  border-color: var(--ui-brand, #001f66);
 }
 
-.btn.primary:hover {
+.brandResult .btn.primary:hover {
   opacity: 0.92;
 }
 

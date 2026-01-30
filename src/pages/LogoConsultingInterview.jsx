@@ -18,31 +18,28 @@ import {
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
 
+// ✅ 파이프라인(단계 잠금/결과 저장)
 import {
   ensureStrictStepAccess,
   readPipeline,
+  setStepResult,
+  clearStepsFrom,
   getSelected,
   setBrandFlowCurrent,
   markBrandFlowPendingAbort,
   consumeBrandFlowPendingAbort,
   resetBrandConsultingToDiagnosisStart,
-  setStepResult,
-  clearStepsFrom,
   completeBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
-import {
-  addBrandReport,
-  createBrandReportSnapshot,
-  saveCurrentBrandReportSnapshot,
-} from "../utils/reportHistory.js";
-
-// ✅ 백엔드 요청(axios)
+// ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest } from "../api/client.js";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
+// ✅ 마이페이지 로고 표시 fallback용(백 저장이 지연/누락될 때)
+const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 
 const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
 
@@ -71,6 +68,25 @@ function safeParse(raw) {
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
+  }
+}
+
+function upsertSelectedLogoFallback(brandId, logoUrl) {
+  const bid = String(brandId ?? "").trim();
+  const url = String(logoUrl ?? "").trim();
+  if (!bid || !url) return;
+
+  try {
+    const raw = userGetItem(SELECTED_LOGO_MAP_KEY);
+    const parsed = safeParse(raw);
+    const map =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    map[bid] = url;
+    userSetItem(SELECTED_LOGO_MAP_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
   }
 }
 
@@ -368,15 +384,6 @@ export default function LogoConsultingInterview({ onLogout }) {
     try {
       const hadPending = consumeBrandFlowPendingAbort();
       if (hadPending) {
-        try {
-          saveCurrentBrandReportSnapshot({
-            allowIncomplete: true,
-            reason: "interrupted",
-          });
-        } catch {
-          // ignore
-        }
-
         try {
           resetBrandConsultingToDiagnosisStart("interrupted");
         } catch {
@@ -787,6 +794,33 @@ export default function LogoConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+
+    // ✅ 선택 즉시 로컬 fallback 저장(brandId -> logoUrl)
+    // - 서버 저장이 지연/누락되거나, 사용자가 '완료' 전에 마이페이지로 이동해도
+    //   카드/상세리포트에서 선택 로고를 보여주기 위함
+    try {
+      const p = readPipeline();
+      const brandId =
+        p?.brandId ||
+        p?.brand?.id ||
+        p?.diagnosisResult?.brandId ||
+        p?.diagnosis?.brandId ||
+        null;
+
+      const picked = candidates.find((c) => c.id === id) || null;
+      const url =
+        picked?.imageUrl ||
+        picked?.url ||
+        picked?.logoUrl ||
+        picked?.logoImageUrl ||
+        "";
+
+      if (brandId && String(url).trim()) {
+        upsertSelectedLogoFallback(brandId, url);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   const [finishing, setFinishing] = useState(false);
@@ -821,10 +855,20 @@ export default function LogoConsultingInterview({ onLogout }) {
 
     setFinishing(true);
     try {
+      // ✅ 프론트 로컬에도 저장(brandId -> selected logoUrl)
+      upsertSelectedLogoFallback(brandId, selectedLogoUrl);
+
       // ✅ 백엔드에 선택값 저장(로고 선택 → 브랜드 컨설팅 종료)
       await apiRequest(`/brands/${brandId}/logo/select`, {
         method: "POST",
-        data: { selectedByUser: String(selectedLogoUrl) },
+        // ✅ 백 구현/DTO 차이 대비: 여러 필드명으로 함께 전달
+        data: {
+          selectedByUser: String(selectedLogoUrl),
+          selectedLogoUrl: String(selectedLogoUrl),
+          logoUrl: String(selectedLogoUrl),
+          imageUrl: String(selectedLogoUrl),
+          url: String(selectedLogoUrl),
+        },
       });
     } catch (e) {
       const status = e?.response?.status;
@@ -849,13 +893,6 @@ export default function LogoConsultingInterview({ onLogout }) {
       }
     } finally {
       setFinishing(false);
-    }
-
-    try {
-      // ✅ 완료 시점의 결과 스냅샷을 히스토리에 저장(카드가 쌓이는 구조)
-      addBrandReport(createBrandReportSnapshot());
-    } catch {
-      // ignore
     }
     try {
       completeBrandFlow();

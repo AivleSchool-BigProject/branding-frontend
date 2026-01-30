@@ -29,8 +29,6 @@ import {
   readPipeline,
 } from "../utils/brandPipelineStorage.js";
 
-import { saveCurrentBrandReportSnapshot } from "../utils/reportHistory.js";
-
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest } from "../api/client.js";
 
@@ -448,15 +446,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     try {
       const hadPending = consumeBrandFlowPendingAbort();
       if (hadPending) {
-        try {
-          saveCurrentBrandReportSnapshot({
-            allowIncomplete: true,
-            reason: "interrupted",
-          });
-        } catch {
-          // ignore
-        }
-
         try {
           resetBrandConsultingToDiagnosisStart("interrupted");
         } catch {
@@ -960,7 +949,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   };
 
   return (
-    <div className="diagInterview consultingInterview">
+    <div className="diagInterview consultingInterview brandStoryInterview">
       <PolicyModal
         open={openType === "privacy"}
         title="개인정보 처리방침"

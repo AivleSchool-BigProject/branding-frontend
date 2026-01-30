@@ -1,11 +1,14 @@
 // src/pages/BrandReportDetail.jsx
-import React, { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
-import { getBrandReport } from "../utils/reportHistory.js";
+import { fetchMyBrands, mapBrandDtoToReport } from "../api/mypage.js";
+import { userSafeParse } from "../utils/userLocalStorage.js";
+
+const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 
 function fmt(ts) {
   if (!ts) return "-";
@@ -49,11 +52,105 @@ export default function BrandReportDetail({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const report = useMemo(() => getBrandReport(id), [id]);
+  const location = useLocation();
+
+  const [report, setReport] = useState(() => {
+    const st = location?.state || {};
+    return st?.report || null;
+  });
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+
+    const load = async () => {
+      // ✅ MyPage에서 state로 넘긴 report가 있으면 우선 사용
+      const st = location?.state || {};
+      if (st?.report && String(st.report?.id) === String(id)) {
+        setReport(st.report);
+        return;
+      }
+
+      setLoading(true);
+      setLoadError("");
+
+      try {
+        const data = await fetchMyBrands();
+        const arr = Array.isArray(data) ? data : [];
+        const mapped = arr
+          .map((dto) => mapBrandDtoToReport(dto))
+          .filter((r) => r && r.id);
+
+        const found = mapped.find((r) => String(r.id) === String(id));
+        if (found) {
+          if (!alive) return;
+          setReport(found);
+          return;
+        }
+        // ✅ 서버 목록에도 없으면 종료
+        if (!alive) return;
+        setLoadError("리포트를 찾을 수 없습니다.");
+        setReport(null);
+      } catch (e) {
+        const msg =
+          e?.userMessage || e?.message || "리포트를 불러오지 못했습니다.";
+        if (!alive) return;
+        setLoadError(msg);
+        setReport(null);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [id]);
 
   const snap = report?.snapshot || {};
   const diag = snap?.diagnosisSummary || {};
   const sel = snap?.selections || {};
+
+  // ✅ 로고 URL: 서버 snapshot → raw dto → 로컬 fallback 순
+  const selectedLogoMap = useMemo(() => {
+    const v = userSafeParse(SELECTED_LOGO_MAP_KEY);
+    return v && typeof v === "object" ? v : {};
+  }, []);
+
+  const logoImageUrl = useMemo(() => {
+    const url =
+      sel?.logo?.imageUrl ||
+      sel?.logo?.url ||
+      report?.logoUrl ||
+      report?._raw?.logoUrl ||
+      report?._raw?.logoImageUrl ||
+      report?._raw?.selectedByUser ||
+      report?._raw?.selectedLogoUrl ||
+      (typeof selectedLogoMap?.[String(id)] === "string"
+        ? selectedLogoMap[String(id)]
+        : "");
+
+    const raw = typeof url === "string" ? url.trim() : "";
+    if (!raw) return "";
+
+    // ✅ 상대경로(/uploads/.., logos/..)면 API_BASE/ASSET_BASE를 붙여서 표시
+    const API_BASE =
+      import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+    const ASSET_BASE =
+      import.meta.env.VITE_ASSET_BASE_URL ||
+      import.meta.env.VITE_S3_BASE_URL ||
+      "";
+
+    if (/^(data:|blob:|https?:\/\/)/i.test(raw)) return raw;
+    if (raw.startsWith("//")) return `https:${raw}`;
+
+    const base = (ASSET_BASE || API_BASE || "").replace(/\/+$/, "");
+    const path = raw.startsWith("/") ? raw : `/${raw}`;
+    return base ? `${base}${path}` : raw;
+  }, [sel, report, id, selectedLogoMap]);
 
   const diagDone = Boolean(
     diag?.companyName ||
@@ -102,8 +199,18 @@ export default function BrandReportDetail({ onLogout }) {
           <div className="diagInterview__container">
             <div className="card">
               <div className="card__head">
-                <h2>리포트를 찾을 수 없습니다</h2>
-                <p>마이페이지에서 다시 선택해 주세요.</p>
+                <h2>
+                  {loading
+                    ? "리포트를 불러오는 중..."
+                    : "리포트를 찾을 수 없습니다"}
+                </h2>
+                <p>
+                  {loading
+                    ? "잠시만 기다려 주세요."
+                    : loadError
+                      ? loadError
+                      : "마이페이지에서 다시 선택해 주세요."}
+                </p>
               </div>
               <button
                 type="button"
@@ -130,7 +237,7 @@ export default function BrandReportDetail({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">브랜드 컨설팅 리포트</h1>
               <p className="diagInterview__sub">
-                저장된 리포트 스냅샷입니다. (프론트 임시 저장)
+                저장된 리포트입니다. (서버 저장)
               </p>
             </div>
 
@@ -209,17 +316,57 @@ export default function BrandReportDetail({ onLogout }) {
             name={sel?.logo?.name || ""}
             bullets={bulletize(sel?.logo?.summary || sel?.logo?.reason)}
             extra={
-              sel?.logo?.prompt ? (
-                <div style={{ marginTop: 10 }}>
-                  <h4 style={{ margin: "10px 0 6px" }}>로고 프롬프트</h4>
-                  <textarea
-                    readOnly
-                    value={sel.logo.prompt}
-                    rows={6}
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              ) : null
+              <div style={{ marginTop: 10 }}>
+                {logoImageUrl ? (
+                  <div style={{ marginBottom: 12 }}>
+                    <h4 style={{ margin: "10px 0 6px" }}>선택한 로고</h4>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <img
+                        src={logoImageUrl}
+                        alt="선택한 로고"
+                        style={{
+                          width: 260,
+                          maxWidth: "100%",
+                          height: "auto",
+                          borderRadius: 12,
+                          border: "1px solid #e5e7eb",
+                          background: "white",
+                        }}
+                      />
+                    </div>
+                    <p
+                      style={{
+                        margin: "8px 0 0",
+                        fontSize: 12,
+                        color: "#6b7280",
+                        wordBreak: "break-all",
+                      }}
+                      title={logoImageUrl}
+                    >
+                      {logoImageUrl}
+                    </p>
+                  </div>
+                ) : null}
+
+                {sel?.logo?.prompt ? (
+                  <div>
+                    <h4 style={{ margin: "10px 0 6px" }}>로고 프롬프트</h4>
+                    <textarea
+                      readOnly
+                      value={sel.logo.prompt}
+                      rows={6}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                ) : null}
+              </div>
             }
           />
 

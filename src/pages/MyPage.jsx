@@ -12,12 +12,13 @@ import { getCurrentUserId } from "../api/auth.js";
 
 import { userSafeParse, userSetJSON } from "../utils/userLocalStorage.js";
 
+import { listPromoReports } from "../utils/promoReportHistory.js";
+
 import {
-  ensureBrandHistorySeeded,
-  ensureBrandHistoryDummies,
-  listBrandReports,
-  listPromoReports,
-} from "../utils/reportHistory.js";
+  fetchMyBrands,
+  deleteMyBrand,
+  mapBrandDtoToReport,
+} from "../api/mypage.js";
 
 function fmt(ts) {
   if (!ts) return "-";
@@ -27,6 +28,12 @@ function fmt(ts) {
 }
 
 const PROFILE_KEY = "userProfile_v1";
+
+// ✅ 마이페이지 카드 삭제(목록 숨김) 키(사용자 스코프)
+const HIDDEN_BRANDS_KEY = "mypageHiddenBrands_v1";
+const HIDDEN_PROMOS_KEY = "mypageHiddenPromos_v1";
+// ✅ 로고 선택값 로컬 fallback(brandId -> logoUrl)
+const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 
 function getInitialLabel(userId) {
   const raw = String(userId ?? "").trim();
@@ -65,15 +72,35 @@ function extractLogoUrl(r) {
     r?.logoImageUrl,
     r?.thumbnailUrl,
     r?.imageUrl,
+    r?._raw?.logoUrl,
+    r?._raw?.selectedLogoUrl,
+    r?._raw?.selectedByUser,
+    r?._raw?.logoImageUrl,
     r?.snapshot?.selections?.logo?.imageUrl,
     r?.snapshot?.selections?.logo?.logoImageUrl,
     r?.snapshot?.selections?.logo?.url,
     r?.snapshot?.selections?.logo?.image,
     r?.snapshot?.selections?.logo?.img,
   ];
-  return (
-    candidates.find((v) => typeof v === "string" && v.trim().length > 0) || ""
-  );
+
+  const raw =
+    candidates.find((v) => typeof v === "string" && v.trim().length > 0) || "";
+  if (!raw) return "";
+
+  // ✅ 상대경로(/uploads/.., logos/..)면 API_BASE/ASSET_BASE를 붙여서 표시
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  const ASSET_BASE =
+    import.meta.env.VITE_ASSET_BASE_URL ||
+    import.meta.env.VITE_S3_BASE_URL ||
+    "";
+
+  const s = String(raw).trim();
+  if (/^(data:|blob:|https?:\/\/)/i.test(s)) return s;
+  if (s.startsWith("//")) return `https:${s}`;
+
+  const base = (ASSET_BASE || API_BASE || "").replace(/\/+$/, "");
+  const path = s.startsWith("/") ? s : `/${s}`;
+  return base ? `${base}${path}` : s;
 }
 
 function pickFirstString(...vals) {
@@ -161,24 +188,9 @@ export default function MyPage({ onLogout }) {
   const [brandReports, setBrandReports] = useState([]);
   const [promoReports, setPromoReports] = useState([]);
 
-  // ✅ 기존 1회 완료된 리포트(이전 버전)도 카드로 보이게 시드 + 목록 로드
-  useEffect(() => {
-    // URL 파라미터로 탭 이동(/mypage?tab=promo)
-    try {
-      const sp = new URLSearchParams(location.search || "");
-      const t = sp.get("tab");
-      if (t === "promo") setTab("promo");
-      if (t === "brand") setTab("brand");
-    } catch {
-      // ignore
-    }
-
-    ensureBrandHistorySeeded();
-    // ✅ 백 연동 전, 결과가 여러 개 쌓였을 때 UI 확인용 더미(3개)
-    ensureBrandHistoryDummies();
-    setBrandReports(listBrandReports());
-    setPromoReports(listPromoReports());
-  }, [location.search]);
+  const [brandLoading, setBrandLoading] = useState(false);
+  const [brandError, setBrandError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
   const userId = useMemo(() => {
     try {
@@ -192,6 +204,14 @@ export default function MyPage({ onLogout }) {
   const savedProfile = useMemo(() => {
     return userSafeParse(PROFILE_KEY) || {};
   }, []);
+
+  // ✅ 로고 선택값 로컬 fallback(brandId -> logoUrl)
+  // - 백에서 logoUrl이 아직 내려오지 않거나(지연/누락)
+  //   프론트가 선택값 저장을 끝낸 직후에도 카드에 바로 보여주기 위함
+  const selectedLogoMap = useMemo(() => {
+    const v = userSafeParse(SELECTED_LOGO_MAP_KEY);
+    return v && typeof v === "object" ? v : {};
+  }, [userId]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [displayName, setDisplayName] = useState(
     savedProfile.displayName || "",
@@ -225,11 +245,154 @@ export default function MyPage({ onLogout }) {
     setIsEditingProfile(false);
   };
 
+  const readHiddenSet = (key) => {
+    const raw = userSafeParse(key);
+    const arr = Array.isArray(raw) ? raw : [];
+    return new Set(arr.map((v) => String(v)));
+  };
+
+  const addHiddenId = (key, id) => {
+    const s = readHiddenSet(key);
+    s.add(String(id));
+    userSetJSON(key, Array.from(s));
+    return s;
+  };
+
+  const hideReportCard = (r) => {
+    if (!r?.id) return;
+    if (r?.kind === "promo") {
+      addHiddenId(HIDDEN_PROMOS_KEY, r.id);
+      setPromoReports((prev) =>
+        (Array.isArray(prev) ? prev : []).filter(
+          (x) => String(x?.id) !== String(r.id),
+        ),
+      );
+      return;
+    }
+    addHiddenId(HIDDEN_BRANDS_KEY, r.id);
+    setBrandReports((prev) =>
+      (Array.isArray(prev) ? prev : []).filter(
+        (x) => String(x?.id) !== String(r.id),
+      ),
+    );
+  };
+
+  const onDeleteCard = async (r, e) => {
+    if (e) e.stopPropagation();
+    if (!r?.id) return;
+
+    const ok = window.confirm(
+      "이 결과 카드를 삭제할까요?\n(삭제 후 복구는 어렵습니다)",
+    );
+    if (!ok) return;
+
+    setDeletingId(String(r.id));
+    try {
+      // ✅ 브랜드는 서버 삭제 API가 있을 경우 먼저 시도
+      if (r?.kind === "brand") {
+        try {
+          await deleteMyBrand(r.id);
+        } catch (err) {
+          // 서버에 삭제 API가 없을 수 있으므로 무시하고 '목록 숨김'으로 폴백
+          const status = err?.status;
+          if (status === 404 || status === 405) {
+            window.alert(
+              "현재 서버에 삭제 API가 없어 목록에서만 숨김 처리했습니다.",
+            );
+          } else if (status === 401 || status === 403) {
+            window.alert(
+              "로그인이 만료되었거나 권한이 없습니다. 목록에서만 숨김 처리했습니다.",
+            );
+          } else {
+            window.alert(
+              "삭제 요청 중 오류가 있어 목록에서만 숨김 처리했습니다.",
+            );
+          }
+        }
+      }
+
+      hideReportCard(r);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // ✅ URL 파라미터로 탭 이동(/mypage?tab=promo) - 탭만 변경
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(location.search || "");
+      const t = sp.get("tab");
+      if (t === "promo") setTab("promo");
+      if (t === "brand") setTab("brand");
+    } catch {
+      // ignore
+    }
+  }, [location.search]);
+
+  // ✅ 데이터 로드: 마운트 시 1회만
+  useEffect(() => {
+    // ✅ 프로모(홍보물) 리포트: 현재는 프론트(localStorage) 기반 유지
+    try {
+      const hiddenPromo = readHiddenSet(HIDDEN_PROMOS_KEY);
+      const promos = listPromoReports();
+      const arr = Array.isArray(promos) ? promos : [];
+      setPromoReports(
+        arr.filter((r) => r && r.id && !hiddenPromo.has(String(r.id))),
+      );
+    } catch {
+      setPromoReports([]);
+    }
+
+    let alive = true;
+
+    const loadBrands = async () => {
+      setBrandLoading(true);
+      setBrandError("");
+
+      const hiddenSet = readHiddenSet(HIDDEN_BRANDS_KEY);
+
+      try {
+        const data = await fetchMyBrands();
+        const arr = Array.isArray(data) ? data : [];
+        const mapped = arr
+          .map((dto) => mapBrandDtoToReport(dto))
+          .filter((r) => r && r.id);
+
+        // ✅ 마이페이지에는 "완성된 브랜드(FINAL)"만 노출(중복/미완료 카드 방지)
+        const completedOnly = mapped.filter((r) => Boolean(r?.isComplete));
+
+        if (!alive) return;
+        setBrandReports(
+          completedOnly.filter((r) => !hiddenSet.has(String(r.id))),
+        );
+      } catch (e) {
+        const msg = e?.userMessage || e?.message || "마이페이지 조회 실패";
+        if (!alive) return;
+        setBrandError(msg);
+        setBrandReports([]);
+      } finally {
+        if (alive) setBrandLoading(false);
+      }
+    };
+
+    loadBrands();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ✅ 탭 변경으로 재호출하지 않음
+
   const activeReports = tab === "brand" ? brandReports : promoReports;
 
   const filtered = useMemo(() => {
     const keyword = q.trim().toLowerCase();
-    const base = [...activeReports];
+    const hidden =
+      tab === "brand"
+        ? readHiddenSet(HIDDEN_BRANDS_KEY)
+        : readHiddenSet(HIDDEN_PROMOS_KEY);
+
+    const base = [...activeReports].filter((r) => !hidden.has(String(r?.id)));
 
     const sorted = base.sort((a, b) => {
       const at = a?.createdAt || 0;
@@ -238,6 +401,7 @@ export default function MyPage({ onLogout }) {
     });
 
     if (!keyword) return sorted;
+
     return sorted.filter((r) => {
       const t = String(r?.title || "").toLowerCase();
       const s = String(r?.subtitle || "").toLowerCase();
@@ -264,7 +428,7 @@ export default function MyPage({ onLogout }) {
         story.includes(keyword)
       );
     });
-  }, [activeReports, q, sort]);
+  }, [activeReports, q, sort, tab]);
 
   const goStart = () => {
     if (tab === "promo") {
@@ -276,8 +440,11 @@ export default function MyPage({ onLogout }) {
 
   const goDetail = (r) => {
     if (!r?.id) return;
-    if (r.kind === "promo") navigate(`/mypage/promo-report/${r.id}`);
-    else navigate(`/mypage/brand-report/${r.id}`);
+    if (r.kind === "promo") {
+      navigate(`/mypage/promo-report/${r.id}`, { state: { report: r } });
+    } else {
+      navigate(`/mypage/brand-report/${r.id}`, { state: { report: r } });
+    }
   };
 
   return (
@@ -461,216 +628,263 @@ export default function MyPage({ onLogout }) {
               </button>
             </div>
           ) : (
-            <div className="reportStack">
-              {filtered.map((r) => {
-                const company =
-                  r?.snapshot?.diagnosisSummary?.companyName ||
-                  r?.snapshot?.diagnosisSummary?.brandName ||
-                  r?.snapshot?.diagnosisSummary?.projectName ||
-                  "브랜드";
+            <>
+              {tab === "brand" && brandLoading ? (
+                <div className="myhub-hint">불러오는 중...</div>
+              ) : null}
+              {tab === "brand" && brandError ? (
+                <div className="myhub-hint danger">{brandError}</div>
+              ) : null}
 
-                const initials = getBrandInitials(company);
-                const variant = hashToInt(r?.id || company) % 6;
-                const logoUrl = extractLogoUrl(r);
+              <div className="reportStack">
+                {filtered.map((r) => {
+                  const company =
+                    r?.snapshot?.diagnosisSummary?.companyName ||
+                    r?.snapshot?.diagnosisSummary?.brandName ||
+                    r?.snapshot?.diagnosisSummary?.projectName ||
+                    "브랜드";
 
-                // ✅ 요청 반영: 브랜드 카드에 "한줄 소개" 추가
-                const oneLineRaw =
-                  r?.kind === "brand" ? extractOneLineText(r) : "";
-                const oneLinePreview = oneLineRaw
-                  ? truncateText(oneLineRaw, 80)
-                  : "-";
+                  const initials = getBrandInitials(company);
+                  const variant = hashToInt(r?.id || company) % 6;
+                  const logoUrl =
+                    extractLogoUrl(r) ||
+                    (typeof selectedLogoMap?.[String(r?.id)] === "string"
+                      ? selectedLogoMap[String(r.id)]
+                      : "");
 
-                // ✅ 컨셉/스토리 미리보기(장문 대비)
-                const conceptRaw =
-                  r?.kind === "brand" ? extractConceptText(r) : "";
-                const storyRaw = r?.kind === "brand" ? extractStoryText(r) : "";
-                const conceptPreview = conceptRaw
-                  ? truncateText(conceptRaw, 110)
-                  : "-";
-                const storyPreview = storyRaw
-                  ? truncateText(storyRaw, 110)
-                  : "-";
+                  const oneLineRaw =
+                    r?.kind === "brand" ? extractOneLineText(r) : "";
+                  const oneLinePreview = oneLineRaw
+                    ? truncateText(oneLineRaw, 80)
+                    : "-";
 
-                const snap0 = r?.snapshot || {};
-                const sel0 = snap0?.selections || {};
-                const diag0 = snap0?.diagnosisSummary || {};
+                  const conceptRaw =
+                    r?.kind === "brand" ? extractConceptText(r) : "";
+                  const storyRaw =
+                    r?.kind === "brand" ? extractStoryText(r) : "";
+                  const conceptPreview = conceptRaw
+                    ? truncateText(conceptRaw, 110)
+                    : "-";
+                  const storyPreview = storyRaw
+                    ? truncateText(storyRaw, 110)
+                    : "-";
 
-                const diagDone = Boolean(
-                  diag0?.companyName ||
-                  diag0?.brandName ||
-                  diag0?.projectName ||
-                  diag0?.oneLine ||
-                  diag0?.shortText,
-                );
-                const namingDone = Boolean(sel0?.naming);
-                const conceptDone = Boolean(sel0?.concept);
-                const storyDone = Boolean(sel0?.story);
-                const logoDone = Boolean(sel0?.logo);
+                  const snap0 = r?.snapshot || {};
+                  const sel0 = snap0?.selections || {};
+                  const diag0 = snap0?.diagnosisSummary || {};
 
-                const fallbackDone = [
-                  diagDone,
-                  namingDone,
-                  conceptDone,
-                  storyDone,
-                  logoDone,
-                ].filter(Boolean).length;
+                  const diagDone = Boolean(
+                    diag0?.companyName ||
+                    diag0?.brandName ||
+                    diag0?.projectName ||
+                    diag0?.oneLine ||
+                    diag0?.shortText,
+                  );
+                  const namingDone = Boolean(sel0?.naming);
+                  const conceptDone = Boolean(sel0?.concept);
+                  const storyDone = Boolean(sel0?.story);
+                  const logoDone = Boolean(sel0?.logo);
 
-                const fallbackPct = Math.round((fallbackDone / 5) * 100);
+                  const fallbackDone = [
+                    diagDone,
+                    namingDone,
+                    conceptDone,
+                    storyDone,
+                    logoDone,
+                  ].filter(Boolean).length;
 
-                const storedPctRaw = Number(
-                  r?.progress?.percent ?? r?.progressPercent ?? Number.NaN,
-                );
-                const pctFromStored =
-                  Number.isFinite(storedPctRaw) && storedPctRaw > 0
-                    ? storedPctRaw
-                    : fallbackPct;
+                  const fallbackPct = Math.round((fallbackDone / 5) * 100);
 
-                const isComplete = Boolean(
-                  r?.isDummy ? true : (r?.isComplete ?? pctFromStored >= 100),
-                );
+                  const storedPctRaw = Number(
+                    r?.progress?.percent ?? r?.progressPercent ?? Number.NaN,
+                  );
+                  const pctFromStored =
+                    Number.isFinite(storedPctRaw) && storedPctRaw > 0
+                      ? storedPctRaw
+                      : fallbackPct;
 
-                const progressPct = Math.max(
-                  0,
-                  Math.min(100, isComplete ? 100 : pctFromStored),
-                );
-                const progressStatus = isComplete ? "완료" : "미완료";
+                  const isComplete = Boolean(
+                    r?.isDummy ? true : (r?.isComplete ?? pctFromStored >= 100),
+                  );
 
-                return (
-                  <article
-                    key={r.id}
-                    className={`reportCard ${r?.isDummy ? "is-dummy" : ""}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => goDetail(r)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        goDetail(r);
-                      }
-                    }}
-                  >
-                    <div className="reportCard__grid">
-                      <div
-                        className={`reportLogo variant-${variant} ${logoUrl ? "hasImage" : ""}`}
-                        aria-hidden="true"
-                      >
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="" loading="lazy" />
-                        ) : (
-                          <span className="reportLogoText">{initials}</span>
-                        )}
-                      </div>
+                  const progressPct = Math.max(
+                    0,
+                    Math.min(100, isComplete ? 100 : pctFromStored),
+                  );
+                  const progressStatus = isComplete ? "완료" : "미완료";
 
-                      <div className="reportInfo">
-                        {r?.kind === "brand" ? (
-                          <>
-                            <div className="reportTitleRow">
-                              <h4 className="reportCard__title">{company}</h4>
-                              <div className="reportTitleBadges">
-                                {r?.isDummy ? (
-                                  <span className="pill dummy">더미</span>
-                                ) : null}
-                                <span
-                                  className={`pill ${
-                                    isComplete ? "complete" : "incomplete"
-                                  }`}
-                                >
-                                  {progressStatus}
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="reportCard__sub">
-                              <strong style={{ fontWeight: 900 }}>
-                                한줄 소개
-                              </strong>{" "}
-                              · {oneLinePreview}
-                            </p>
-
-                            <p className="reportCard__sub">
-                              <strong style={{ fontWeight: 900 }}>컨셉</strong>{" "}
-                              · {conceptPreview}
-                            </p>
-
-                            <p className="reportCard__sub">
-                              <strong style={{ fontWeight: 900 }}>
-                                스토리
-                              </strong>{" "}
-                              · {storyPreview}
-                            </p>
-
-                            <div className="reportProgress">
-                              <div className="reportProgress__row">
-                                <span className="reportProgress__label">
-                                  진행도
-                                </span>
-                                <span className="reportProgress__value">
-                                  {progressPct}%
-                                </span>
-                              </div>
-                              <div
-                                className="reportProgress__bar"
-                                role="progressbar"
-                                aria-valuenow={progressPct}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                              >
-                                <div
-                                  className="reportProgress__fill"
-                                  style={{ width: `${progressPct}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            <div className="reportMeta">
-                              <span className="metaChip ghost">
-                                {fmt(r.createdAt)}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="reportTitleRow">
-                              <h4 className="reportCard__title">{r.title}</h4>
-                              {r?.isDummy ? (
-                                <span className="pill dummy">더미</span>
-                              ) : null}
-                            </div>
-
-                            {r.subtitle ? (
-                              <p className="reportCard__sub">{r.subtitle}</p>
-                            ) : null}
-                            <div className="reportMeta">
-                              {r.serviceLabel ? (
-                                <span className="metaChip">
-                                  {r.serviceLabel}
-                                </span>
-                              ) : null}
-                              <span className="metaChip ghost">
-                                {fmt(r.createdAt)}
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="reportCTA">
-                        <button
-                          type="button"
-                          className="btn primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            goDetail(r);
-                          }}
+                  return (
+                    <article
+                      key={r.id}
+                      className={`reportCard ${r?.isDummy ? "is-dummy" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => goDetail(r)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          goDetail(r);
+                        }
+                      }}
+                    >
+                      <div className="reportCard__grid">
+                        <div
+                          className={`reportLogo variant-${variant} ${
+                            logoUrl ? "hasImage" : ""
+                          }`}
+                          aria-hidden="true"
                         >
-                          리포트 보기
-                        </button>
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="" loading="lazy" />
+                          ) : (
+                            <span className="reportLogoText">{initials}</span>
+                          )}
+                        </div>
+
+                        <div className="reportInfo">
+                          {r?.kind === "brand" ? (
+                            <>
+                              <div className="reportTitleRow">
+                                <h4 className="reportCard__title">{company}</h4>
+                                <div className="reportTitleBadges">
+                                  {r?.isDummy ? (
+                                    <span className="pill dummy">더미</span>
+                                  ) : null}
+                                  <span
+                                    className={`pill ${
+                                      isComplete ? "complete" : "incomplete"
+                                    }`}
+                                  >
+                                    {progressStatus}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    className={`iconBtn danger ${
+                                      deletingId === String(r.id)
+                                        ? "is-busy"
+                                        : ""
+                                    }`}
+                                    aria-label="삭제"
+                                    title="삭제"
+                                    onClick={(e) => onDeleteCard(r, e)}
+                                    disabled={deletingId === String(r.id)}
+                                  >
+                                    {deletingId === String(r.id) ? "…" : "🗑"}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <p className="reportCard__sub">
+                                <strong style={{ fontWeight: 900 }}>
+                                  한줄 소개
+                                </strong>{" "}
+                                · {oneLinePreview}
+                              </p>
+
+                              <p className="reportCard__sub">
+                                <strong style={{ fontWeight: 900 }}>
+                                  컨셉
+                                </strong>{" "}
+                                · {conceptPreview}
+                              </p>
+
+                              <p className="reportCard__sub">
+                                <strong style={{ fontWeight: 900 }}>
+                                  스토리
+                                </strong>{" "}
+                                · {storyPreview}
+                              </p>
+
+                              <div className="reportProgress">
+                                <div className="reportProgress__row">
+                                  <span className="reportProgress__label">
+                                    진행도
+                                  </span>
+                                  <span className="reportProgress__value">
+                                    {progressPct}%
+                                  </span>
+                                </div>
+                                <div
+                                  className="reportProgress__bar"
+                                  role="progressbar"
+                                  aria-valuenow={progressPct}
+                                  aria-valuemin={0}
+                                  aria-valuemax={100}
+                                >
+                                  <div
+                                    className="reportProgress__fill"
+                                    style={{ width: `${progressPct}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="reportMeta">
+                                <span className="metaChip ghost">
+                                  {fmt(r.createdAt)}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="reportTitleRow">
+                                <h4 className="reportCard__title">{r.title}</h4>
+                                <div className="reportTitleBadges">
+                                  {r?.isDummy ? (
+                                    <span className="pill dummy">더미</span>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    className={`iconBtn danger ${
+                                      deletingId === String(r.id)
+                                        ? "is-busy"
+                                        : ""
+                                    }`}
+                                    aria-label="삭제"
+                                    title="삭제"
+                                    onClick={(e) => onDeleteCard(r, e)}
+                                    disabled={deletingId === String(r.id)}
+                                  >
+                                    {deletingId === String(r.id) ? "…" : "🗑"}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {r.subtitle ? (
+                                <p className="reportCard__sub">{r.subtitle}</p>
+                              ) : null}
+                              <div className="reportMeta">
+                                {r.serviceLabel ? (
+                                  <span className="metaChip">
+                                    {r.serviceLabel}
+                                  </span>
+                                ) : null}
+                                <span className="metaChip ghost">
+                                  {fmt(r.createdAt)}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="reportCTA">
+                          <button
+                            type="button"
+                            className="btn primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              goDetail(r);
+                            }}
+                          >
+                            리포트 보기
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
 

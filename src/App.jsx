@@ -54,8 +54,6 @@ import {
   resetBrandConsultingToDiagnosisStart,
 } from "./utils/brandPipelineStorage.js";
 
-import { saveCurrentBrandReportSnapshot } from "./utils/reportHistory.js";
-
 export default function App() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -79,16 +77,6 @@ export default function App() {
         // ✅ 즉시 원래 단계로 복귀(이탈 취소)
         navigate(prev, { replace: true });
         return;
-      }
-
-      // ✅ 이탈 확정 → (미완료 포함) 스냅샷 저장 후, 진단부터 재시작 상태로 초기화
-      try {
-        saveCurrentBrandReportSnapshot({
-          allowIncomplete: true,
-          reason: "leave_route",
-        });
-      } catch {
-        // ignore
       }
 
       try {

@@ -4,7 +4,7 @@
 /* ✅ 전역 body/nav-link 건드리지 말고, 페이지 스코프 안에서만 적용 */
 .brand-page {
   font-family: "Manrope", "Noto Sans KR", sans-serif;
-  background: #f6f7fb;
+  background: var(--ui-bg);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -26,14 +26,14 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  background: #0f172a;
+  background: var(--ui-ink);
 }
 
 .hero-banner::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.38);
   z-index: 0;
 }
 
@@ -81,7 +81,7 @@
 
 .bcHero__title {
   margin: 2px 0 0;
-  font-size: 42px;
+  font-size: 34px;
   font-weight: 900;
 }
 
@@ -124,13 +124,13 @@
 }
 
 .hero-slide strong {
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 800;
   display: block;
 }
 
 .hero-slide span {
-  font-size: 25px;
+  font-size: 19px;
   font-weight: 300;
   color: rgba(255, 255, 255, 0.85);
   display: block;
@@ -212,7 +212,7 @@
 .bcMetaPill {
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line);
   background: #ffffff;
   color: #334155;
   font-size: 12px;
@@ -233,13 +233,13 @@
 /* ✅ Intro Card */
 .bcIntroCard {
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line);
   border-radius: 18px;
   padding: 18px;
   display: grid;
   grid-template-columns: 1.4fr 0.9fr;
   gap: 16px;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md);
   margin-bottom: 18px;
 }
 
@@ -285,7 +285,7 @@
   gap: 12px;
   padding: 10px 12px;
   border-radius: 14px;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line);
   background: #ffffff;
 }
 
@@ -325,7 +325,7 @@
   gap: 8px;
   padding: 10px 12px;
   border-radius: 14px;
-  background: #0f172a;
+  background: var(--ui-ink);
   color: rgba(255, 255, 255, 0.92);
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
 }
@@ -334,7 +334,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #4f46e5;
+  background: var(--ui-accent);
 }
 
 .bcMiniFlow__sep {
@@ -354,7 +354,7 @@
   line-height: 1.6;
 }
 
-/* ✅ 4단계 흐름: 1개의 카드 안에 정리 */
+/* ✅ 5단계 흐름: 1개의 카드 안에 정리 */
 .bcFlowCard {
   margin-top: 8px;
   margin-bottom: 18px;
@@ -393,8 +393,8 @@
 
 .bcFlowActions {
   border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid #e6e9f1;
+  background: rgba(15, 23, 42, 0.02);
+  border: 1px solid var(--ui-line);
   padding: 14px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
@@ -482,7 +482,7 @@
   margin: 0 0 6px;
   font-size: 12px;
   font-weight: 800;
-  color: #2b69ff;
+  color: var(--ui-accent);
 }
 
 .bcFlowTitle {
@@ -530,7 +530,7 @@
 
 .service-card--static:hover {
   transform: none;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .bcBottomCTA__hint {
@@ -544,11 +544,11 @@
 .service-card {
   background: #fff;
   border-radius: 16px;
-  border: 1px solid #e6e9f1;
+  border: 1px solid var(--ui-line);
   padding: 18px;
   display: grid;
   gap: 10px;
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-shadow-md);
   cursor: pointer;
   transition:
     transform 0.15s ease,
@@ -557,7 +557,7 @@
 
 .service-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.1);
+  box-shadow: var(--ui-shadow-lg);
 }
 
 .service-image {
@@ -578,7 +578,7 @@
 .service-tag {
   margin: 0;
   font-size: 11px;
-  color: #4f46e5;
+  color: var(--ui-accent);
   font-weight: 700;
   letter-spacing: 0.08em;
 }

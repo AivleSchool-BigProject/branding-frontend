@@ -1,11 +1,11 @@
 // src/pages/PromoReportDetail.jsx
 import React, { useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
-import { getPromoReport } from "../utils/reportHistory.js";
+import { getPromoReport } from "../utils/promoReportHistory.js";
 
 function fmt(ts) {
   if (!ts) return "-";
@@ -28,7 +28,12 @@ export default function PromoReportDetail({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const report = useMemo(() => getPromoReport(id), [id]);
+  const location = useLocation();
+
+  const report = useMemo(() => {
+    const st = location?.state || {};
+    return st?.report || getPromoReport(id);
+  }, [id]);
   const snap = report?.snapshot || {};
   const selected = snap?.selected || null;
   const form = snap?.form || null;

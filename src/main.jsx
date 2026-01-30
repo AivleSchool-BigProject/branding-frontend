@@ -50,10 +50,13 @@ import "./styles/BrandStoryConsultingInterview.css";
 import "./styles/BrandAllResults.css";
 import "./styles/PromotionAllResults.css";
 
+// NOTE: 개발 환경(React 18)에서 React.StrictMode는 useEffect 등을 2번 실행해서
+// API 조회가 네트워크에 2번 찍히는 현상이 생길 수 있어요.
+// (프로덕션 빌드에서는 보통 1번만 실행)
+// 네트워크 중복 호출이 거슬리면 StrictMode를 제거하고, 디버깅이 필요하면 다시 켜세요.
+
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>,
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>,
 );
