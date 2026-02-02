@@ -34,10 +34,6 @@ import "./styles/Promotion.css";
 
 import "./styles/MyPage.css";
 
-import "./styles/DigitalImageConsultingInterview.css";
-import "./styles/OfflineImageConsultingInterview.css";
-import "./styles/PromoVideoConsultingInterview.css";
-
 import "./styles/DiagnosisResult.css";
 import "./styles/PromotionResult.css";
 import "./styles/BrandConsultingResult.css";

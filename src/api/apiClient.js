@@ -11,7 +11,20 @@ export async function apiRequest(
   path,
   { method = "GET", body, headers = {}, auth = true } = {},
 ) {
-  const h = { "Content-Type": "application/json", ...headers };
+  // ✅ GET 요청에 Content-Type을 강제로 넣으면 불필요한 preflight(OPTIONS) 요청이
+  // 발생할 수 있어, body가 있을 때만 Content-Type을 설정합니다.
+  const h = { ...headers };
+  const upper = String(method || "GET").toUpperCase();
+  if (
+    body !== undefined &&
+    body !== null &&
+    upper !== "GET" &&
+    upper !== "HEAD"
+  ) {
+    if (!h["Content-Type"] && !h["content-type"]) {
+      h["Content-Type"] = "application/json";
+    }
+  }
 
   if (auth) {
     const token = getAccessToken();
@@ -21,7 +34,8 @@ export async function apiRequest(
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: h,
-    body: body ? JSON.stringify(body) : undefined,
+    body:
+      body !== undefined && body !== null ? JSON.stringify(body) : undefined,
   });
 
   const text = await res.text();

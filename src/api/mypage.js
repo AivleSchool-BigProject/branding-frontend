@@ -1,5 +1,6 @@
 // src/api/mypage.js
-import { apiRequest } from "./apiClient";
+// ✅ axios 기반 공용 클라이언트 사용(프로젝트 전반과 통일)
+import { apiRequest } from "./client.js";
 
 /**
  * ✅ 마이페이지 - 내 브랜드 목록 조회
@@ -10,7 +11,7 @@ import { apiRequest } from "./apiClient";
  * ]
  */
 export function fetchMyBrands() {
-  return apiRequest("/mypage/brands", { method: "GET", auth: true });
+  return apiRequest("/mypage/brands", { method: "GET" });
 }
 
 /**
@@ -19,9 +20,10 @@ export function fetchMyBrands() {
  * - 현재 백엔드에 없을 수 있으니, 프론트에서는 실패해도 "목록 숨김"으로 폴백 처리합니다.
  */
 export function deleteMyBrand(brandId) {
+  // ✅ 백엔드 구현: POST /mypage/brands/{brandsId}
+  // (MyPageController.deleteBrand)
   return apiRequest(`/mypage/brands/${brandId}`, {
-    method: "DELETE",
-    auth: true,
+    method: "POST",
   });
 }
 

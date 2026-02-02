@@ -20,9 +20,78 @@ export function fetchMyBrands() {
  */
 export function deleteMyBrand(brandId) {
   return apiRequest(`/mypage/brands/${brandId}`, {
-    method: "DELETE",
+    method: "POST",
     auth: true,
   });
+}
+
+function pickFirstString(...vals) {
+  for (const v of vals) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return "";
+}
+
+function readLogoUrlFromDto(dto) {
+  const d = dto || {};
+  // ✅ 백 DTO/필드명 차이 대비: 최대한 많은 후보를 확인
+  return pickFirstString(
+    d.logoUrl,
+    d.logoURL,
+    d.logoImageUrl,
+    d.logo_image_url,
+    d.selectedLogoUrl,
+    d.selected_logo_url,
+    d.selectedByUser,
+    d.selected_by_user,
+    d.thumbnailUrl,
+    d.imageUrl,
+    d.url,
+    d.logo?.url,
+    d.logo?.imageUrl,
+    d.logo?.logoUrl,
+    d.logo?.logoImageUrl,
+    d.logo?.selectedLogoUrl,
+    d.logo?.selectedByUser,
+    d.snapshot?.selections?.logo?.imageUrl,
+    d.snapshot?.selections?.logo?.url,
+    d.snapshot?.selections?.logo?.selectedLogoUrl,
+    d.snapshot?.selections?.logo?.selectedByUser,
+    d.selections?.logo?.imageUrl,
+    d.selections?.logo?.url,
+    d.selections?.logo?.selectedLogoUrl,
+    d.selections?.logo?.selectedByUser,
+  );
+}
+
+function readConceptTextFromDto(dto) {
+  const d = dto || {};
+  return pickFirstString(
+    d.concept,
+    d.conceptText,
+    d.conceptSummary,
+    d.brandConcept,
+    d.snapshot?.concept?.content,
+    d.snapshot?.selections?.concept?.content,
+    d.snapshot?.selections?.concept?.text,
+    d.selections?.concept?.content,
+    d.selections?.concept?.text,
+  );
+}
+
+function readStoryTextFromDto(dto) {
+  const d = dto || {};
+  return pickFirstString(
+    d.story,
+    d.storyText,
+    d.storySummary,
+    d.brandStory,
+    d.snapshot?.story?.content,
+    d.snapshot?.selections?.story?.content,
+    d.snapshot?.selections?.story?.text,
+    d.selections?.story?.content,
+    d.selections?.story?.text,
+  );
 }
 
 /**
@@ -32,26 +101,9 @@ export function mapBrandDtoToReport(dto) {
   const id = String(dto?.brandId ?? "");
   const brandName = String(dto?.brandName ?? "").trim() || "브랜드";
 
-  const concept = typeof dto?.concept === "string" ? dto.concept : "";
-  const story = typeof dto?.story === "string" ? dto.story : "";
-
-  // ✅ 로고 URL은 백/버전별로 키가 달라질 수 있어 후보를 폭넓게 대응
-  const pickFirstString = (...vals) => {
-    for (const v of vals) {
-      if (typeof v === "string" && v.trim().length > 0) return v.trim();
-    }
-    return "";
-  };
-
-  const logoUrl = pickFirstString(
-    dto?.logoUrl,
-    dto?.logoURL,
-    dto?.logoImageUrl,
-    dto?.thumbnailUrl,
-    dto?.imageUrl,
-    dto?.selectedLogoUrl,
-    dto?.selectedByUser,
-  );
+  const concept = readConceptTextFromDto(dto);
+  const story = readStoryTextFromDto(dto);
+  const logoUrl = readLogoUrlFromDto(dto);
 
   const step = String(dto?.currentStep ?? "")
     .trim()
