@@ -16,6 +16,74 @@ import EasyLoginModal from "../components/EasyLoginModal.jsx";
 import { apiRequest, setAccessToken } from "../api/client.js";
 import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
 
+function EyeIcon(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function EyeOffIcon(props) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        d="M3 3l18 18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10.6 10.6a2.6 2.6 0 0 0 3.7 3.7"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6.2 6.8C4 8.6 2.5 12 2.5 12s3.5 7 9.5 7c1.7 0 3.2-.4 4.5-1"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.1 4.6A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7s-1.2 2.4-3.5 4.3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function LoginApp() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,6 +98,7 @@ export default function LoginApp() {
   // ✅ 입력값
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // ✅ UX
   const [errorMsg, setErrorMsg] = useState("");
@@ -193,15 +262,32 @@ export default function LoginApp() {
 
             <div className="field">
               <label htmlFor="login-password">비밀번호</label>
-              <input
-                id="login-password"
-                type="password"
-                placeholder="비밀번호 입력"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
+
+              <div className="pw-input-wrap">
+                <input
+                  id="login-password"
+                  className="pw-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="비밀번호 입력"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+
+                <button
+                  type="button"
+                  className="pw-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={
+                    showPassword ? "비밀번호 숨기기" : "비밀번호 보기"
+                  }
+                  aria-pressed={showPassword}
+                  disabled={isLoading}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
             </div>
 
             <div className="login-links">
