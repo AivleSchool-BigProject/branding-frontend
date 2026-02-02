@@ -1,5 +1,5 @@
 // src/pages/MainPage.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/MainPage.css";
 
@@ -13,6 +13,8 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 import SiteHeader from "../components/SiteHeader.jsx";
+
+import { apiRequest } from "../api/client.js";
 
 // ✅ 브랜드 컨설팅(원큐) 진행 데이터 확인 + 리셋
 import {
@@ -48,6 +50,57 @@ export default function MainPage({ onLogout }) {
   const brandCtaLabel = hasAnyBrandProgress
     ? "기업진단부터 다시 시작하기"
     : "기업진단 인터뷰부터 시작하기";
+
+  // ✅ 투자유치(투자 게시판) 미리보기: 투자게시판과 동일한 데이터 사용
+  const [dealItems, setDealItems] = useState([]);
+  const [dealLoading, setDealLoading] = useState(false);
+  const [dealError, setDealError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchDealPosts = async () => {
+      setDealLoading(true);
+      setDealError("");
+      try {
+        const data = await apiRequest("/brands/posts");
+        const list = Array.isArray(data) ? data : [];
+
+        // ✅ InvestmentBoard.jsx와 동일한 매핑을 사용(필드명 차이 대응)
+        const mapped = list.map((item) => ({
+          id: item.postId ?? item.id,
+          name: item.companyName || "회사명",
+          oneLiner: item.shortDescription || "",
+          logoImageUrl: item.logoImageUrl || "",
+          tags: Array.isArray(item.hashtags)
+            ? item.hashtags.map((tag) => String(tag).trim()).filter(Boolean)
+            : [],
+          region: item.region || "",
+          companySize: item.companySize || "",
+          updatedAt: item.updatedAt ? String(item.updatedAt).slice(0, 10) : "",
+        }));
+
+        // 최신순 정렬 (updatedAt이 없으면 뒤로)
+        mapped.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+
+        if (mounted) setDealItems(mapped);
+      } catch (err) {
+        console.error(err);
+        if (mounted) setDealError("투자유치 게시글을 불러오지 못했습니다.");
+      } finally {
+        if (mounted) setDealLoading(false);
+      }
+    };
+
+    fetchDealPosts();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const dealPreview = useMemo(() => {
+    return (Array.isArray(dealItems) ? dealItems : []).slice(0, 3);
+  }, [dealItems]);
 
   const handleStartBrandFromDiagnosis = () => {
     if (hasAnyBrandProgress) {
@@ -230,69 +283,118 @@ export default function MainPage({ onLogout }) {
           </div>
 
           <div className="deal-grid">
-            {/* 더미 카드들(기존 그대로 사용 가능) */}
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>셀타스퀘어</h4>
-                  <p>AI 전구약알림 서비스, AI CRO</p>
-                  <p>Pre A, TIPS, Series A 투자 완료</p>
-                </div>
-                <div className="deal-logo">SELTA</div>
-              </div>
-              <div className="deal-tags">
-                <span>AI헬스</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series A] 92억+ TIPS 투자유치</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
+            {dealLoading ? (
+              <>
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <article key={idx} className="deal-card deal-card--skeleton">
+                    <div className="deal-card-head">
+                      <div>
+                        <h4 className="skeleton-line skeleton-line--title" />
+                        <p className="skeleton-line" />
+                        <p className="skeleton-line" />
+                      </div>
+                      <div className="deal-logo skeleton-box" />
+                    </div>
+                    <div className="deal-tags">
+                      <span className="skeleton-pill" />
+                      <span className="skeleton-pill" />
+                      <span className="skeleton-pill" />
+                    </div>
+                    <div className="deal-footer">
+                      <strong className="skeleton-line skeleton-line--strong" />
+                      <button type="button" disabled>
+                        불러오는 중
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </>
+            ) : dealError ? (
+              <div className="deal-empty">{dealError}</div>
+            ) : dealPreview.length === 0 ? (
+              <div className="deal-empty">
+                <div>등록된 게시글이 없습니다.</div>
+                <button
+                  type="button"
+                  className="deal-empty-btn"
+                  onClick={() => navigate("/investment/new")}
+                >
+                  게시글 등록
                 </button>
               </div>
-            </article>
+            ) : (
+              dealPreview.map((it) => {
+                const logoText = (it.name || "CO").slice(0, 2).toUpperCase();
+                const metaLine = [it.companySize, it.region]
+                  .filter(Boolean)
+                  .join(" · ");
+                const detailPath = `/investment/${it.id}`;
 
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>링크플로우</h4>
-                  <p>인공지능(AI) 웨어러블 전문 링크플로우</p>
-                  <p>Series B 라운드 준비 완료</p>
-                </div>
-                <div className="deal-logo">LINK</div>
-              </div>
-              <div className="deal-tags">
-                <span>AI,웨어러블</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[series C 이상] 409억 투자유치</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
+                return (
+                  <article
+                    key={it.id}
+                    className="deal-card deal-card--clickable"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(detailPath)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ")
+                        navigate(detailPath);
+                    }}
+                    aria-label={`${it.name} 투자유치 게시글`}
+                  >
+                    <div className="deal-card-head">
+                      <div>
+                        <h4>{it.name}</h4>
+                        <p>{it.oneLiner || "한 줄 소개가 아직 없습니다."}</p>
+                        {metaLine ? <p>{metaLine}</p> : null}
+                      </div>
 
-            <article className="deal-card">
-              <div className="deal-card-head">
-                <div>
-                  <h4>빔웍스</h4>
-                  <p>초음파 AI 진단 센서 기반 고가치</p>
-                  <p>서비스/임상기업 운영, Pre-IPO 완료</p>
-                </div>
-                <div className="deal-logo">BEAM</div>
-              </div>
-              <div className="deal-tags">
-                <span>헬스케어, AI</span>
-                <span>포켓투자유치 A,B 받은팀</span>
-              </div>
-              <div className="deal-footer">
-                <strong>[pre-IPO] 170억 투자완료</strong>
-                <button type="button" onClick={() => alert("뉴스 (테스트)")}>
-                  투자성과 뉴스
-                </button>
-              </div>
-            </article>
+                      <div className="deal-logo" aria-hidden="true">
+                        {it.logoImageUrl ? (
+                          <img
+                            className="deal-logo-img"
+                            src={it.logoImageUrl}
+                            alt=""
+                          />
+                        ) : (
+                          logoText
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="deal-tags">
+                      {Array.isArray(it.tags) && it.tags.length > 0 ? (
+                        it.tags
+                          .slice(0, 3)
+                          .map((tag, idx) => (
+                            <span key={`${tag}-${idx}`}>#{tag}</span>
+                          ))
+                      ) : (
+                        <span className="deal-tag-empty">태그 없음</span>
+                      )}
+                    </div>
+
+                    <div className="deal-footer">
+                      <strong>
+                        {it.updatedAt
+                          ? `업데이트: ${it.updatedAt}`
+                          : "상세보기"}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(detailPath);
+                        }}
+                      >
+                        상세보기
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            )}
           </div>
         </section>
       </main>

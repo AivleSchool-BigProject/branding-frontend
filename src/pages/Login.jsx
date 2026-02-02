@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
 import analyzeCompany from "../Image/login_image/기업 초기 진단.png";
@@ -18,7 +18,8 @@ import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
 
 export default function LoginApp() {
   const navigate = useNavigate();
-
+  const location = useLocation();
+  const redirectTo = location?.state?.redirectTo;
   // ✅ 약관/개인정보 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -68,7 +69,7 @@ export default function LoginApp() {
       setCurrentUserId(data?.userId || data?.loginId || loginId);
       setIsLoggedIn(true);
 
-      navigate("/main");
+      navigate(redirectTo || "/main");
     } catch (err) {
       setErrorMsg(err?.userMessage || "로그인에 실패했습니다.");
     } finally {

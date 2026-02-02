@@ -8,6 +8,9 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import { fetchMyBrands, mapBrandDtoToReport } from "../api/mypage.js";
 import { userSafeParse } from "../utils/userLocalStorage.js";
 
+import { clearAccessToken } from "../api/client.js";
+import { clearCurrentUserId, clearIsLoggedIn } from "../api/auth.js";
+
 const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 
 function fmt(ts) {
@@ -61,6 +64,24 @@ export default function BrandReportDetail({ onLogout }) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
 
+  // ✅ 401/403 등 인증 이슈가 발생하면 즉시 로그아웃 처리
+  const forceRelogin = (message) => {
+    try {
+      clearAccessToken();
+      clearCurrentUserId();
+      clearIsLoggedIn();
+    } catch {
+      // ignore
+    }
+    try {
+      if (typeof onLogout === "function") onLogout();
+    } catch {
+      // ignore
+    }
+    if (message) window.alert(message);
+    navigate("/login", { replace: true });
+  };
+
   useEffect(() => {
     let alive = true;
 
@@ -93,6 +114,13 @@ export default function BrandReportDetail({ onLogout }) {
         setLoadError("리포트를 찾을 수 없습니다.");
         setReport(null);
       } catch (e) {
+        const status = e?.status;
+        if (status === 401 || status === 403) {
+          forceRelogin(
+            "로그인이 만료되었거나 권한이 없습니다(401/403). 다시 로그인해주세요.",
+          );
+          return;
+        }
         const msg =
           e?.userMessage || e?.message || "리포트를 불러오지 못했습니다.";
         if (!alive) return;

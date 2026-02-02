@@ -8,7 +8,13 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
-import { getCurrentUserId } from "../api/auth.js";
+import {
+  getCurrentUserId,
+  clearCurrentUserId,
+  clearIsLoggedIn,
+} from "../api/auth.js";
+
+import { clearAccessToken } from "../api/client.js";
 
 import { userSafeParse, userSetJSON } from "../utils/userLocalStorage.js";
 
@@ -192,6 +198,25 @@ export default function MyPage({ onLogout }) {
   const [brandError, setBrandError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
 
+  // ✅ 401/403 등 인증 이슈가 발생하면 즉시 로그아웃 처리
+  const forceRelogin = (message) => {
+    try {
+      clearAccessToken();
+      clearCurrentUserId();
+      clearIsLoggedIn();
+    } catch {
+      // ignore
+    }
+    try {
+      if (typeof onLogout === "function") onLogout();
+    } catch {
+      // ignore
+    }
+
+    if (message) window.alert(message);
+    navigate("/login", { replace: true });
+  };
+
   const userId = useMemo(() => {
     try {
       return getCurrentUserId();
@@ -293,15 +318,18 @@ export default function MyPage({ onLogout }) {
         try {
           await deleteMyBrand(r.id);
         } catch (err) {
-          // 서버에 삭제 API가 없을 수 있으므로 무시하고 '목록 숨김'으로 폴백
           const status = err?.status;
+          if (status === 401 || status === 403) {
+            forceRelogin(
+              "로그인이 만료되었거나 권한이 없습니다. 다시 로그인해주세요.",
+            );
+            return;
+          }
+
+          // 서버에 삭제 API가 없을 수 있으므로 '목록 숨김'으로 폴백
           if (status === 404 || status === 405) {
             window.alert(
               "현재 서버에 삭제 API가 없어 목록에서만 숨김 처리했습니다.",
-            );
-          } else if (status === 401 || status === 403) {
-            window.alert(
-              "로그인이 만료되었거나 권한이 없습니다. 목록에서만 숨김 처리했습니다.",
             );
           } else {
             window.alert(
@@ -358,14 +386,18 @@ export default function MyPage({ onLogout }) {
           .map((dto) => mapBrandDtoToReport(dto))
           .filter((r) => r && r.id);
 
-        // ✅ 마이페이지에는 "완성된 브랜드(FINAL)"만 노출(중복/미완료 카드 방지)
-        const completedOnly = mapped.filter((r) => Boolean(r?.isComplete));
-
+        // ✅ 완료/미완료 모두 노출 (삭제/상태 확인을 위해)
         if (!alive) return;
-        setBrandReports(
-          completedOnly.filter((r) => !hiddenSet.has(String(r.id))),
-        );
+        setBrandReports(mapped.filter((r) => !hiddenSet.has(String(r.id))));
       } catch (e) {
+        const status = e?.status;
+        if (status === 401 || status === 403) {
+          forceRelogin(
+            "로그인이 만료되었거나 권한이 없습니다(401/403). 다시 로그인해주세요.",
+          );
+          return;
+        }
+
         const msg = e?.userMessage || e?.message || "마이페이지 조회 실패";
         if (!alive) return;
         setBrandError(msg);

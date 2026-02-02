@@ -1,6 +1,6 @@
 // src/pages/LogoConsultingInterview.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
@@ -22,6 +22,7 @@ import {
 import {
   ensureStrictStepAccess,
   readPipeline,
+  upsertPipeline,
   setStepResult,
   clearStepsFrom,
   getSelected,
@@ -69,6 +70,40 @@ function safeParse(raw) {
   } catch {
     return null;
   }
+}
+
+function getStoredAccessToken() {
+  return (
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("jwt") ||
+    ""
+  );
+}
+
+function parseJwtPayload(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function isJwtExpired(token, skewSeconds = 30) {
+  const payload = parseJwtPayload(token);
+  const exp = payload?.exp;
+  if (!exp) return false; // exp가 없으면 판단 불가 -> 만료로 보지 않음
+  const nowSec = Math.floor(Date.now() / 1000);
+  return nowSec >= Number(exp) - Number(skewSeconds || 0);
 }
 
 function upsertSelectedLogoFallback(brandId, logoUrl) {
@@ -222,138 +257,6 @@ function normalizeLogoCandidates(raw) {
   });
 }
 
-function generateLogoCandidates(form, seed = 0) {
-  const companyName = safeText(form?.companyName, "브랜드");
-  const industry = safeText(form?.industry, "분야");
-  const stage = stageLabel(form?.stage);
-  const target = safeText(form?.targetCustomer, "고객");
-  const oneLine = safeText(form?.oneLine, "");
-
-  const structure = Array.isArray(form?.logo_structure)
-    ? form.logo_structure
-    : [];
-  const colors = Array.isArray(form?.brand_color) ? form.brand_color : [];
-  const styles = Array.isArray(form?.design_style) ? form.design_style : [];
-  const ratioArr = Array.isArray(form?.visual_text_ratio)
-    ? form.visual_text_ratio
-    : [];
-  const ratio = ratioArr[0] || "";
-  const motif = safeText(form?.visual_motif, "");
-  const usage = safeText(form?.primary_usage, "");
-  const ref = safeText(form?.design_reference, "");
-
-  const pick = (arr, idx) => arr[(idx + seed) % arr.length];
-
-  const paletteByChoice = () => {
-    const p = [];
-    if (colors.includes("블루/네이비"))
-      p.push(["네이비", "블루", "화이트", "그레이"]);
-    if (colors.includes("블랙/화이트"))
-      p.push(["블랙", "오프화이트", "차콜", "그레이"]);
-    if (!p.length) p.push(["네이비", "화이트", "그레이"]);
-    return pick(p, 0);
-  };
-
-  const structureLine = () => {
-    if (!structure.length) return "콤비네이션(심볼+워드)";
-    return structure.join(" · ");
-  };
-
-  const styleLine = () => {
-    if (!styles.length) return "플랫/미니멀";
-    return styles.join(" · ");
-  };
-
-  const ratioGuide = () => {
-    if (ratio === "이미지 중심") return "심볼 비중을 높이고, 워드는 서브로";
-    if (ratio === "텍스트 중심") return "워드마크 가독성 최우선, 심볼은 보조";
-    return "심볼/워드 비중을 균형 있게";
-  };
-
-  const motifGuide = motif
-    ? `모티프: “${motif}”를 단순화해 상징으로 연결`
-    : "모티프: (선택) 상징이 필요하면 1개만 정해서 단순화";
-
-  const usageGuide = usage
-    ? `사용처: ${usage} 기준으로 최소 크기(16~24px)에서도 식별되게`
-    : "사용처: (필수) 가장 많이 쓰일 곳 기준으로 가독/식별성 설계";
-
-  const sharedChecks = [
-    "앱 아이콘/파비콘에서 식별 가능한가?",
-    "작게 써도 무너지지 않는가?",
-    "흑백/단색 버전에서도 유지되는가?",
-    "가로/세로 락업(배치) 확장이 가능한가?",
-  ];
-
-  const mk = (id, name, mood, extra) => ({
-    id,
-    name,
-    summary: `${industry}(${stage})에서 ${target}에게 ‘${mood}’ 인상을 주는 로고 방향`,
-    structure: structureLine(),
-    palette: paletteByChoice(),
-    style: styleLine(),
-    ratio: ratio || "균형",
-    motif: motif || "(선택) 없음",
-    usage: usage || "(필수) 입력 필요",
-    guidance: [
-      `비중 가이드: ${ratioGuide()}`,
-      motifGuide,
-      usageGuide,
-      ref
-        ? `레퍼런스 반영: 제공한 레퍼런스 톤을 과하게 따라가지 않고, 핵심만 추출`
-        : null,
-    ].filter(Boolean),
-    doDont: sharedChecks,
-    rationale: oneLine
-      ? `원라인(“${oneLine}”)과 결이 맞도록 ‘형태/색/비중’을 정리했습니다.`
-      : `형태/색/비중을 먼저 고정하면, 이후 시안에서 흔들리지 않아요.`,
-    ...extra,
-  });
-
-  const directionA = mk("logo_1", "A · 플랫/미니멀 기본안", "단정·신뢰", {
-    focus: "여백/정렬/가독성 우선",
-    typography: "산세리프(굵기 600~800) · 가독 우선",
-    symbolIdea:
-      structure.includes("심볼형") || structure.includes("콤비네이션")
-        ? "기하학(원/사각) 기반 단순 심볼 + 여백 설계"
-        : "워드마크 중심으로 자간/두께 최적화",
-  });
-
-  const directionB = mk("logo_2", "B · 테크/선명 강화안", "선명·기술감", {
-    focus: "라인/그리드/정확한 비례",
-    typography: "모노스페이스 또는 테크 산세리프 · 정확",
-    symbolIdea: motif
-      ? `모티프(${motif})를 라인/포인트로 추상화`
-      : "방향성/성장(화살표/로드맵) 요소를 은근히 암시",
-  });
-
-  const directionC = mk(
-    "logo_3",
-    "C · 3D/그라디언트 포인트안",
-    "확장·프리미엄",
-    {
-      focus: "디지털 환경(앱/썸네일)에서 존재감",
-      typography: "산세리프(세미라운드) 또는 세리프(절제) · 프리미엄",
-      symbolIdea: styles.includes("3D/그라디언트")
-        ? "단순 형태 + 제한된 그라디언트(1~2개)로 깊이감"
-        : "단색 기반 + 포인트 컬러만 제한적으로 사용",
-    },
-  );
-
-  // 사용자가 스타일을 하나만 골랐다면, 후보를 그 방향으로 더 맞춰줌
-  const onlyMinimal = styles.length === 1 && styles[0] === "플랫/미니멀";
-  const only3D = styles.length === 1 && styles[0] === "3D/그라디언트";
-
-  if (onlyMinimal) {
-    directionC.focus = "과한 효과 없이, 단색/미니멀 확장(서브마크) 중심";
-  }
-  if (only3D) {
-    directionA.focus = "그라디언트/입체감을 ‘절제’해서 브랜드 일관성 유지";
-  }
-
-  return [directionA, directionB, directionC];
-}
-
 const INITIAL_FORM = {
   // ✅ 기업 진단에서 자동 반영(편집 X)
   companyName: "",
@@ -378,6 +281,38 @@ const INITIAL_FORM = {
 
 export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
+  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
+  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
+  // 규칙:
+  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
+  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(location.search || "");
+      const raw = qs.get("brandId");
+      const incoming = raw ? Number(raw) : NaN;
+      if (!Number.isFinite(incoming) || incoming <= 0) return;
+
+      const p = readPipeline();
+      const curRaw = p?.brandId;
+      const cur = Number(curRaw);
+
+      // pipeline이 비어 있으면 URL 값을 채운다
+      if (!Number.isFinite(cur) || cur <= 0) {
+        upsertPipeline({ brandId: incoming });
+        return;
+      }
+
+      // pipeline이 이미 있으면 URL 값은 무시(오염 방지) + 쿼리 제거
+      if (cur !== incoming) {
+        navigate(location.pathname, { replace: true });
+      }
+    } catch {
+      // ignore
+    }
+  }, [location.search, location.pathname, navigate]);
 
   // ✅ Strict Flow 가드(로고 단계) + 이탈/새로고침 처리
   useEffect(() => {
@@ -506,11 +441,6 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
-
-  const scrollToSection = (ref) => {
-    if (!ref?.current) return;
-    ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   const scrollToResult = () => {
     if (!refResult?.current) return;
@@ -777,10 +707,27 @@ export default function LogoConsultingInterview({ onLogout }) {
       console.warn("POST /brands/{brandId}/logo failed:", e);
 
       if (status === 401 || status === 403) {
+        const token = getStoredAccessToken();
+        const expired = !token || isJwtExpired(token);
+
+        if (expired) {
+          // ✅ 여기! 구문 오류 수정: 줄바꿈은 \n 사용
+          alert(
+            "로그인 토큰이 없거나 만료되었습니다.\n다시 로그인한 뒤 '완료'를 다시 눌러주세요.",
+          );
+          navigate("/login", {
+            state: {
+              redirectTo: `${location.pathname}${location.search || ""}`,
+            },
+          });
+          return;
+        }
+
+        const serverMsg = msg ? `\n\n서버 메시지: ${msg}` : "";
         alert(
           status === 401
-            ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
-            : "권한이 없습니다(403). 현재 로그인한 계정의 brandId가 아닐 수 있어요. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
+            ? `로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.${serverMsg}`
+            : `권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다.\n기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.${serverMsg}`,
         );
         return;
       }
@@ -796,8 +743,6 @@ export default function LogoConsultingInterview({ onLogout }) {
     persistResult(candidates, id, regenSeed);
 
     // ✅ 선택 즉시 로컬 fallback 저장(brandId -> logoUrl)
-    // - 서버 저장이 지연/누락되거나, 사용자가 '완료' 전에 마이페이지로 이동해도
-    //   카드/상세리포트에서 선택 로고를 보여주기 위함
     try {
       const p = readPipeline();
       const brandId =
@@ -894,11 +839,13 @@ export default function LogoConsultingInterview({ onLogout }) {
     } finally {
       setFinishing(false);
     }
+
     try {
       completeBrandFlow();
     } catch {
       // ignore
     }
+
     navigate("/mypage");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };

@@ -247,9 +247,10 @@ export default function DiagnosisResult({ onLogout }) {
   const goHome = () => navigate("/diagnosis");
 
   // ✅ 브랜드 컨설팅 실제 이동 (모달 확인 후 호출)
+  // - brandId는 pipeline(userLocalStorage)에 이미 저장되어 흐름이 유지됩니다.
+  // - URL 쿼리로 brandId를 전달하면 마지막 단계(로고)에서 잘못된 brandId로 덮어쓰이는 케이스가 있어 제거합니다.
   const goBrandConsultingStart = () => {
-    const qs = brandId ? `?brandId=${encodeURIComponent(String(brandId))}` : "";
-    navigate(`/brand/naming/interview${qs}`);
+    navigate("/brand/naming/interview");
   };
 
   const handleReset = () => {

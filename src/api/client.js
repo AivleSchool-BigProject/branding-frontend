@@ -40,15 +40,34 @@ export const apiClient = axios.create({
   },
 });
 
-// ✅ 요청에 토큰 자동 첨부
+// ✅ 요청에 토큰 자동 첨부 + FormData(multipart) 헤더 자동 처리
+// - axios에서 FormData를 보낼 때 Content-Type을 직접 multipart/form-data로 고정하면
+//   boundary가 누락되어 서버에서 Multipart 파싱이 실패할 수 있어요.
 apiClient.interceptors.request.use((config) => {
   const token = getAccessToken();
-  if (token && !config.headers?.Authorization) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${token}`,
-    };
+
+  // axios는 headers 타입이 다양할 수 있어 안전하게 평탄화
+  const nextHeaders = { ...(config.headers || {}) };
+
+  // ✅ FormData면 Content-Type을 제거해서 axios/브라우저가 boundary 포함해서 자동 세팅하게 함
+  const isFormData =
+    typeof FormData !== "undefined" && config?.data instanceof FormData;
+
+  if (isFormData) {
+    // 케이스/라이브러리 차이에 대비해 다양한 키를 제거
+    delete nextHeaders["Content-Type"];
+    delete nextHeaders["content-type"];
+
+    // 일부 코드가 multipart/form-data를 명시해도 동일하게 제거
+    // (axios가 boundary를 포함해 올바른 헤더를 다시 설정하도록)
   }
+
+  // ✅ 토큰 자동 첨부(이미 붙어있으면 유지)
+  if (token && !nextHeaders.Authorization && !nextHeaders.authorization) {
+    nextHeaders.Authorization = `Bearer ${token}`;
+  }
+
+  config.headers = nextHeaders;
   return config;
 });
 
