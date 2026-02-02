@@ -420,6 +420,107 @@
   color: rgba(15, 23, 42, 0.55) !important;
 }
 
+/* =========================================================
+   ✅ 메인 '바로 시작하기' 안내 모달(PolicyModal 내부)
+   - 메인에서 바로 인터뷰로 들어갈 때, 진행 흐름만 짧게 안내
+   ========================================================= */
+.startGuide {
+  display: grid;
+  gap: 12px;
+}
+
+.startGuide__lead {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1.7;
+}
+
+.startGuide__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.startGuide__step {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  color: #0f172a;
+}
+
+.startGuide__arrow {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.35);
+}
+
+.startGuide__bullets {
+  margin: 0;
+  padding-left: 18px;
+  color: #475569;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.startGuide__actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.startGuide__btn {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  cursor: pointer;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: 13px;
+  color: #0f172a;
+  transition:
+    transform 0.08s ease,
+    filter 0.12s ease,
+    background 0.12s ease;
+}
+
+.startGuide__btn:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.startGuide__btn:active {
+  transform: translateY(1px);
+}
+
+.startGuide__btn.primary {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #001f66 0%, #2563eb 100%);
+  box-shadow: 0 12px 22px rgba(0, 31, 102, 0.16);
+}
+
+.startGuide__btn.primary:hover {
+  filter: brightness(1.03);
+}
+
+.startGuide__btn.ghost {
+  background: #ffffff;
+}
+
 /* ===== skeleton ===== */
 .deal-card--skeleton {
   position: relative;

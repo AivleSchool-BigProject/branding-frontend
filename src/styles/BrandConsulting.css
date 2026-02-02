@@ -625,6 +625,102 @@
 }
 
 /* =========================================================
+   ✅ Buttons (BrandConsulting 전용)
+   - 다른 페이지에 영향 없도록 .brand-page 스코프
+========================================================= */
+
+.brand-page .btn {
+  -webkit-appearance: none;
+  appearance: none;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.12));
+  background: #ffffff;
+  color: #0f172a;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.1px;
+  line-height: 1;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  cursor: pointer;
+  user-select: none;
+
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 22px rgba(15, 23, 42, 0.06);
+
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.brand-page .btn:hover {
+  border-color: rgba(23, 102, 229, 0.45);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 16px 34px rgba(15, 23, 42, 0.1);
+}
+
+.brand-page .btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.brand-page .btn:focus-visible {
+  outline: 3px solid rgba(23, 102, 229, 0.35);
+  outline-offset: 2px;
+}
+
+/* Ghost: 가벼운 톤(단계 이동 버튼 등에 사용) */
+.brand-page .btn.ghost {
+  background: rgba(15, 23, 42, 0.03);
+  box-shadow: none;
+}
+
+.brand-page .btn.ghost:hover {
+  background: rgba(23, 102, 229, 0.06);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+/* Primary: 메인 CTA */
+.brand-page .btn.primary {
+  background: var(--ui-brand, #001f66);
+  color: #ffffff;
+  border-color: var(--ui-brand, #001f66);
+  box-shadow: 0 14px 30px rgba(0, 31, 102, 0.22);
+}
+
+.brand-page .btn.primary:hover {
+  opacity: 0.96;
+  box-shadow: 0 18px 38px rgba(0, 31, 102, 0.26);
+}
+
+/* Disabled */
+.brand-page .btn.disabled,
+.brand-page .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 우측 CTA 영역 버튼은 가로 100% */
+.bcFlowActions__actions .btn {
+  width: 100%;
+}
+
+/* =========================================================
    ✅ 추가: "완료한 브랜드 리포트 보기" hover 툴팁
    - disabled 속성 없이도 hover 가능
 ========================================================= */

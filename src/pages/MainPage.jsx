@@ -25,6 +25,9 @@ import {
 export default function MainPage({ onLogout }) {
   const navigate = useNavigate();
 
+  // ✅ 메인에서 바로 시작 시, 간단한 진행 안내 모달
+  const [openStartGuide, setOpenStartGuide] = useState(false);
+
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -110,7 +113,19 @@ export default function MainPage({ onLogout }) {
       if (!ok) return;
       resetBrandConsultingToDiagnosisStart("mainpage_restart");
     }
-    navigate("/diagnosis");
+
+    // ✅ 메인에서는 바로 인터뷰로 들어가기 때문에, 안내 모달을 한 번 띄워줌
+    setOpenStartGuide(true);
+  };
+
+  const startDirect = () => {
+    setOpenStartGuide(false);
+    navigate("/diagnosisinterview");
+  };
+
+  const goIntro = () => {
+    setOpenStartGuide(false);
+    navigate("/brandconsulting");
   };
 
   return (
@@ -130,6 +145,73 @@ export default function MainPage({ onLogout }) {
         onClose={closeModal}
       >
         <TermsContent />
+      </PolicyModal>
+
+      {/* ✅ 메인 '바로 시작하기'용 진행 안내 */}
+      <PolicyModal
+        open={openStartGuide}
+        title="브랜드 컨설팅 진행 안내"
+        onClose={() => setOpenStartGuide(false)}
+      >
+        <div className="startGuide">
+          <p className="startGuide__lead">
+            지금부터 <strong>기업진단 → 네이밍 → 컨셉 → 스토리 → 로고</strong>
+            순서로 진행되고, 완료 후 <strong>마이페이지</strong>에서 결과를
+            확인할 수 있어요.
+          </p>
+
+          <div
+            className="startGuide__steps"
+            aria-label="브랜드 컨설팅 진행 순서"
+          >
+            <span className="startGuide__step">기업진단</span>
+            <span className="startGuide__arrow" aria-hidden="true">
+              →
+            </span>
+            <span className="startGuide__step">네이밍</span>
+            <span className="startGuide__arrow" aria-hidden="true">
+              →
+            </span>
+            <span className="startGuide__step">컨셉</span>
+            <span className="startGuide__arrow" aria-hidden="true">
+              →
+            </span>
+            <span className="startGuide__step">스토리</span>
+            <span className="startGuide__arrow" aria-hidden="true">
+              →
+            </span>
+            <span className="startGuide__step">로고</span>
+            <span className="startGuide__arrow" aria-hidden="true">
+              →
+            </span>
+            <span className="startGuide__step">결과</span>
+          </div>
+
+          <ul className="startGuide__bullets">
+            <li>
+              중도에 나가면 진행이 중단될 수 있어요. 이어서 하려면 안내
+              페이지에서 단계별로 진행해주세요.
+            </li>
+            <li>완성한 결과는 마이페이지에 자동 저장됩니다.</li>
+          </ul>
+
+          <div className="startGuide__actions">
+            <button
+              type="button"
+              className="startGuide__btn ghost"
+              onClick={goIntro}
+            >
+              소개 페이지 보기
+            </button>
+            <button
+              type="button"
+              className="startGuide__btn primary"
+              onClick={startDirect}
+            >
+              바로 시작하기
+            </button>
+          </div>
+        </div>
       </PolicyModal>
 
       {/* ✅ 공통 헤더 */}
@@ -216,13 +298,6 @@ export default function MainPage({ onLogout }) {
                     onClick={() => navigate("/brandconsulting")}
                   >
                     소개 보기
-                  </button>
-                  <button
-                    type="button"
-                    className="mp-link"
-                    onClick={() => navigate("/mypage/brand-results")}
-                  >
-                    내 리포트
                   </button>
                 </div>
               </div>

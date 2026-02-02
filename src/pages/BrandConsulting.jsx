@@ -49,7 +49,7 @@ export default function BrandConsulting({ onLogout }) {
         window.alert(
           "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
         );
-        navigate("/diagnosis", { replace: true });
+        navigate("/brandconsulting", { replace: true });
         return;
       }
     } catch {
@@ -70,7 +70,7 @@ export default function BrandConsulting({ onLogout }) {
         sub: "브랜드 컨설팅의 기준 데이터(요약)를 만들기 위한 기업진단 단계",
         img: diagnosisImg,
         tag: "Diagnosis",
-        route: "/diagnosis",
+        route: "/diagnosisinterview",
       },
       {
         key: "naming",
@@ -151,7 +151,7 @@ export default function BrandConsulting({ onLogout }) {
   }, [status]);
 
   const nextRoute = useMemo(() => {
-    if (nextStep === "diagnosis") return "/diagnosis";
+    if (nextStep === "diagnosis") return "/diagnosisinterview";
     if (nextStep === "naming") return "/brand/naming/interview";
     if (nextStep === "concept") return "/brand/concept/interview";
     if (nextStep === "story") return "/brand/story";
@@ -180,7 +180,7 @@ export default function BrandConsulting({ onLogout }) {
       alert(
         "브랜드 컨설팅은 기업진단 요약을 기반으로 진행됩니다. 기업진단을 먼저 완료해주세요.",
       );
-      navigate("/diagnosis");
+      navigate("/diagnosisinterview", { state: { mode: "start" } });
       return;
     }
     navigate(nextRoute, { state: { flow: "brand" } });

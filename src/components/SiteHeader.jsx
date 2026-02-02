@@ -157,7 +157,7 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
       resetBrandConsultingToDiagnosisStart("header_cta_restart");
     }
 
-    navigate("/diagnosis");
+    navigate("/diagnosisinterview", { state: { mode: "start" } });
     if (typeof onBrandPick === "function") onBrandPick("diagnosis");
   };
 

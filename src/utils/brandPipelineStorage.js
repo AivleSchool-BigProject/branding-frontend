@@ -194,7 +194,7 @@ export function ensureStepAccess(stepKey) {
     if (!hasDiagnosis)
       return {
         ok: false,
-        redirectTo: "/diagnosis",
+        redirectTo: "/diagnosisinterview",
         reason: "diagnosis_missing",
       };
     return { ok: true };
@@ -204,7 +204,7 @@ export function ensureStepAccess(stepKey) {
     if (!hasDiagnosis)
       return {
         ok: false,
-        redirectTo: "/diagnosis",
+        redirectTo: "/diagnosisinterview",
         reason: "diagnosis_missing",
       };
     if (!hasNaming)
@@ -220,7 +220,7 @@ export function ensureStepAccess(stepKey) {
     if (!hasDiagnosis)
       return {
         ok: false,
-        redirectTo: "/diagnosis",
+        redirectTo: "/diagnosisinterview",
         reason: "diagnosis_missing",
       };
     if (!hasNaming)
@@ -242,7 +242,7 @@ export function ensureStepAccess(stepKey) {
     if (!hasDiagnosis)
       return {
         ok: false,
-        redirectTo: "/diagnosis",
+        redirectTo: "/diagnosisinterview",
         reason: "diagnosis_missing",
       };
     if (!hasNaming)

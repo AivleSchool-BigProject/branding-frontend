@@ -411,9 +411,9 @@ export default function DiagnosisInterview({ onLogout }) {
               <button
                 type="button"
                 className="btn ghost"
-                onClick={() => navigate("/diagnosis")}
+                onClick={() => navigate("/brandconsulting")}
               >
-                진단 홈으로
+                브랜드 컨설팅 홈으로
               </button>
             </div>
           </div>

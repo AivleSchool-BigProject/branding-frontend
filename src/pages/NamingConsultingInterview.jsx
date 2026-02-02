@@ -409,7 +409,7 @@ export default function NamingConsultingInterview({ onLogout }) {
         window.alert(
           "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
         );
-        navigate("/diagnosis", { replace: true });
+        navigate("/brandconsulting", { replace: true });
         return;
       }
     } catch {
@@ -449,7 +449,7 @@ export default function NamingConsultingInterview({ onLogout }) {
           ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
           : "브랜드 컨설팅은 기업진단 요약을 기반으로 진행됩니다. 기업진단을 먼저 완료해 주세요.";
       window.alert(msg);
-      navigate(guard.redirectTo || "/diagnosis", { replace: true });
+      navigate(guard.redirectTo || "/diagnosisinterview", { replace: true });
       return;
     }
 

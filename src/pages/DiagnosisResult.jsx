@@ -243,8 +243,9 @@ export default function DiagnosisResult({ onLogout }) {
     return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
   }, [report, interviewReport]);
 
-  const goInterview = () => navigate("/diagnosis/interview");
-  const goHome = () => navigate("/diagnosis");
+  const goInterview = () =>
+    navigate("/diagnosisinterview", { state: { mode: "resume" } });
+  const goHome = () => navigate("/brandconsulting");
 
   // ✅ 브랜드 컨설팅 실제 이동 (모달 확인 후 호출)
   // - brandId는 pipeline(userLocalStorage)에 이미 저장되어 흐름이 유지됩니다.
@@ -259,7 +260,7 @@ export default function DiagnosisResult({ onLogout }) {
     userRemoveItem(DIAGNOSIS_RESULT_KEY_LEGACY);
     localStorage.removeItem(DIAGNOSIS_RESULT_KEY);
     alert("기업진단 입력/결과 데이터를 초기화했습니다.");
-    navigate("/diagnosis/interview");
+    navigate("/diagnosisinterview");
   };
 
   const inputSummaryRows = useMemo(() => {

@@ -16,7 +16,6 @@ import EasyLogin from "./pages/EasyLogin.jsx";
 
 import MainPage from "./pages/MainPage.jsx";
 
-import DiagnosisHome from "./pages/DiagnosisHome.jsx";
 import DiagnosisInterview from "./pages/DiagnosisInterview.jsx";
 import DiagnosisResult from "./pages/DiagnosisResult.jsx";
 
@@ -89,9 +88,9 @@ export default function App() {
         "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
       );
 
-      // ✅ 어디로 가려던지 '기업진단 홈'으로 유도
-      prevPathRef.current = "/diagnosis";
-      navigate("/diagnosis", { replace: true });
+      // ✅ 어디로 가려던지 '브랜드 컨설팅 홈'으로 유도(기업진단부터 재시작)
+      prevPathRef.current = "/brandconsulting";
+      navigate("/brandconsulting", { replace: true });
       return;
     }
 
@@ -126,9 +125,21 @@ export default function App() {
         {/* ✅ 메인 */}
         <Route path="/main" element={<MainPage />} />
         {/* ✅ 기업 진단 */}
-        <Route path="/diagnosis" element={<DiagnosisHome />} />
+        <Route
+          path="/diagnosis"
+          element={<Navigate to="/brandconsulting" replace />}
+        />
         <Route path="/diagnosisinterview" element={<DiagnosisInterview />} />
+        {/* ✅ alias (레거시 경로 대응) */}
+        <Route
+          path="/diagnosis/interview"
+          element={<Navigate to="/diagnosisinterview" replace />}
+        />
         <Route path="/diagnosis/result" element={<DiagnosisResult />} />
+        <Route
+          path="/diagnosisresult"
+          element={<Navigate to="/diagnosis/result" replace />}
+        />
         {/* ✅ 브랜드 컨설팅 메인 */}
         <Route path="/brandconsulting" element={<BrandConsulting />} />
         {/* ✅ 브랜드 컨설팅 인터뷰(권장 표준 라우트) */}

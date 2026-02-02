@@ -328,7 +328,7 @@ export default function LogoConsultingInterview({ onLogout }) {
         window.alert(
           "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
         );
-        navigate("/diagnosis", { replace: true });
+        navigate("/brandconsulting", { replace: true });
         return;
       }
     } catch {
