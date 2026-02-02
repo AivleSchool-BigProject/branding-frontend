@@ -353,3 +353,145 @@
     flex: 1;
   }
 }
+
+/* =========================
+   Candidate 3 options UI
+   ========================= */
+.diagInterview.consultingInterview .candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.diagInterview.consultingInterview .candidateCard {
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+  cursor: pointer;
+  outline: none;
+}
+
+.diagInterview.consultingInterview .candidateCard:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
+}
+
+.diagInterview.consultingInterview .candidateCard:focus {
+  box-shadow:
+    0 0 0 3px rgba(99, 102, 241, 0.18),
+    0 12px 26px rgba(15, 23, 42, 0.1);
+}
+
+.diagInterview.consultingInterview .candidateCard.selected {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.1);
+}
+
+.diagInterview.consultingInterview .candidateHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.diagInterview.consultingInterview .candidateTitle {
+  font-weight: 900;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.diagInterview.consultingInterview .candidateBadge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+}
+
+.diagInterview.consultingInterview .candidateCard.selected .candidateBadge {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: rgba(67, 56, 202, 0.95);
+}
+
+.diagInterview.consultingInterview .candidateActions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.diagInterview.consultingInterview .candidateBody {
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.92;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  color: rgba(15, 23, 42, 0.9);
+}
+
+.diagInterview.consultingInterview .candidateBody.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.diagInterview.consultingInterview .candidateMore {
+  margin-top: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(79, 70, 229, 0.95);
+  cursor: pointer;
+}
+
+.diagInterview.consultingInterview .aiToast {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background-color 320ms ease,
+    border-color 320ms ease,
+    color 320ms ease;
+}
+
+.diagInterview.consultingInterview .aiToast.warn {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+.diagInterview.consultingInterview .aiToast.muted {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+.diagInterview.consultingInterview .aiInlineError {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.diagInterview.consultingInterview .card.aiError {
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+}
