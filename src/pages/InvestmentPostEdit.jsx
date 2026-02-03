@@ -345,7 +345,7 @@ export default function InvestmentPostEdit({ onLogout }) {
               </div>
 
               <div className="invest-form-actions">
-                <button type="button" className="btn ghost" onClick={handleDelete}>삭제</button>
+                <button type="button" className="btn ghost danger" onClick={handleDelete}>삭제</button>
                 <button type="submit" className="btn primary" disabled={loading}>수정 저장</button>
               </div>
               {submitError && <div className="invest-form-error">{submitError}</div>}
