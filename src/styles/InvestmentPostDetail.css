@@ -367,3 +367,58 @@
     align-content: start;
   }
 }
+/* ========================================================= */
+/* 상세페이지 버튼 전용 스타일 (충돌 방지 및 고정 레이아웃) */
+/* ========================================================= */
+
+/* 1. 버튼 공통 기초 스타일 (기본 높이 및 폰트 설정) */
+.invest-detail-page .invest-detail-hero .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 0 18px;
+  font-family: "Manrope", "Noto Sans KR", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+/* 2. 수정 버튼 (Primary) */
+.invest-detail-page .invest-detail-hero .btn.primary {
+  background-color: #4f46e5 !important; /* 강제 적용 */
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.invest-detail-page .invest-detail-hero .btn.primary:hover {
+  background-color: #837ee5 !important;
+  transform: translateY(-1px);
+}
+
+/* 3. 목록으로 버튼 (Ghost) */
+.invest-detail-page .invest-detail-hero .btn.ghost {
+  background-color: #ffffff !important;
+  color: #4f46e5 !important;
+  border: 1px solid #4f46e5 !important;
+}
+
+.invest-detail-page .invest-detail-hero .btn.ghost:hover {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 4. 빈 페이지(에러/로딩) 내 목록 버튼 스타일 */
+.invest-detail-empty .btn {
+  margin-top: 16px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}

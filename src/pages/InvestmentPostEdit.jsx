@@ -267,7 +267,8 @@ export default function InvestmentPostEdit({ onLogout }) {
                 <label className="invest-form-label">
                   지역
                   <div className="invest-location-select">
-                    <button type="button" className="invest-location-control" onClick={() => setLocationOpen(!locationOpen)}>
+                    <div className="invest-location-control" onClick={() => setLocationOpen(!locationOpen)} style={{ cursor: 'pointer'}}
+                      >
                       <div className="invest-location-chips">
                         {form.locations.length === 0 ? <span className="placeholder">지역 선택</span> : form.locations.map(loc => (
                           <span key={loc} className="invest-location-chip">{loc}
@@ -275,7 +276,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                           </span>
                         ))}
                       </div>
-                    </button>
+                    </div>
                     {locationOpen && (
                       <div className="invest-location-panel">
                         {LOCATION_OPTIONS.map(loc => (
@@ -289,7 +290,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                 <label className="invest-form-label">
                   회사 규모
                   <div className="invest-location-select">
-                    <button type="button" className="invest-location-control" onClick={() => setSizeOpen(!sizeOpen)}>
+                    <div className="invest-location-control" onClick={() => setSizeOpen(!sizeOpen)} style={{ cursor: 'pointer' }}>
                       <div className="invest-location-chips">
                         {form.companySizes.length === 0 ? <span className="placeholder">규모 선택</span> : form.companySizes.map(size => (
                           <span key={size} className="invest-location-chip">{size}
@@ -297,7 +298,7 @@ export default function InvestmentPostEdit({ onLogout }) {
                           </span>
                         ))}
                       </div>
-                    </button>
+                    </div>
                     {sizeOpen && (
                       <div className="invest-location-panel">
                         {COMPANY_SIZE_OPTIONS.map(size => (
