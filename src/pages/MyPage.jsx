@@ -426,9 +426,11 @@ export default function MyPage({ onLogout }) {
 
     const base = [...activeReports].filter((r) => !hidden.has(String(r?.id)));
 
+    // 2026-02-03
+    // 오래된 순 적용이 되게 수정
     const sorted = base.sort((a, b) => {
-      const at = a?.createdAt || 0;
-      const bt = b?.createdAt || 0;
+      const at = new Date(a?.createdAt || 0).getTime();
+      const bt = new Date(b?.createdAt || 0).getTime();
       return sort === "old" ? at - bt : bt - at;
     });
 
