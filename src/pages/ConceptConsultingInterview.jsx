@@ -1,6 +1,6 @@
 // src/pages/ConceptConsultingInterview.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
@@ -20,13 +20,13 @@ import {
 
 import {
   ensureStrictStepAccess,
+  migrateLegacyToPipelineIfNeeded,
   setBrandFlowCurrent,
-  markBrandFlowPendingAbort,
-  consumeBrandFlowPendingAbort,
   abortBrandFlow,
   setStepResult,
   clearStepsFrom,
   readPipeline,
+  startBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -276,35 +276,33 @@ const INITIAL_FORM = {
 
 export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Strict Flow 가드(컨셉 단계) + 이탈/새로고침 처리
+  // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
     try {
-      const hadPending = consumeBrandFlowPendingAbort();
-      if (hadPending) {
-        abortBrandFlow("interrupted");
-        window.alert(
-          "브랜드 컨설팅 진행이 중단되어, 네이밍부터 다시 시작합니다.",
-        );
+      migrateLegacyToPipelineIfNeeded();
+
+      const access = ensureStrictStepAccess("concept");
+      if (!access?.ok) {
+        if (access?.reason === "no_back") {
+          alert(
+            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
+          );
+        }
+        if (access?.redirectTo) {
+          navigate(access.redirectTo, { replace: true });
+        }
+        return;
       }
-    } catch {
-      // ignore
-    }
 
-    const guard = ensureStrictStepAccess("concept");
-    if (!guard.ok) {
-      const msg =
-        guard?.reason === "no_back"
-          ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
-          : "이전 단계를 먼저 완료해 주세요.";
-      window.alert(msg);
-      navigate(guard.redirectTo || "/brand/naming/interview", {
-        replace: true,
-      });
-      return;
-    }
-
-    try {
+      const p = readPipeline();
+      const brandId =
+        location?.state?.brandId ??
+        location?.state?.report?.brandId ??
+        p?.brandId ??
+        null;
+      startBrandFlow({ brandId });
       setBrandFlowCurrent("concept");
     } catch {
       // ignore
@@ -312,21 +310,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ 새로고침/탭닫기 경고 + 다음 진입 시 네이밍부터 리셋
-  useEffect(() => {
-    const onBeforeUnload = (e) => {
-      try {
-        markBrandFlowPendingAbort("beforeunload");
-      } catch {
-        // ignore
-      }
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
+  // ✅ Strict Flow 가드(컨셉 단계) + 이탈/새로고침 처리
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -732,6 +716,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
         alert(`컨셉 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
         return;
       }
+    }
+
+    try {
+      // ✅ 다음 단계 진입과 동시에 currentStep을 앞으로 고정
+      setBrandFlowCurrent("story");
+    } catch {
+      // ignore
     }
 
     navigate(NEXT_PATH);

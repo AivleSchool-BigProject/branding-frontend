@@ -509,18 +509,6 @@ export default function MyPage({ onLogout }) {
                 내가 만든 리포트를 모아보고, 다시 실행할 수 있어요.
               </p>
             </div>
-            <div className="mypage-headerActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/main")}
-              >
-                홈으로
-              </button>
-              <button type="button" className="btn" onClick={goStart}>
-                {tab === "promo" ? "홍보물 컨설팅 시작" : "브랜드 컨설팅 시작"}
-              </button>
-            </div>
           </div>
         </div>
 
@@ -640,7 +628,7 @@ export default function MyPage({ onLogout }) {
                 <option value="old">오래된순</option>
               </select>
               <button type="button" className="btn" onClick={goStart}>
-                새로 만들기
+                {tab === "promo" ? "새 홍보물 생성" : "새 브랜드 생성"}
               </button>
             </div>
           </div>
@@ -792,7 +780,7 @@ export default function MyPage({ onLogout }) {
 
                                   <button
                                     type="button"
-                                    className={`iconBtn danger ${
+                                    className={`btn danger btn-sm deleteBtn ${
                                       deletingId === String(r.id)
                                         ? "is-busy"
                                         : ""
@@ -802,7 +790,9 @@ export default function MyPage({ onLogout }) {
                                     onClick={(e) => onDeleteCard(r, e)}
                                     disabled={deletingId === String(r.id)}
                                   >
-                                    {deletingId === String(r.id) ? "…" : "🗑"}
+                                    {deletingId === String(r.id)
+                                      ? "삭제 중"
+                                      : "삭제"}
                                   </button>
                                 </div>
                               </div>
@@ -867,7 +857,7 @@ export default function MyPage({ onLogout }) {
                                   ) : null}
                                   <button
                                     type="button"
-                                    className={`iconBtn danger ${
+                                    className={`btn danger btn-sm deleteBtn ${
                                       deletingId === String(r.id)
                                         ? "is-busy"
                                         : ""
@@ -877,7 +867,9 @@ export default function MyPage({ onLogout }) {
                                     onClick={(e) => onDeleteCard(r, e)}
                                     disabled={deletingId === String(r.id)}
                                   >
-                                    {deletingId === String(r.id) ? "…" : "🗑"}
+                                    {deletingId === String(r.id)
+                                      ? "삭제 중"
+                                      : "삭제"}
                                   </button>
                                 </div>
                               </div>
@@ -899,18 +891,7 @@ export default function MyPage({ onLogout }) {
                           )}
                         </div>
 
-                        <div className="reportCTA">
-                          <button
-                            type="button"
-                            className="btn primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              goDetail(r);
-                            }}
-                          >
-                            리포트 보기
-                          </button>
-                        </div>
+                        {/* 리포트 보기 버튼 제거: 카드 자체 클릭으로 이동 */}
                       </div>
                     </article>
                   );

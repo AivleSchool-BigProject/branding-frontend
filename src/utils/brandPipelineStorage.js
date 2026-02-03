@@ -371,9 +371,54 @@ export function getBrandFlow() {
   return p?.brandFlow || null;
 }
 
+function isStepSelected(p, stepKey) {
+  const step = p?.[stepKey];
+  return Boolean(step?.selectedId || step?.selected);
+}
+
+function inferMaxReachedStep(p) {
+  // ✅ '선택 결과' 기준으로, 가장 멀리 도달한 단계를 추정
+  // - flow가 없거나 손상되었을 때, 뒤로가기 차단을 안정적으로 유지하기 위함
+  if (isStepSelected(p, "logo")) return "logo";
+  if (isStepSelected(p, "story")) return "story";
+  if (isStepSelected(p, "concept")) return "concept";
+  if (isStepSelected(p, "naming")) return "naming";
+  return "naming";
+}
+
 export function isBrandFlowActive() {
   const f = getBrandFlow();
   return Boolean(f?.active);
+}
+
+export function isBrandConsultingCompleted() {
+  const p = readPipeline();
+  const hasDiagnosis = Boolean(
+    p?.diagnosisSummary?.companyName || p?.diagnosisSummary?.oneLine,
+  );
+  const hasNaming = isStepSelected(p, "naming");
+  const hasConcept = isStepSelected(p, "concept");
+  const hasStory = isStepSelected(p, "story");
+  const hasLogo = isStepSelected(p, "logo");
+  return Boolean(
+    hasDiagnosis && hasNaming && hasConcept && hasStory && hasLogo,
+  );
+}
+
+// ✅ App-level 라우팅 가드에서 사용하는 "진행 중" 판정
+// - brandFlow.active가 true면 진행 중
+// - 혹시 flow가 아직 시작되지 않았어도(레거시/비정상) 기업진단이 있고
+//   최종 완료 전이면 진행 중으로 간주
+export function isBrandWorkInProgress() {
+  const p = readPipeline();
+  const flow = p?.brandFlow;
+  if (flow?.active) return true;
+
+  const hasDiagnosis = Boolean(
+    p?.diagnosisSummary?.companyName || p?.diagnosisSummary?.oneLine,
+  );
+  if (!hasDiagnosis) return false;
+  return !isBrandConsultingCompleted();
 }
 
 export function getBrandFlowCurrentStep() {
@@ -405,44 +450,18 @@ export function isBrandFlowRoute(pathname) {
 }
 
 export function markBrandFlowPendingAbort(reason = "interrupted") {
-  const cur = readPipeline();
-  const flow = cur?.brandFlow || {};
-  if (!flow?.active) return cur;
-
-  const next = {
-    ...cur,
-    brandFlow: {
-      ...flow,
-      pendingAbort: true,
-      pendingReason: String(reason || "interrupted"),
-      updatedAt: Date.now(),
-    },
-    updatedAt: Date.now(),
-  };
-  return writePipeline(next);
+  // ✅ 새로고침/네트워크 끊김 등을 "중단"으로 간주하면 UX가 나빠지고 데이터가 리셋될 수 있어
+  // → 이 프로젝트에서는 beforeunload 기반 중단 판정을 사용하지 않음 (no-op)
+  return readPipeline();
 }
 
 export function consumeBrandFlowPendingAbort() {
-  const cur = readPipeline();
-  const flow = cur?.brandFlow;
-  if (!flow?.active || !flow?.pendingAbort) return false;
-
-  const next = {
-    ...cur,
-    brandFlow: {
-      ...flow,
-      pendingAbort: false,
-      pendingReason: null,
-      updatedAt: Date.now(),
-    },
-    updatedAt: Date.now(),
-  };
-  writePipeline(next);
-  return true;
+  // no-op (see markBrandFlowPendingAbort)
+  return false;
 }
 
 export function startBrandFlow({ brandId } = {}) {
-  const cleared = clearStepsFrom("naming");
+  const cur = readPipeline();
 
   const normalized =
     brandId == null
@@ -451,13 +470,30 @@ export function startBrandFlow({ brandId } = {}) {
         ? brandId
         : Number(brandId);
 
+  const curBrandId = cur?.brandId ?? null;
+  const hasIncoming = normalized != null;
+
+  // ✅ brandId가 바뀐 경우에만(섞임 방지) 네이밍~로고를 초기화
+  const brandChanged =
+    hasIncoming &&
+    curBrandId != null &&
+    String(curBrandId) !== String(normalized);
+
+  const base = brandChanged ? clearStepsFrom("naming") : { ...cur };
+  const flow = base?.brandFlow || {};
+
+  // ✅ flow.currentStep이 없으면, pipeline에 저장된 '선택 결과'로 최대 도달 단계를 추정
+  const inferred = inferMaxReachedStep(base);
+
   const next = {
-    ...cleared,
-    ...(normalized != null ? { brandId: normalized } : {}),
+    ...base,
+    ...(hasIncoming ? { brandId: normalized } : {}),
     brandFlow: {
       active: true,
-      currentStep: "naming",
-      startedAt: Date.now(),
+      currentStep: brandChanged
+        ? "naming"
+        : String(flow?.currentStep || inferred),
+      startedAt: brandChanged ? Date.now() : flow?.startedAt || Date.now(),
       updatedAt: Date.now(),
       pendingAbort: false,
       pendingReason: null,
@@ -475,11 +511,21 @@ export function setBrandFlowCurrent(stepKey) {
   const cur = readPipeline();
   const flow = cur?.brandFlow || {};
 
+  // ✅ '절대 뒤로가기 금지' 정책
+  // - 현재 단계보다 이전 단계로는 currentStep을 내리지 않음
+  // - 브라우저 뒤로가기/메뉴 클릭 등으로 이전 페이지가 렌더되어도 상태가 되돌아가지 않게 함
+  const curStepRaw = String(flow?.currentStep || inferMaxReachedStep(cur));
+  const curStep =
+    BRAND_FLOW_STEP_INDEX[curStepRaw] != null ? curStepRaw : "naming";
+  const curIdx = BRAND_FLOW_STEP_INDEX[curStep] ?? 0;
+  const wantIdx = BRAND_FLOW_STEP_INDEX[normalized] ?? 0;
+  const nextStep = wantIdx >= curIdx ? normalized : curStep;
+
   const next = {
     ...cur,
     brandFlow: {
       active: true,
-      currentStep: normalized,
+      currentStep: nextStep,
       startedAt: flow?.startedAt || Date.now(),
       updatedAt: Date.now(),
       pendingAbort: false,

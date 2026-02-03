@@ -417,7 +417,7 @@
 
 .mypage-page .reportCard__grid {
   display: grid;
-  grid-template-columns: 64px 1fr auto;
+  grid-template-columns: 64px 1fr;
   gap: 14px;
   align-items: start;
 }
@@ -636,19 +636,9 @@
   white-space: nowrap;
 }
 
-.mypage-page .reportCTA {
-  display: flex;
-  align-items: flex-start;
-}
-
 @media (max-width: 720px) {
   .mypage-page .reportCard__grid {
     grid-template-columns: 56px 1fr;
-  }
-  .mypage-page .reportCTA {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    margin-top: 8px;
   }
 }
 
@@ -696,30 +686,25 @@
 }
 
 /* ---- 카드 우측 액션 버튼(삭제) ---- */
-.mypage-page .iconBtn {
-  width: 34px;
+.mypage-page .btn.btn-sm {
   height: 34px;
+  padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  user-select: none;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
 }
 
-.mypage-page .iconBtn:hover {
-  background: rgba(23, 102, 229, 0.06);
-  border-color: rgba(23, 102, 229, 0.35);
+.mypage-page .deleteBtn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.mypage-page .iconBtn.danger:hover {
-  background: rgba(239, 68, 68, 0.09);
-  border-color: rgba(239, 68, 68, 0.38);
+.mypage-page .deleteBtn.is-busy {
+  opacity: 0.75;
 }
 
-.mypage-page .iconBtn:disabled {
+.mypage-page .btn.btn-sm:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

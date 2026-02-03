@@ -48,9 +48,8 @@ import ChatbotWidget from "./components/ChatbotWidget.jsx";
 import CurrentUserWidget from "./components/CurrentUserWidget.jsx";
 
 import {
-  isBrandFlowActive,
   isBrandFlowRoute,
-  resetBrandConsultingToDiagnosisStart,
+  isBrandWorkInProgress,
 } from "./utils/brandPipelineStorage.js";
 
 export default function App() {
@@ -59,17 +58,17 @@ export default function App() {
   const prevPathRef = useRef(pathname);
 
   // ✅ 브랜드 컨설팅(네이밍~로고) 진행 중 이탈 방지
-  // - 중도 이탈 시: "기업진단부터 다시 진행"으로 정책 통일
-  // - 이탈 직전 상태는 (미완료 포함) 마이페이지 히스토리에 스냅샷 저장
+  // - 새로고침은 허용(진행 데이터 유지)
+  // - 단계 중 '뒤로가기/다른 메뉴 이동'만 경고/차단(취소 시 원래 단계로 복귀)
   useEffect(() => {
     const prev = prevPathRef.current;
     if (prev === pathname) return;
 
     const leavingFlow = isBrandFlowRoute(prev) && !isBrandFlowRoute(pathname);
 
-    if (leavingFlow && isBrandFlowActive()) {
+    if (leavingFlow && isBrandWorkInProgress()) {
       const ok = window.confirm(
-        "브랜드 컨설팅이 진행 중입니다. 지금 나가면 진행이 중단되며, 다시 시작하려면 기업진단부터 다시 진행해야 합니다.\n\n정말 나가시겠어요?",
+        "브랜드 컨설팅이 진행 중입니다.\n\n지금 나가도 진행 내용(brandId/단계/작성 중 입력/선택 결과)은 저장되어 있어요.\n다시 들어오면 ‘이어하기’로 계속 진행할 수 있습니다.\n\n정말 나가시겠어요?",
       );
 
       if (!ok) {
@@ -77,21 +76,6 @@ export default function App() {
         navigate(prev, { replace: true });
         return;
       }
-
-      try {
-        resetBrandConsultingToDiagnosisStart("leave_route");
-      } catch {
-        // ignore
-      }
-
-      window.alert(
-        "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
-      );
-
-      // ✅ 어디로 가려던지 '브랜드 컨설팅 홈'으로 유도(기업진단부터 재시작)
-      prevPathRef.current = "/brandconsulting";
-      navigate("/brandconsulting", { replace: true });
-      return;
     }
 
     prevPathRef.current = pathname;
