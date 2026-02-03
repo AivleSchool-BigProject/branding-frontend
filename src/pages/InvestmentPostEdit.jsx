@@ -10,26 +10,12 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 
-const LOCATION_OPTIONS = [
-  "수도권",
-  "강원도",
-  "충남/충북",
-  "경남/경북",
-  "전남/전북",
-  "제주",
-];
-const COMPANY_SIZE_OPTIONS = [
-  "예비 창업 / 개인",
-  "스타트업",
-  "중소기업",
-  "중견기업",
-  "대기업",
-];
+const LOCATION_OPTIONS = ["수도권", "강원도", "충남/충북", "경남/경북", "전남/전북", "제주"];
+const COMPANY_SIZE_OPTIONS = ["예비 창업 / 개인", "스타트업", "중소기업", "중견기업", "대기업"];
+
 export default function InvestmentPostEdit({ onLogout }) {
   const navigate = useNavigate();
   const { id } = useParams();
-
-  // ✅ 드롭다운 닫기 UX는 "옵션 선택 시 즉시 닫기"만 사용
 
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -38,18 +24,21 @@ export default function InvestmentPostEdit({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
+    // 2026-02-03 
+    // 상세주소 필드 제거
     companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
-    website: "",
+    // 2026-02-03 
+    // 홈페이지 필드 제거
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-  const [errors, setErrors] = useState({
-    website: "",
-  });
+
+  // 2026-02-03 
+  // 홈페이지 유효성 검사용 errors 상태 초기화
+  const [errors, setErrors] = useState({});
   const [notFound, setNotFound] = useState(false);
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
@@ -61,17 +50,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
   const updateField = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
-  };
-
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
-
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
   };
 
   const tagList = useMemo(() => {
@@ -89,7 +67,6 @@ export default function InvestmentPostEdit({ onLogout }) {
       setLogoFile(null);
       return;
     }
-
     setLogoFileName(file.name);
     setLogoFile(file);
     const reader = new FileReader();
@@ -99,7 +76,6 @@ export default function InvestmentPostEdit({ onLogout }) {
     reader.readAsDataURL(file);
   };
 
-  // ✅ 단일 선택: 지역 1개만 저장 + 옵션 선택 시 즉시 닫기
   const selectLocation = (value) => {
     setForm((prev) => ({ ...prev, locations: value ? [value] : [] }));
     setLocationOpen(false);
@@ -112,7 +88,6 @@ export default function InvestmentPostEdit({ onLogout }) {
     }));
   };
 
-  // ✅ 단일 선택: 회사 규모 1개만 저장 + 옵션 선택 시 즉시 닫기
   const selectCompanySize = (value) => {
     setForm((prev) => ({ ...prev, companySizes: value ? [value] : [] }));
     setSizeOpen(false);
@@ -142,13 +117,15 @@ export default function InvestmentPostEdit({ onLogout }) {
           company: data.companyName || "",
           oneLiner: data.shortDescription || "",
           locations: data.region ? [data.region] : [],
-          detailAddress: "",
+          // 2026-02-03 
+          // 상세주소 매핑 제거
           companySizes: data.companySize ? [data.companySize] : [],
           logoImageUrl: data.logoImageUrl || "",
           hashtags: Array.isArray(data.hashtags)
             ? [...data.hashtags, "", "", "", "", ""].slice(0, 5)
             : prev.hashtags,
-          website: "",
+          // 2026-02-03 
+          // 홈페이지 매핑 제거
           contactName: data.contactName || "",
           contactEmail: data.contactEmail || "",
           summary: data.companyDescription || "",
@@ -158,43 +135,28 @@ export default function InvestmentPostEdit({ onLogout }) {
         console.error(error);
         const status = error?.response?.status;
         if (!mounted) return;
-
         if (status === 403) {
           alert("수정 권한이 없습니다.");
           navigate(-1);
           return;
         }
-
         if (status === 404) {
           setNotFound(true);
           return;
         }
-
-        alert(
-          error?.userMessage
-            ? `${error.userMessage}${status ? ` (에러코드: ${status})` : ""}`
-            : status
-              ? `오류가 발생했습니다. (에러코드: ${status})`
-              : "오류가 발생했습니다.",
-        );
         setNotFound(true);
       } finally {
         if (mounted) setLoading(false);
       }
     };
     fetchPost();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+    return () => { mounted = false; };
+  }, [id, navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
+    // 2026-02-03 
+    // 홈페이지 URL 유효성 검사 로직 삭제
     setSubmitError("");
     setLoading(true);
 
@@ -214,29 +176,18 @@ export default function InvestmentPostEdit({ onLogout }) {
     };
 
     const formData = new FormData();
-    formData.append(
-      "data",
-      new Blob([JSON.stringify(payload)], { type: "application/json" }),
-    );
+    formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
     if (logoFile) formData.append("image", logoFile);
 
     try {
       await apiRequest(`/brands/posts/${id}`, {
         method: "PUT",
         data: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
       navigate("/investment");
     } catch (error) {
       console.error(error);
-      const status = error?.response?.status;
-      if (status === 403) {
-        alert("수정 권한이 없습니다.");
-        navigate(-1);
-        return;
-      }
       setSubmitError(error?.userMessage || "게시글 수정에 실패했습니다.");
     } finally {
       setLoading(false);
@@ -249,37 +200,19 @@ export default function InvestmentPostEdit({ onLogout }) {
     try {
       await apiRequest(`/brands/posts/${id}`, { method: "DELETE" });
       alert("삭제되었습니다.");
+      navigate("/investment");
     } catch (error) {
       console.error(error);
-      const status = error?.response?.status;
-      if (status === 403) {
-        alert("삭제 권한이 없습니다.");
-        return;
-      }
-      alert(
-        error?.userMessage ||
-          "삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.",
-      );
-      return;
+      alert("삭제에 실패했습니다.");
     }
-    navigate("/investment");
   };
 
   return (
     <div className="invest-create-page">
-      <PolicyModal
-        open={openType === "privacy"}
-        title="개인정보 처리방침"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "privacy"} title="개인정보 처리방침" onClose={closeModal}>
         <PrivacyContent />
       </PolicyModal>
-
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
@@ -289,226 +222,89 @@ export default function InvestmentPostEdit({ onLogout }) {
         <section className="invest-create-hero">
           <div>
             <h1 className="invest-create-title">투자 게시글 수정</h1>
-            <p className="invest-create-sub">
-              작성한 투자 게시글을 수정하거나 삭제할 수 있습니다.
-            </p>
+            <p className="invest-create-sub">작성한 투자 게시글을 수정하거나 삭제할 수 있습니다.</p>
           </div>
           <div className="invest-create-hero-actions">
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => navigate("/investment")}
-            >
-              목록으로
-            </button>
+            <button type="button" className="btn ghost" onClick={() => navigate("/investment")}>목록으로</button>
           </div>
         </section>
 
         {loading ? (
-          <section className="invest-create-card">
-            <p>불러오는 중...</p>
-          </section>
+          <section className="invest-create-card"><p>불러오는 중...</p></section>
         ) : notFound ? (
           <section className="invest-create-card">
             <p>수정할 게시글을 찾을 수 없습니다.</p>
-            <div className="invest-form-actions">
-              <button
-                type="button"
-                className="btn"
-                onClick={() => navigate("/investment")}
-              >
-                목록으로
-              </button>
-            </div>
+            <button type="button" className="btn" onClick={() => navigate("/investment")}>목록으로</button>
           </section>
         ) : (
           <section className="invest-create-grid">
-            <form
-              id="invest-edit"
-              className="invest-create-card"
-              onSubmit={handleSubmit}
-            >
+            <form id="invest-edit" className="invest-create-card" onSubmit={handleSubmit}>
               <div className="invest-form-row two-col">
                 <label className="invest-form-label">
                   회사명
-                  <input
-                    type="text"
-                    value={form.company}
-                    onChange={updateField("company")}
-                    placeholder="브랜드 파일럿"
-                    required
-                  />
+                  <input type="text" value={form.company} onChange={updateField("company")} required />
                 </label>
                 <label className="invest-form-label">
                   한 줄 소개
-                  <input
-                    type="text"
-                    value={form.oneLiner}
-                    onChange={updateField("oneLiner")}
-                    placeholder="예: AI 기반 B2B 영업 효율화 SaaS"
-                  />
+                  <input type="text" value={form.oneLiner} onChange={updateField("oneLiner")} />
                 </label>
               </div>
 
               <div className="invest-form-row">
                 <label className="invest-form-label">
                   로고 이미지 업로드
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                  />
+                  <input type="file" accept="image/*" onChange={handleLogoChange} />
                 </label>
                 {logoFileName ? (
-                  <div className="invest-form-helper">
-                    선택된 파일: {logoFileName}
-                  </div>
+                  <div className="invest-form-helper">선택된 파일: {logoFileName}</div>
                 ) : logoSrc ? (
-                  <div className="invest-form-helper">
-                    현재 로고가 등록되어 있습니다.
-                  </div>
+                  <div className="invest-form-helper">현재 로고가 등록되어 있습니다.</div>
                 ) : null}
               </div>
 
+              {/* 2026-02-03 변경: 지역과 회사 규모를 나란히 배치 */}
               <div className="invest-form-row two-col">
                 <label className="invest-form-label">
                   지역
                   <div className="invest-location-select">
-                    <button
-                      type="button"
-                      className="invest-location-control"
-                      onClick={() => setLocationOpen((prev) => !prev)}
-                      aria-expanded={locationOpen ? "true" : "false"}
-                    >
+                    <button type="button" className="invest-location-control" onClick={() => setLocationOpen(!locationOpen)}>
                       <div className="invest-location-chips">
-                        {form.locations.length === 0 ? (
-                          <span className="placeholder">지역을 선택하세요</span>
-                        ) : (
-                          form.locations.map((loc) => (
-                            <span key={loc} className="invest-location-chip">
-                              {loc}
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  removeLocation(loc);
-                                }}
-                                aria-label={`${loc} 제거`}
-                              >
-                                x
-                              </button>
-                            </span>
-                          ))
-                        )}
+                        {form.locations.length === 0 ? <span className="placeholder">지역 선택</span> : form.locations.map(loc => (
+                          <span key={loc} className="invest-location-chip">{loc}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); removeLocation(loc); }}>x</button>
+                          </span>
+                        ))}
                       </div>
-                      <span className={`chev ${locationOpen ? "is-open" : ""}`}>
-                        ▾
-                      </span>
                     </button>
-                    {locationOpen ? (
+                    {locationOpen && (
                       <div className="invest-location-panel">
-                        {LOCATION_OPTIONS.map((loc) => {
-                          const selected = form.locations.includes(loc);
-                          return (
-                            <button
-                              key={loc}
-                              type="button"
-                              className={`invest-location-option ${
-                                selected ? "is-selected" : ""
-                              }`}
-                              // ✅ 옵션 클릭 시 즉시 닫기 (키보드 Enter도 onClick으로 지원)
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                              }}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                selectLocation(loc);
-                              }}
-                            >
-                              {loc}
-                            </button>
-                          );
-                        })}
+                        {LOCATION_OPTIONS.map(loc => (
+                          <button key={loc} type="button" className={`invest-location-option ${form.locations.includes(loc) ? "is-selected" : ""}`} onClick={() => selectLocation(loc)}>{loc}</button>
+                        ))}
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </label>
-                <label className="invest-form-label">
-                  상세 주소
-                  <input
-                    type="text"
-                    value={form.detailAddress}
-                    onChange={updateField("detailAddress")}
-                    placeholder="상세 주소를 입력하세요"
-                  />
-                </label>
-              </div>
 
-              <div className="invest-form-row">
                 <label className="invest-form-label">
                   회사 규모
                   <div className="invest-location-select">
-                    <button
-                      type="button"
-                      className="invest-location-control"
-                      onClick={() => setSizeOpen((prev) => !prev)}
-                      aria-expanded={sizeOpen ? "true" : "false"}
-                    >
+                    <button type="button" className="invest-location-control" onClick={() => setSizeOpen(!sizeOpen)}>
                       <div className="invest-location-chips">
-                        {form.companySizes.length === 0 ? (
-                          <span className="placeholder">
-                            회사 규모를 선택하세요
+                        {form.companySizes.length === 0 ? <span className="placeholder">규모 선택</span> : form.companySizes.map(size => (
+                          <span key={size} className="invest-location-chip">{size}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); removeCompanySize(size); }}>x</button>
                           </span>
-                        ) : (
-                          form.companySizes.map((size) => (
-                            <span key={size} className="invest-location-chip">
-                              {size}
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  removeCompanySize(size);
-                                }}
-                                aria-label={`${size} 제거`}
-                              >
-                                x
-                              </button>
-                            </span>
-                          ))
-                        )}
+                        ))}
                       </div>
-                      <span className={`chev ${sizeOpen ? "is-open" : ""}`}>
-                        ▾
-                      </span>
                     </button>
-                    {sizeOpen ? (
+                    {sizeOpen && (
                       <div className="invest-location-panel">
-                        {COMPANY_SIZE_OPTIONS.map((size) => {
-                          const selected = form.companySizes.includes(size);
-                          return (
-                            <button
-                              key={size}
-                              type="button"
-                              className={`invest-location-option ${
-                                selected ? "is-selected" : ""
-                              }`}
-                              // ✅ 옵션 클릭 시 즉시 닫기 (키보드 Enter도 onClick으로 지원)
-                              onMouseDown={(event) => {
-                                event.preventDefault();
-                              }}
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                selectCompanySize(size);
-                              }}
-                            >
-                              {size}
-                            </button>
-                          );
-                        })}
+                        {COMPANY_SIZE_OPTIONS.map(size => (
+                          <button key={size} type="button" className={`invest-location-option ${form.companySizes.includes(size) ? "is-selected" : ""}`} onClick={() => selectCompanySize(size)}>{size}</button>
+                        ))}
                       </div>
-                    ) : null}
+                    )}
                   </div>
                 </label>
               </div>
@@ -518,144 +314,67 @@ export default function InvestmentPostEdit({ onLogout }) {
                   태그 (최대 5개)
                   <div className="invest-tag-grid">
                     {form.hashtags.map((value, index) => (
-                      <input
-                        key={`hashtag-${index}`}
-                        type="text"
-                        value={value}
-                        onChange={(event) => {
-                          const next = [...form.hashtags];
-                          next[index] = event.target.value;
-                          setForm((prev) => ({ ...prev, hashtags: next }));
-                        }}
-                        placeholder={`해시태그 ${index + 1}`}
-                      />
+                      <input key={index} type="text" value={value} onChange={(e) => {
+                        const next = [...form.hashtags];
+                        next[index] = e.target.value;
+                        setForm({ ...form, hashtags: next });
+                      }} placeholder={`태그 ${index + 1}`} />
                     ))}
                   </div>
                 </label>
               </div>
 
+              {/* 2026-02-03 변경: 홈페이지 제거 후 담당자 이름과 이메일을 나란히 배치 */}
               <div className="invest-form-row two-col">
                 <label className="invest-form-label">
-                  공식 홈페이지
-                  <input
-                    type="url"
-                    value={form.website}
-                    onChange={updateField("website")}
-                    onBlur={handleUrlBlur("website")}
-                    placeholder="https://"
-                  />
-                </label>
-                <label className="invest-form-label">
                   담당자 이름
-                  <input
-                    type="text"
-                    value={form.contactName}
-                    onChange={updateField("contactName")}
-                    placeholder="홍길동"
-                  />
+                  <input type="text" value={form.contactName} onChange={updateField("contactName")} />
                 </label>
-              </div>
-              {errors.website ? (
-                <div className="invest-form-error">{errors.website}</div>
-              ) : null}
-
-              <div className="invest-form-row">
                 <label className="invest-form-label">
                   담당자 이메일
-                  <input
-                    type="email"
-                    value={form.contactEmail}
-                    onChange={updateField("contactEmail")}
-                    placeholder="contact@brandpilot.kr"
-                  />
+                  <input type="email" value={form.contactEmail} onChange={updateField("contactEmail")} />
                 </label>
               </div>
 
               <div className="invest-form-row">
                 <label className="invest-form-label">
                   상세 소개
-                  <textarea
-                    value={form.summary}
-                    onChange={updateField("summary")}
-                    placeholder="사업 모델, traction, 지표 등 투자자가 바로 이해할 수 있도록 작성해 주세요."
-                    rows={5}
-                  />
+                  <textarea value={form.summary} onChange={updateField("summary")} rows={5} />
                 </label>
               </div>
 
               <div className="invest-form-actions">
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleDelete}
-                >
-                  삭제
-                </button>
-                <button
-                  type="submit"
-                  className="btn primary"
-                  disabled={loading}
-                >
-                  수정 저장
-                </button>
+                <button type="button" className="btn ghost" onClick={handleDelete}>삭제</button>
+                <button type="submit" className="btn primary" disabled={loading}>수정 저장</button>
               </div>
-              {submitError ? (
-                <div className="invest-form-error">{submitError}</div>
-              ) : null}
+              {submitError && <div className="invest-form-error">{submitError}</div>}
             </form>
 
             <aside className="invest-create-side">
-              <div className="invest-preview invest-preview--board">
+              {/* 2026-02-03 미리보기 카드 레이아웃 유지 */}
+              <div className="invest-preview">
                 <div className="invest-preview-top">
                   <div className="invest-preview-text">
-                    <h3>{form.company || "회사명 입력"}</h3>
-                    <p className="invest-preview-oneliner">
-                      {form.oneLiner || "한 줄 소개가 표시됩니다."}
-                    </p>
+                    <h3>{form.company || "회사명"}</h3>
+                    <p>{form.oneLiner || "한 줄 소개"}</p>
                   </div>
-                  <div className="invest-preview-logo" aria-hidden="true">
-                    {logoSrc ? (
-                      <img src={logoSrc} alt="로고 미리보기" />
-                    ) : (
-                      previewLogo
-                    )}
+                  <div className="invest-preview-logo">
+                    {logoSrc ? <img src={logoSrc} alt="로고" /> : previewLogo}
                   </div>
                 </div>
                 <div className="invest-preview-tags">
-                  {tagList.length === 0 ? (
-                    <span className="empty">태그를 입력해 주세요.</span>
-                  ) : (
-                    tagList.map((tag) => <span key={tag}>#{tag}</span>)
-                  )}
+                  {tagList.map(tag => <span key={tag}>#{tag}</span>)}
                 </div>
                 <div className="invest-preview-bottom">
-                  <div className="invest-preview-meta">
-                    <div className="invest-preview-status">
-                      {[
-                        form.locations.length
-                          ? form.locations.join(", ")
-                          : "지역 미선택",
-                        form.companySizes.length
-                          ? form.companySizes.join(", ")
-                          : "회사 규모 미선택",
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </div>
-                    <div className="invest-preview-updated">
-                      업데이트: {new Date().toISOString().slice(0, 10)}
-                    </div>
+                  <div className="invest-preview-status">
+                    {form.locations[0] || "지역 미선택"}, {form.companySizes[0] || "규모 미선택"}
                   </div>
-                  <span className="invest-preview-link" aria-hidden="true">
-                    ↗
-                  </span>
                 </div>
               </div>
             </aside>
           </section>
         )}
       </main>
-
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );

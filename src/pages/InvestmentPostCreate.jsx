@@ -37,21 +37,23 @@ export default function InvestmentPostCreate({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
+  // 2026-02-03
+  // 백엔드에 맞춰서 상세주소, 홈페이지 입력란 없앰.
   const [form, setForm] = useState({
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
+    // detailAddress: "",
     companySizes: [],
     hashtags: ["", "", "", "", ""],
-    website: "",
+    // website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-  const [errors, setErrors] = useState({
-    website: "",
-  });
+  // const [errors, setErrors] = useState({
+  //   website: "",
+  // });
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [logoFile, setLogoFile] = useState(null);
@@ -68,16 +70,18 @@ export default function InvestmentPostCreate({ onLogout }) {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
 
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
+  // 2026-02-03
+  // 홈페이지 입력란 제거
+  // const validateUrl = (value) => {
+  //   if (!value) return "";
+  //   return value.startsWith("http://") || value.startsWith("https://")
+  //     ? ""
+  //     : "http:// 또는 https://로 시작해야 합니다.";
+  // };
 
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
-  };
+  // const handleUrlBlur = (key) => (event) => {
+  //   setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
+  // };
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -241,7 +245,9 @@ export default function InvestmentPostCreate({ onLogout }) {
         : draft?.location
           ? [draft.location]
           : prev.locations,
-      detailAddress: draft?.detailAddress ?? prev.detailAddress,
+          // 2026-02-03
+          // 상세 주소 제거
+          // detailAddress: draft?.detailAddress ?? prev.detailAddress,
       companySizes: Array.isArray(draft?.companySizes)
         ? draft.companySizes
         : draft?.companySize
@@ -386,6 +392,7 @@ export default function InvestmentPostCreate({ onLogout }) {
               ) : null}
             </div>
 
+            {/* ✅ 변경: 지역과 회사 규모를 two-col로 배치 */}
             <div className="invest-form-row two-col">
               <label className="invest-form-label">
                 지역
@@ -432,11 +439,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                             className={`invest-location-option ${
                               selected ? "is-selected" : ""
                             }`}
-                            // ✅ 옵션 클릭 시 즉시 닫기 (키보드 Enter도 onClick으로 지원)
-                            onMouseDown={(event) => {
-                              // 클릭 시 포커스 이동/이상 동작 방지
-                              event.preventDefault();
-                            }}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -451,18 +454,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                   ) : null}
                 </div>
               </label>
-              <label className="invest-form-label">
-                상세 주소
-                <input
-                  type="text"
-                  value={form.detailAddress}
-                  onChange={updateField("detailAddress")}
-                  placeholder="상세 주소를 입력하세요"
-                />
-              </label>
-            </div>
 
-            <div className="invest-form-row">
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">
@@ -510,10 +502,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                             className={`invest-location-option ${
                               selected ? "is-selected" : ""
                             }`}
-                            // ✅ 옵션 클릭 시 즉시 닫기 (키보드 Enter도 onClick으로 지원)
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                            }}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -551,17 +540,8 @@ export default function InvestmentPostCreate({ onLogout }) {
               </label>
             </div>
 
+            {/* ✅ 변경: 담당자 이름과 이메일을 two-col로 배치 (홈페이지 제거됨) */}
             <div className="invest-form-row two-col">
-              <label className="invest-form-label">
-                공식 홈페이지
-                <input
-                  type="url"
-                  value={form.website}
-                  onChange={updateField("website")}
-                  onBlur={handleUrlBlur("website")}
-                  placeholder="https://"
-                />
-              </label>
               <label className="invest-form-label">
                 담당자 이름
                 <input
@@ -571,12 +551,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                   placeholder="홍길동"
                 />
               </label>
-            </div>
-            {errors.website ? (
-              <div className="invest-form-error">{errors.website}</div>
-            ) : null}
-
-            <div className="invest-form-row">
               <label className="invest-form-label">
                 담당자 이메일
                 <input
@@ -666,8 +640,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                 </li>
                 <li>태그는 핵심 키워드 위주로 최대 5개까지 입력해 주세요.</li>
                 <li>
-                  로고 이미지와 공식 홈페이지를 입력하면 게시글 완성도가
-                  높아집니다.
+                  로고 이미지를 입력하면 게시글 완성도가 높아집니다.
                 </li>
               </ul>
             </div>
