@@ -281,6 +281,71 @@ export default function DiagnosisInterview({ onLogout }) {
     };
   };
 
+  // ✅ 안전한 brandId 추출 (하드코딩 금지)
+  const toValidBrandId = (v) => {
+    if (v == null) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    const s = String(v).trim();
+    if (!s) return null;
+    // 숫자 문자열이면 number로 통일
+    if (/^\d+$/.test(s)) return Number(s);
+    return s; // 혹시 UUID 같은 형태가 오면 그대로 보존
+  };
+
+  const pickBrandId = (data) => {
+    const d = data || {};
+    const candidates = [
+      d.brandId,
+      d.brand_id,
+      d.id,
+      d?.data?.brandId,
+      d?.data?.brand_id,
+      d?.interviewReport?.brandId,
+      d?.interviewReport?.brand_id,
+      d?.interviewReport?.id,
+      d?.report?.brandId,
+      d?.report?.brand_id,
+      d?.report?.id,
+    ];
+    for (const c of candidates) {
+      const bid = toValidBrandId(c);
+      if (bid != null) return bid;
+    }
+    return null;
+  };
+
+  const asMultilineText = (v) => {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) {
+      const arr = v.map((x) => String(x ?? "").trim()).filter(Boolean);
+      return arr.length ? arr.map((t) => `- ${t}`).join("\n") : "";
+    }
+    // object면 보기 좋게 stringify
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
+  };
+
+  const buildRawQaFields = () => {
+    const personaLabel = getLabel(form.targetPersona, PERSONA_OPTIONS);
+    const stageLabel = getLabel(form.stage, STAGE_OPTIONS);
+    const industryLabel = getLabel(form.industry, INDUSTRY_OPTIONS);
+    return {
+      company_name: String(form.companyName || "").trim(),
+      website: String(form.website || "").trim(),
+      service_definition: String(form.oneLine || "").trim(),
+      pain_point: String(form.customerProblem || "").trim(),
+      target_persona: personaLabel || String(form.targetPersona || "").trim(),
+      usp: String(form.usp || "").trim(),
+      growth_stage: stageLabel || String(form.stage || "").trim(),
+      industry: industryLabel || String(form.industry || "").trim(),
+      vision_headline: String(form.visionHeadline || "").trim(),
+    };
+  };
+
   const handleViewResult = async () => {
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 AI 요약 결과를 볼 수 있어요.");
@@ -307,70 +372,95 @@ export default function DiagnosisInterview({ onLogout }) {
     setIsSubmitting(true);
     try {
       const qa = buildQaMap();
+      const requestBody = { ...form, qa };
 
-      // ✅ 호환성 위해 "원본 입력값(form)"도 같이 보냄(백 DTO가 flat일 수도 있어서)
-      const requestBody = {
-        // 기존 flat
-        ...form,
-        // 백 요구: 질문(key):답변(value)
-        qa,
-      };
-
-      // ✅ 백 호출 (JWT는 apiRequest가 붙여준다고 가정)
-      // 백이 더미 응답을 내려주면 data로 받음
-      const data = await apiRequest("/brands/interview", {
+      // ✅ 1) 백엔드 호출
+      const responseData = await apiRequest("/brands/interview", {
         method: "POST",
         data: requestBody,
       });
 
-      // ✅ 결과 저장 (백 응답 구조가 뭐든 저장해두고 Result 페이지에서 유연 렌더)
+      // ✅ 2) brandId 추출 (하드코딩 금지)
+      const extractedBrandId = pickBrandId(responseData);
+
+      // ✅ 3) 결과 가공(flat)
+      const legacyUserResult =
+        responseData?.interviewReport?.user_result ||
+        responseData?.interviewReport?.userResult ||
+        responseData?.user_result ||
+        responseData?.userResult ||
+        {};
+
       const resultPayload = {
-        brandId: data?.brandId ?? data?.id ?? null,
-        interviewReport: data?.interviewReport ?? data?.report ?? data,
+        brandId: extractedBrandId,
+
+        // 응답 구조가 달라도 화면에서 최대한 그려지도록 평탄화
+        summary: asMultilineText(
+          responseData?.summary ?? legacyUserResult?.summary,
+        ),
+        analysis: asMultilineText(
+          responseData?.analysis ?? legacyUserResult?.analysis,
+        ),
+        key_insights: asMultilineText(
+          responseData?.key_insights ??
+            legacyUserResult?.key_insights ??
+            legacyUserResult?.keyInsights,
+        ),
+
+        // Q&A(원문)
+        raw_qa: qa,
+        // 입력 요약(필드형)
+        raw_qa_fields: buildRawQaFields(),
+
         receivedAt: Date.now(),
+        updatedAt: new Date().toISOString(),
+        _source: "diagnosisInterview",
       };
 
-      try {
-        userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
-      } catch {
-        // ignore
-      }
+      // ✅ 4) 저장
+      userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
 
-      // ✅ pipeline에 brandId/진단요약 저장 + 기존 브랜드 컨설팅 진행 초기화(brandId 섞임 방지)
-      try {
-        const summary = buildDiagnosisSummaryFromDraft(form);
-        abortBrandFlow("new_diagnosis");
+      // ✅ 5) Pipeline 업데이트
+      // - 새 진단이 시작되면, 기존 네이밍/컨셉/스토리/로고 진행은 초기화(brandId 섞임 방지)
+      // - brandId가 없으면 다음 단계 진행이 불가하므로 diagnosisSummary도 비워 접근을 막음
+      abortBrandFlow("new_diagnosis");
+
+      if (extractedBrandId != null) {
+        const summaryStr = buildDiagnosisSummaryFromDraft(form);
         upsertPipeline({
-          brandId: resultPayload.brandId,
-          diagnosisSummary: summary,
+          brandId: extractedBrandId,
+          diagnosisSummary: summaryStr,
         });
-      } catch {
-        // ignore
+      } else {
+        upsertPipeline({
+          brandId: null,
+          diagnosisSummary: null,
+        });
+        alert(
+          "서버 응답에 brandId가 없어 다음 단계 진행이 불가능해요. (백엔드 응답 확인 필요)\n결과는 표시되지만, 브랜드 컨설팅은 시작할 수 없습니다.",
+        );
       }
 
-      // ✅ 결과 페이지 이동 + state로도 넘김(우선순위)
+      // ✅ 6) 페이지 이동
       navigate("/diagnosis/result", {
         state: {
           from: "diagnosisInterview",
           next: "/brandconsulting",
-          brandId: resultPayload.brandId,
-          interviewReport: resultPayload.interviewReport,
+          brandId: extractedBrandId,
+          report: resultPayload,
         },
       });
     } catch (err) {
-      submitOnceRef.current = false;
-      const status = err?.status || err?.response?.status;
-      if (status === 401 || status === 403) {
-        alert("세션이 만료되었어요. 다시 로그인 해주세요.");
-        navigate("/", { replace: true });
-        return;
-      }
-      alert(
+      console.error(err);
+      const msg =
         err?.userMessage ||
-          "요청에 실패했습니다. 백 서버 로그/네트워크 탭을 확인해 주세요.",
-      );
+        err?.response?.data?.message ||
+        err?.message ||
+        "요청 실패";
+      alert(msg);
     } finally {
       setIsSubmitting(false);
+      submitOnceRef.current = false;
     }
   };
 

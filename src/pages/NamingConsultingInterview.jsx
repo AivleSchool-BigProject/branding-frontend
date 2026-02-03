@@ -183,7 +183,7 @@ function normalizeNamingCandidates(raw) {
     if (values.length) {
       return values.slice(0, 3).map((name, idx) => ({
         id: `name_${idx + 1}`,
-        name: `안 ${idx + 1}`,
+        name: `컨설팅 제안 ${idx + 1}`,
         oneLiner: name,
         keywords: [],
         style: "",
@@ -208,7 +208,7 @@ function normalizeNamingCandidates(raw) {
   if (list.length && typeof list[0] === "string") {
     return list.slice(0, 3).map((name, idx) => ({
       id: `name_${idx + 1}`,
-      name: `안 ${idx + 1}`,
+      name: `컨설팅 제안 ${idx + 1}`,
       oneLiner: name,
       keywords: [],
       style: "",
@@ -222,7 +222,8 @@ function normalizeNamingCandidates(raw) {
   // 케이스 B: [{id, title, names, reason ...}] 객체 배열
   return list.slice(0, 3).map((item, idx) => {
     const id = item.id || item.candidateId || `name_${idx + 1}`;
-    const title = item.name || item.title || item.label || `안 ${idx + 1}`;
+    const title =
+      item.name || item.title || item.label || `컨설팅 제안 ${idx + 1}`;
 
     // 샘플 네임: 다양한 키로 대응
     const samples =
@@ -724,7 +725,7 @@ export default function NamingConsultingInterview({ onLogout }) {
       const nextCandidates = normalizeNamingCandidates(namingRes);
       if (!nextCandidates.length) {
         alert(
-          "네이밍 후보를 받지 못했습니다. 백 응답 포맷(candidates)을 확인해주세요.",
+          "네이밍 제안을 받지 못했습니다. 백 응답 포맷(candidates)을 확인해주세요.",
         );
         return;
       }
@@ -733,7 +734,7 @@ export default function NamingConsultingInterview({ onLogout }) {
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
       showToast(
-        "✅ 네이밍 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+        "✅ 네이밍 컨설팅 제안 3가지이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
       );
       window.setTimeout(() => scrollToResult(), 50);
     } catch (error) {
@@ -1046,7 +1047,8 @@ export default function NamingConsultingInterview({ onLogout }) {
                 <div className="card__head">
                   <h2>2. 네이밍 질문지</h2>
                   <p>
-                    아래 항목을 입력하면 네이밍 후보 3안을 생성할 수 있어요.
+                    아래 항목을 입력하면 네이밍 컨설팅 제안 3가지을 생성할 수
+                    있어요.
                   </p>
                 </div>
 
@@ -1217,17 +1219,17 @@ export default function NamingConsultingInterview({ onLogout }) {
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>네이밍 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <h2>네이밍 제안 생성 중</h2>
+                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>네이밍 후보 3안</h2>
+                    <h2>네이밍 컨설팅 제안 3가지</h2>
                     <p>
-                      후보 1개를 선택하면 다음 단계(컨셉)로 진행할 수 있어요.
+                      제안 1개를 선택하면 다음 단계(컨셉)로 진행할 수 있어요.
                     </p>
                   </div>
 
@@ -1261,7 +1263,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                               ) : null}
                             </div>
                             <span className="candidateBadge">
-                              {isSelected ? "선택됨" : "후보"}
+                              {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
@@ -1378,7 +1380,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘컨셉 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
@@ -1500,7 +1502,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

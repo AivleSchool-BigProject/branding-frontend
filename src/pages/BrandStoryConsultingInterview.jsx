@@ -364,7 +364,7 @@ function normalizeStoryCandidates(raw, form = {}) {
             ?.trim() || story;
         return {
           id: `story_${idx + 1}`,
-          name: `안 ${idx + 1}`,
+          name: `컨설팅 제안 ${idx + 1}`,
           oneLiner:
             firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine,
           meta,
@@ -393,7 +393,7 @@ function normalizeStoryCandidates(raw, form = {}) {
   if (list.length && typeof list[0] === "string") {
     return list.slice(0, 3).map((story, idx) => ({
       id: `story_${idx + 1}`,
-      name: `안 ${idx + 1}`,
+      name: `컨설팅 제안 ${idx + 1}`,
       oneLiner: story.length > 60 ? `${story.slice(0, 60)}…` : story,
       meta: "",
       story,
@@ -424,7 +424,7 @@ function normalizeStoryCandidates(raw, form = {}) {
 
     return {
       id,
-      name: item?.name || item?.title || `안 ${idx + 1}`,
+      name: item?.name || item?.title || `컨설팅 제안 ${idx + 1}`,
       oneLiner:
         item?.oneLiner ||
         (firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine),
@@ -814,7 +814,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       const nextCandidates = normalizeStoryCandidates(raw, form);
 
       if (!nextCandidates.length) {
-        alert("스토리 후보를 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        alert("스토리 제안을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
 
@@ -822,7 +822,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
       showToast(
-        "✅ 스토리 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+        "✅ 스토리 컨설팅 제안 3가지이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
       );
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
@@ -894,7 +894,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       return;
     }
     if (!String(selectedStory).trim()) {
-      alert("선택된 스토리를 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      alert("선택된 스토리를 찾을 수 없습니다. 제안을 다시 선택해 주세요.");
       return;
     }
 
@@ -1292,16 +1292,16 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>스토리 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <h2>스토리 제안 생성 중</h2>
+                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>스토리 후보 3안</h2>
-                    <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
+                    <h2>스토리 컨설팅 제안 3가지</h2>
+                    <p>제안 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
                   </div>
 
                   <div className="candidateList">
@@ -1341,7 +1341,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                               </div>
                             </div>
                             <span className="candidateBadge">
-                              {isSelected ? "선택됨" : "후보"}
+                              {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
@@ -1386,7 +1386,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘로고 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
@@ -1489,7 +1489,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

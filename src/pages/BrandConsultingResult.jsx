@@ -347,6 +347,28 @@ function renderValue(value) {
   return v ? v : "-";
 }
 
+function labelPrefixByService(service) {
+  // naming / homepage(concept) / story => 컨설팅 제안
+  // logo => 시안
+  return service === "logo" ? "시안" : "컨설팅 제안";
+}
+
+function prettyCandidateTitle(service, title, idx) {
+  const t = String(title ?? "").trim();
+
+  // 레거시 표기(안 1/2/3, 후보 1/2/3, 로고 1/2/3)를 새 표기로 치환
+  const m = t.match(/^(안|후보|제안|로고|시안)\s*(\d+)$/);
+  if (m) {
+    const n = m[2];
+    return `${labelPrefixByService(service)} ${n}`;
+  }
+
+  // title이 비어있을 때 기본 라벨 제공
+  if (!t) return `${labelPrefixByService(service)} ${idx + 1}`;
+
+  return t;
+}
+
 function humanizeKey(key) {
   const k = String(key || "");
   const snake = k.replace(/_/g, " ");
@@ -1165,7 +1187,11 @@ export default function BrandConsultingResult({ onLogout }) {
                               }}
                             >
                               <div style={{ fontWeight: 900, fontSize: 16 }}>
-                                {renderValue(title) || `후보 ${idx + 1}`}
+                                {prettyCandidateTitle(
+                                  service,
+                                  renderValue(title),
+                                  idx,
+                                )}
                               </div>
 
                               {one ? (

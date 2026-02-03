@@ -38,17 +38,12 @@ export default function InvestmentPostEdit({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
     companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
-    website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
-  });
-  const [errors, setErrors] = useState({
-    website: "",
   });
   const [notFound, setNotFound] = useState(false);
   const [logoFileName, setLogoFileName] = useState("");
@@ -61,17 +56,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
   const updateField = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
-  };
-
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
-
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
   };
 
   const tagList = useMemo(() => {
@@ -142,13 +126,11 @@ export default function InvestmentPostEdit({ onLogout }) {
           company: data.companyName || "",
           oneLiner: data.shortDescription || "",
           locations: data.region ? [data.region] : [],
-          detailAddress: "",
           companySizes: data.companySize ? [data.companySize] : [],
           logoImageUrl: data.logoImageUrl || "",
           hashtags: Array.isArray(data.hashtags)
             ? [...data.hashtags, "", "", "", "", ""].slice(0, 5)
             : prev.hashtags,
-          website: "",
           contactName: data.contactName || "",
           contactEmail: data.contactEmail || "",
           summary: data.companyDescription || "",
@@ -190,11 +172,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
     setSubmitError("");
     setLoading(true);
 
@@ -435,18 +412,6 @@ export default function InvestmentPostEdit({ onLogout }) {
                   </div>
                 </label>
                 <label className="invest-form-label">
-                  상세 주소
-                  <input
-                    type="text"
-                    value={form.detailAddress}
-                    onChange={updateField("detailAddress")}
-                    placeholder="상세 주소를 입력하세요"
-                  />
-                </label>
-              </div>
-
-              <div className="invest-form-row">
-                <label className="invest-form-label">
                   회사 규모
                   <div className="invest-location-select">
                     <button
@@ -536,16 +501,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
               <div className="invest-form-row two-col">
                 <label className="invest-form-label">
-                  공식 홈페이지
-                  <input
-                    type="url"
-                    value={form.website}
-                    onChange={updateField("website")}
-                    onBlur={handleUrlBlur("website")}
-                    placeholder="https://"
-                  />
-                </label>
-                <label className="invest-form-label">
                   담당자 이름
                   <input
                     type="text"
@@ -554,12 +509,6 @@ export default function InvestmentPostEdit({ onLogout }) {
                     placeholder="홍길동"
                   />
                 </label>
-              </div>
-              {errors.website ? (
-                <div className="invest-form-error">{errors.website}</div>
-              ) : null}
-
-              <div className="invest-form-row">
                 <label className="invest-form-label">
                   담당자 이메일
                   <input

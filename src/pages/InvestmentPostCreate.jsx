@@ -41,16 +41,11 @@ export default function InvestmentPostCreate({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    detailAddress: "",
     companySizes: [],
     hashtags: ["", "", "", "", ""],
-    website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
-  });
-  const [errors, setErrors] = useState({
-    website: "",
   });
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
@@ -66,17 +61,6 @@ export default function InvestmentPostCreate({ onLogout }) {
 
   const updateField = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
-  };
-
-  const validateUrl = (value) => {
-    if (!value) return "";
-    return value.startsWith("http://") || value.startsWith("https://")
-      ? ""
-      : "http:// 또는 https://로 시작해야 합니다.";
-  };
-
-  const handleUrlBlur = (key) => (event) => {
-    setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
   };
 
   const handleLogoChange = (event) => {
@@ -163,11 +147,6 @@ export default function InvestmentPostCreate({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
     setSubmitError("");
     setLoading(true);
 
@@ -241,7 +220,6 @@ export default function InvestmentPostCreate({ onLogout }) {
         : draft?.location
           ? [draft.location]
           : prev.locations,
-      detailAddress: draft?.detailAddress ?? prev.detailAddress,
       companySizes: Array.isArray(draft?.companySizes)
         ? draft.companySizes
         : draft?.companySize
@@ -452,18 +430,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                 </div>
               </label>
               <label className="invest-form-label">
-                상세 주소
-                <input
-                  type="text"
-                  value={form.detailAddress}
-                  onChange={updateField("detailAddress")}
-                  placeholder="상세 주소를 입력하세요"
-                />
-              </label>
-            </div>
-
-            <div className="invest-form-row">
-              <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">
                   <button
@@ -553,16 +519,6 @@ export default function InvestmentPostCreate({ onLogout }) {
 
             <div className="invest-form-row two-col">
               <label className="invest-form-label">
-                공식 홈페이지
-                <input
-                  type="url"
-                  value={form.website}
-                  onChange={updateField("website")}
-                  onBlur={handleUrlBlur("website")}
-                  placeholder="https://"
-                />
-              </label>
-              <label className="invest-form-label">
                 담당자 이름
                 <input
                   type="text"
@@ -571,12 +527,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                   placeholder="홍길동"
                 />
               </label>
-            </div>
-            {errors.website ? (
-              <div className="invest-form-error">{errors.website}</div>
-            ) : null}
-
-            <div className="invest-form-row">
               <label className="invest-form-label">
                 담당자 이메일
                 <input

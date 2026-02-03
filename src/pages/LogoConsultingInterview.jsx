@@ -249,7 +249,7 @@ function normalizeLogoCandidates(raw) {
     const n = idx + 1;
     return {
       id: `logo${n}`,
-      name: `로고 ${n}`,
+      name: `시안 ${n}`,
       imageUrl: url,
       url,
       summary: "AI가 생성한 로고 시안입니다.",
@@ -720,7 +720,7 @@ export default function LogoConsultingInterview({ onLogout }) {
 
       if (!nextCandidates.length) {
         alert(
-          "로고 후보를 받지 못했습니다. 백 응답 포맷(logo1~3 또는 candidates 배열)을 확인해주세요.",
+          "로고 시안을 받지 못했습니다. 백 응답 포맷(logo1~3 또는 candidates 배열)을 확인해주세요.",
         );
         setCandidates([]);
         setSelectedId(null);
@@ -732,7 +732,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
       showToast(
-        "✅ 로고 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+        "✅ 로고 시안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
       );
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
@@ -829,7 +829,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       return;
     }
     if (!String(selectedLogoUrl).trim()) {
-      alert("선택된 로고 URL을 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      alert("선택된 로고 URL을 찾을 수 없습니다. 시안을 다시 선택해 주세요.");
       return;
     }
 
@@ -1252,15 +1252,15 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
                     <h2>로고 방향 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <p>입력 내용을 바탕으로 시안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>로고 후보 3안</h2>
-                    <p>후보 1개를 선택하면 결과 히스토리로 이동할 수 있어요.</p>
+                    <h2>로고 시안 3가지</h2>
+                    <p>시안 1개를 선택하면 결과 히스토리로 이동할 수 있어요.</p>
                   </div>
 
                   <div className="candidateList">
@@ -1291,7 +1291,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                               </div>
                             </div>
                             <span className="candidateBadge">
-                              {isSelected ? "선택됨" : "후보"}
+                              {isSelected ? "선택됨" : "시안"}
                             </span>
                           </div>
 
@@ -1366,7 +1366,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canFinish
                       ? "✅ 사이드 카드에서 ‘완료(히스토리로)’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 완료 버튼이 표시됩니다."}
+                      : "* 시안 1개를 선택하면 사이드 카드에 완료 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
@@ -1470,7 +1470,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 완료 버튼이 표시됩니다.
+                    * 시안 1개를 선택하면 완료 버튼이 표시됩니다.
                   </p>
                 )}
               </div>
