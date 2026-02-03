@@ -24,21 +24,13 @@ export default function InvestmentPostEdit({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    // 2026-02-03 
-    // 상세주소 필드 제거
     companySizes: [],
     logoImageUrl: "",
     hashtags: ["", "", "", "", ""],
-    // 2026-02-03 
-    // 홈페이지 필드 제거
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-
-  // 2026-02-03 
-  // 홈페이지 유효성 검사용 errors 상태 초기화
-  const [errors, setErrors] = useState({});
   const [notFound, setNotFound] = useState(false);
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
@@ -117,15 +109,11 @@ export default function InvestmentPostEdit({ onLogout }) {
           company: data.companyName || "",
           oneLiner: data.shortDescription || "",
           locations: data.region ? [data.region] : [],
-          // 2026-02-03 
-          // 상세주소 매핑 제거
           companySizes: data.companySize ? [data.companySize] : [],
           logoImageUrl: data.logoImageUrl || "",
           hashtags: Array.isArray(data.hashtags)
             ? [...data.hashtags, "", "", "", "", ""].slice(0, 5)
             : prev.hashtags,
-          // 2026-02-03 
-          // 홈페이지 매핑 제거
           contactName: data.contactName || "",
           contactEmail: data.contactEmail || "",
           summary: data.companyDescription || "",
@@ -155,8 +143,6 @@ export default function InvestmentPostEdit({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    // 2026-02-03 
-    // 홈페이지 URL 유효성 검사 로직 삭제
     setSubmitError("");
     setLoading(true);
 
@@ -286,7 +272,6 @@ export default function InvestmentPostEdit({ onLogout }) {
                     )}
                   </div>
                 </label>
-
                 <label className="invest-form-label">
                   회사 규모
                   <div className="invest-location-select">

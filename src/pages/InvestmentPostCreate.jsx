@@ -43,17 +43,12 @@ export default function InvestmentPostCreate({ onLogout }) {
     company: "",
     oneLiner: "",
     locations: [],
-    // detailAddress: "",
     companySizes: [],
     hashtags: ["", "", "", "", ""],
-    // website: "",
     contactName: "",
     contactEmail: "",
     summary: "",
   });
-  // const [errors, setErrors] = useState({
-  //   website: "",
-  // });
   const [logoFileName, setLogoFileName] = useState("");
   const [logoPreview, setLogoPreview] = useState("");
   const [logoFile, setLogoFile] = useState(null);
@@ -69,19 +64,6 @@ export default function InvestmentPostCreate({ onLogout }) {
   const updateField = (key) => (event) => {
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
   };
-
-  // 2026-02-03
-  // 홈페이지 입력란 제거
-  // const validateUrl = (value) => {
-  //   if (!value) return "";
-  //   return value.startsWith("http://") || value.startsWith("https://")
-  //     ? ""
-  //     : "http:// 또는 https://로 시작해야 합니다.";
-  // };
-
-  // const handleUrlBlur = (key) => (event) => {
-  //   setErrors((prev) => ({ ...prev, [key]: validateUrl(event.target.value) }));
-  // };
 
   const handleLogoChange = (event) => {
     const file = event.target.files?.[0];
@@ -167,11 +149,6 @@ export default function InvestmentPostCreate({ onLogout }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const nextErrors = {
-      website: validateUrl(form.website),
-    };
-    setErrors(nextErrors);
-    if (nextErrors.website) return;
     setSubmitError("");
     setLoading(true);
 
@@ -245,9 +222,6 @@ export default function InvestmentPostCreate({ onLogout }) {
         : draft?.location
           ? [draft.location]
           : prev.locations,
-          // 2026-02-03
-          // 상세 주소 제거
-          // detailAddress: draft?.detailAddress ?? prev.detailAddress,
       companySizes: Array.isArray(draft?.companySizes)
         ? draft.companySizes
         : draft?.companySize
@@ -454,7 +428,6 @@ export default function InvestmentPostCreate({ onLogout }) {
                   ) : null}
                 </div>
               </label>
-
               <label className="invest-form-label">
                 회사 규모
                 <div className="invest-location-select">

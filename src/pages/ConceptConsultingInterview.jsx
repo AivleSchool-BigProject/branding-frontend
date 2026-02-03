@@ -631,7 +631,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
       if (!nextCandidates.length) {
         alert(
-          "컨셉 후보를 받지 못했습니다. 백 응답 포맷(concept1~3 또는 candidates 배열)을 확인해주세요.",
+          "컨셉 제안을 받지 못했습니다. 백 응답 포맷(concept1~3 또는 candidates 배열)을 확인해주세요.",
         );
         setCandidates([]);
         setSelectedId(null);
@@ -643,7 +643,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
       showToast(
-        "✅ 컨셉 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+        "✅ 컨셉 컨설팅 제안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
       );
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
@@ -703,7 +703,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       return;
     }
     if (!String(selectedConcept).trim()) {
-      alert("선택된 컨셉을 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      alert("선택된 컨셉을 찾을 수 없습니다. 제안을 다시 선택해 주세요.");
       return;
     }
 
@@ -1086,20 +1086,20 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>컨셉 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <h2>컨셉 제안 생성 중</h2>
+                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>컨셉 후보 3안</h2>
-                    <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
+                    <h2>컨셉 컨설팅 제안 3가지</h2>
+                    <p>제안 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
 
                       const title = safeText(c?.title, "");
@@ -1113,6 +1113,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                         : [];
 
                       const hasAnyContent =
+                        hasText(title) ||
                         hasText(summary) ||
                         hasText(oneLine) ||
                         hasText(slogan) ||
@@ -1140,12 +1141,23 @@ export default function ConceptConsultingInterview({ onLogout }) {
                           <div className="candidateHead">
                             <div>
                               <div className="candidateTitle">
-                                {title ||
-                                  `후보 ${String(c?.id || "").replace(/\D/g, "") || ""}`.trim() ||
-                                  "후보"}
+                                {`컨설팅 제안 ${idx + 1}`}
                               </div>
 
+                              {hasText(title) ? (
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    opacity: 0.92,
+                                    whiteSpace: "pre-wrap",
+                                  }}
+                                >
+                                  {title}
+                                </div>
+                              ) : null}
+
                               {/* ✅ 값이 있을 때만 노출 */}
+
                               {hasText(summary) ? (
                                 <div
                                   style={{
@@ -1242,7 +1254,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                             </div>
 
                             <span className="candidateBadge">
-                              {isSelected ? "선택됨" : "후보"}
+                              {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
@@ -1264,7 +1276,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘스토리 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
@@ -1367,7 +1379,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

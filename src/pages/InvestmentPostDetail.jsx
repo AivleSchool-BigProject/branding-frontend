@@ -67,9 +67,6 @@ export default function InvestmentPostDetail({ onLogout }) {
           hashtags: Array.isArray(data?.hashtags) ? data.hashtags : [],
           contactName: data?.contactName || "",
           contactEmail: data?.contactEmail || "",
-          // 2026-02-02
-          // 백엔드에 맞춰서 홈페이지도 없앰.
-          // website: data?.website || data?.homepage || "",
           summary: data?.companyDescription || "",
           updatedAt: data?.updatedAt ? data.updatedAt.slice(0, 10) : "",
           authorId,
@@ -114,9 +111,6 @@ export default function InvestmentPostDetail({ onLogout }) {
   const locationText = Array.isArray(item?.locations)
     ? item.locations.join(", ")
     : item?.location || "-";
-  // 2026-02-02
-  // 상세 주소 없애기로 함.
-
   if (loading) {
     return (
       <div className="invest-detail-page">
@@ -265,9 +259,6 @@ export default function InvestmentPostDetail({ onLogout }) {
                   <strong>지역</strong>
                   <span>{locationText}</span>
                 </li>
-                
-                  {/* 2026-02-02 상세주소, 홈페이지 백엔드에 없어서 삭제 */}
-                
                 <li>
                   <strong>담당자</strong>
                   <span>{item.contactName || "-"}</span>
