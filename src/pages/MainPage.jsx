@@ -25,12 +25,13 @@ import {
 export default function MainPage({ onLogout }) {
   const navigate = useNavigate();
 
-  // ✅ 메인에서 바로 시작 시, 간단한 진행 안내 모달
-  const [openStartGuide, setOpenStartGuide] = useState(false);
-
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
+
+  // ✅ 브랜드 컨설팅 진행 안내(가이드) 모달
+  const [openBrandGuide, setOpenBrandGuide] = useState(false);
+  const closeBrandGuide = () => setOpenBrandGuide(false);
 
   // ✅ 브랜드(기업진단 포함) 진행 데이터 여부
   const hasAnyBrandProgress = useMemo(() => {
@@ -53,6 +54,78 @@ export default function MainPage({ onLogout }) {
   const brandCtaLabel = hasAnyBrandProgress
     ? "기업진단부터 다시 시작하기"
     : "기업진단 인터뷰부터 시작하기";
+
+  // ✅ 좌측 패널(진행중/이어하기) + 배너 CTA에서 사용할 진행 상태
+  const brandProgress = useMemo(() => {
+    const p = readPipeline() || {};
+
+    const hasDiagnosis = Boolean(
+      p?.diagnosisSummary?.companyName || p?.diagnosisSummary?.oneLine,
+    );
+    const hasNaming = Boolean(p?.naming?.selectedId || p?.naming?.selected);
+    const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);
+    const hasStory = Boolean(p?.story?.selectedId || p?.story?.selected);
+    const hasLogo = Boolean(p?.logo?.selectedId || p?.logo?.selected);
+
+    // ✅ 단계별 다음 라우트/진행률
+    if (hasLogo) {
+      return {
+        percent: 100,
+        status: "완료",
+        stepLabel: "브랜드 컨설팅 완료",
+        ctaLabel: "결과 보기",
+        nextRoute: "/mypage/brand-results",
+      };
+    }
+
+    if (hasStory) {
+      return {
+        percent: 80,
+        status: "진행중",
+        stepLabel: "로고 컨설팅",
+        ctaLabel: "이어하기",
+        nextRoute: "/brand/logo/interview",
+      };
+    }
+
+    if (hasConcept) {
+      return {
+        percent: 60,
+        status: "진행중",
+        stepLabel: "스토리 컨설팅",
+        ctaLabel: "이어하기",
+        nextRoute: "/brand/story/interview",
+      };
+    }
+
+    if (hasNaming) {
+      return {
+        percent: 40,
+        status: "진행중",
+        stepLabel: "컨셉 컨설팅",
+        ctaLabel: "이어하기",
+        nextRoute: "/brand/concept/interview",
+      };
+    }
+
+    if (hasDiagnosis) {
+      return {
+        percent: 20,
+        status: "진행중",
+        stepLabel: "네이밍 컨설팅",
+        ctaLabel: "이어하기",
+        nextRoute: "/brand/naming/interview",
+      };
+    }
+
+    return {
+      percent: 0,
+      status: "시작 전",
+      stepLabel: "기업진단부터 시작",
+      ctaLabel: "바로 시작",
+      nextRoute: "/diagnosisinterview",
+    };
+  }, []);
 
   // ✅ 투자유치(투자 게시판) 미리보기: 투자게시판과 동일한 데이터 사용
   const [dealItems, setDealItems] = useState([]);
@@ -106,6 +179,12 @@ export default function MainPage({ onLogout }) {
   }, [dealItems]);
 
   const handleStartBrandFromDiagnosis = () => {
+    // ✅ 메인에서 바로 진입 시에도 단계 안내를 먼저 보여줌
+    setOpenBrandGuide(true);
+  };
+
+  const proceedStartBrandFromDiagnosis = () => {
+    // ✅ 실제 시작(초기화 포함)은 모달에서 "바로 시작"을 눌렀을 때만 진행
     if (hasAnyBrandProgress) {
       const ok = window.confirm(
         "진행 중인 브랜드 컨설팅 데이터가 있어요.\n기업진단부터 다시 시작하면 진행 데이터가 초기화됩니다.\n계속할까요?",
@@ -113,19 +192,8 @@ export default function MainPage({ onLogout }) {
       if (!ok) return;
       resetBrandConsultingToDiagnosisStart("mainpage_restart");
     }
-
-    // ✅ 메인에서는 바로 인터뷰로 들어가기 때문에, 안내 모달을 한 번 띄워줌
-    setOpenStartGuide(true);
-  };
-
-  const startDirect = () => {
-    setOpenStartGuide(false);
+    closeBrandGuide();
     navigate("/diagnosisinterview");
-  };
-
-  const goIntro = () => {
-    setOpenStartGuide(false);
-    navigate("/brandconsulting");
   };
 
   return (
@@ -147,68 +215,73 @@ export default function MainPage({ onLogout }) {
         <TermsContent />
       </PolicyModal>
 
-      {/* ✅ 메인 '바로 시작하기'용 진행 안내 */}
+      {/* ✅ 브랜드 컨설팅 진행 안내 모달 (메인에서 바로 시작할 때도 안내 제공) */}
       <PolicyModal
-        open={openStartGuide}
+        open={openBrandGuide}
         title="브랜드 컨설팅 진행 안내"
-        onClose={() => setOpenStartGuide(false)}
+        onClose={closeBrandGuide}
       >
-        <div className="startGuide">
-          <p className="startGuide__lead">
-            지금부터 <strong>기업진단 → 네이밍 → 컨셉 → 스토리 → 로고</strong>
-            순서로 진행되고, 완료 후 <strong>마이페이지</strong>에서 결과를
-            확인할 수 있어요.
+        <div className="mp-guide">
+          <p className="mp-guide__lead">
+            브랜드 컨설팅은 아래 순서로 <strong>원큐</strong>로 진행돼요.
           </p>
 
           <div
-            className="startGuide__steps"
-            aria-label="브랜드 컨설팅 진행 순서"
+            className="mp-steps mp-steps--guide"
+            aria-label="브랜드 컨설팅 진행 단계"
           >
-            <span className="startGuide__step">기업진단</span>
-            <span className="startGuide__arrow" aria-hidden="true">
+            <span className="mp-step">기업진단</span>
+            <span className="mp-step__arrow" aria-hidden="true">
               →
             </span>
-            <span className="startGuide__step">네이밍</span>
-            <span className="startGuide__arrow" aria-hidden="true">
+            <span className="mp-step">네이밍</span>
+            <span className="mp-step__arrow" aria-hidden="true">
               →
             </span>
-            <span className="startGuide__step">컨셉</span>
-            <span className="startGuide__arrow" aria-hidden="true">
+            <span className="mp-step">컨셉</span>
+            <span className="mp-step__arrow" aria-hidden="true">
               →
             </span>
-            <span className="startGuide__step">스토리</span>
-            <span className="startGuide__arrow" aria-hidden="true">
+            <span className="mp-step">스토리</span>
+            <span className="mp-step__arrow" aria-hidden="true">
               →
             </span>
-            <span className="startGuide__step">로고</span>
-            <span className="startGuide__arrow" aria-hidden="true">
-              →
-            </span>
-            <span className="startGuide__step">결과</span>
+            <span className="mp-step">로고</span>
           </div>
 
-          <ul className="startGuide__bullets">
+          <ul className="mp-guide__bullets">
+            <li>중간에 나가도 저장되어, 이어서 진행할 수 있어요.</li>
             <li>
-              중도에 나가면 진행이 중단될 수 있어요. 이어서 하려면 안내
-              페이지에서 단계별로 진행해주세요.
+              기업진단부터 시작하면 네이밍·컨셉·스토리·로고로 자연스럽게
+              이어집니다.
             </li>
-            <li>완성한 결과는 마이페이지에 자동 저장됩니다.</li>
           </ul>
 
-          <div className="startGuide__actions">
+          {hasAnyBrandProgress && (
+            <div className="mp-warn">
+              진행 데이터가 있어요. 기업진단부터 다시 시작하면 진행 데이터가
+              초기화됩니다.
+            </div>
+          )}
+
+          <div className="mp-guide__actions">
             <button
               type="button"
-              className="startGuide__btn ghost"
-              onClick={goIntro}
+              className="mp-cta"
+              onClick={proceedStartBrandFromDiagnosis}
             >
-              소개 페이지 보기
+              {brandCtaLabel}
             </button>
+
             <button
               type="button"
-              className="startGuide__btn primary"
-              onClick={startDirect}
+              className="mp-side__ghost mp-guide__ghost"
+              onClick={() => {
+                closeBrandGuide();
+                navigate("/brandconsulting");
+              }}
             >
-              바로 시작하기
+              단계 안내 페이지로 이동
             </button>
           </div>
         </div>
@@ -218,17 +291,76 @@ export default function MainPage({ onLogout }) {
       <SiteHeader onLogout={onLogout} />
 
       <main className="main-content">
-        {/* ✅ 메인 배너 */}
-        <section className="mp-hero" aria-label="AI 컨설팅 배너">
-          <img className="mp-hero__img" src={mainBanner} alt="AI 컨설팅 배너" />
-          <div className="mp-hero__overlay">
-            <p className="mp-hero__kicker">AI 기반 컨설팅 허브</p>
-            <p className="mp-hero__sub">
-              브랜드 컨설팅은 <strong>기업진단부터 로고까지</strong> 원큐로
-              진행돼요.
-              <br />
-              홍보물 컨설팅까지 한 곳에서 시작하세요.
-            </p>
+        {/* ✅ 상단: 좌측 진행 패널 + 우측 배너 */}
+        <section className="mp-topgrid" aria-label="브랜드 컨설팅 시작 섹션">
+          <aside className="mp-side" aria-label="브랜드 컨설팅 진행 패널">
+            <div className="mp-side__head">
+              <p className="mp-side__badge">BRAND</p>
+              <h3 className="mp-side__title">브랜드 컨설팅</h3>
+              <p className="mp-side__desc">
+                기업진단부터 로고까지 한 번에 완성하는 원큐 플로우
+              </p>
+            </div>
+
+            <div className="mp-side__progress">
+              <div className="mp-side__row">
+                <span className="mp-side__status">{brandProgress.status}</span>
+                <span className="mp-side__pct">{brandProgress.percent}%</span>
+              </div>
+              <div className="mp-progress" aria-hidden="true">
+                <div
+                  className="mp-progress__bar"
+                  style={{ width: `${brandProgress.percent}%` }}
+                />
+              </div>
+              <p className="mp-side__step">
+                현재 단계: {brandProgress.stepLabel}
+              </p>
+            </div>
+
+            <div className="mp-side__actions">
+              <button
+                type="button"
+                className="mp-side__primary"
+                onClick={() => {
+                  // ✅ 시작 전이면 안내 모달을 먼저 노출
+                  if (brandProgress.percent === 0) {
+                    setOpenBrandGuide(true);
+                    return;
+                  }
+                  // 완료면 결과, 진행중이면 다음 단계로
+                  navigate(brandProgress.nextRoute);
+                }}
+              >
+                {brandProgress.ctaLabel}
+              </button>
+
+              <button
+                type="button"
+                className="mp-side__ghost"
+                onClick={() => navigate("/brandconsulting")}
+              >
+                단계 안내 보기
+              </button>
+            </div>
+          </aside>
+
+          {/* ✅ 메인 배너 */}
+          <div className="mp-hero" aria-label="AI 컨설팅 배너">
+            <img
+              className="mp-hero__img"
+              src={mainBanner}
+              alt="AI 컨설팅 배너"
+            />
+            <div className="mp-hero__overlay">
+              <p className="mp-hero__kicker">AI 기반 컨설팅 허브</p>
+              <p className="mp-hero__sub">
+                브랜드 컨설팅은 <strong>기업진단부터 로고까지</strong> 원큐로
+                진행돼요.
+                <br />
+                아래에서 브랜드 컨설팅을 선택해 바로 시작할 수 있어요.
+              </p>
+            </div>
           </div>
         </section>
 

@@ -328,7 +328,7 @@ export default function LogoConsultingInterview({ onLogout }) {
         window.alert(
           "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
         );
-        navigate("/brandconsulting", { replace: true });
+        navigate("/diagnosis", { replace: true });
         return;
       }
     } catch {
@@ -382,6 +382,16 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [toast, setToast] = useState({
+    msg: "",
+    variant: "success",
+    muted: false,
+  });
+  const toastTimerRef = useRef(null);
+  const toastMsg = toast.msg;
+  const toastMuted = toast.muted;
+  const toastVariant = toast.variant;
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -445,6 +455,25 @@ export default function LogoConsultingInterview({ onLogout }) {
   const scrollToResult = () => {
     if (!refResult?.current) return;
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const showToast = (msg) => {
+    const text = String(msg || "");
+    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    setToast({ msg: text, variant, muted: false });
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
+      if (variant === "success") {
+        toastTimerRef.current = window.setTimeout(() => {
+          setToast((prev) =>
+            prev.msg === text ? { ...prev, muted: true } : prev,
+          );
+        }, 3500);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
@@ -630,6 +659,8 @@ export default function LogoConsultingInterview({ onLogout }) {
   };
 
   const handleGenerateCandidates = async (mode = "generate") => {
+    setAnalyzeError("");
+
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
@@ -652,6 +683,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setAnalyzeError("");
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
@@ -699,7 +731,10 @@ export default function LogoConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
+      showToast(
+        "✅ 로고 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+      );
+      window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.userMessage || e?.message;
@@ -1178,6 +1213,41 @@ export default function LogoConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
+              {toastMsg ? (
+                <div
+                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {toastMsg}
+                </div>
+              ) : null}
+
+              {analyzeError ? (
+                <div className="card aiError" style={{ marginTop: 14 }}>
+                  <div className="card__head">
+                    <h2>요청에 실패했어요</h2>
+                    <p>{analyzeError}</p>
+                  </div>
+                  <div
+                    className="bottomBar"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() =>
+                        handleGenerateCandidates(
+                          hasResult ? "regen" : "generate",
+                        )
+                      }
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -1193,61 +1263,34 @@ export default function LogoConsultingInterview({ onLogout }) {
                     <p>후보 1개를 선택하면 결과 히스토리로 이동할 수 있어요.</p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
+                  <div className="candidateList">
                     {candidates.map((c) => {
                       const isSelected = selectedId === c.id;
                       return (
                         <div
                           key={c.id}
-                          style={{
-                            borderRadius: 16,
-                            padding: 14,
-                            border: isSelected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
-                            background: "rgba(255,255,255,0.6)",
+                          className={`candidateCard ${isSelected ? "selected" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            !isSelected && handleSelectCandidate(c.id)
+                          }
+                          onKeyDown={(e) => {
+                            if (isSelected) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectCandidate(c.id);
+                            }
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div className="candidateHead">
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
-                                {c.name}
-                              </div>
+                              <div className="candidateTitle">{c.name}</div>
                               <div style={{ marginTop: 6, opacity: 0.9 }}>
                                 {c.summary}
                               </div>
                             </div>
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: isSelected
-                                  ? "rgba(99,102,241,0.12)"
-                                  : "rgba(0,0,0,0.04)",
-                                border: isSelected
-                                  ? "1px solid rgba(99,102,241,0.25)"
-                                  : "1px solid rgba(0,0,0,0.06)",
-                                color: "rgba(0,0,0,0.75)",
-                                height: "fit-content",
-                              }}
-                            >
+                            <span className="candidateBadge">
                               {isSelected ? "선택됨" : "후보"}
                             </span>
                           </div>
@@ -1305,16 +1348,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                             ) : null}
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div className="candidateActions">
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 로고 선택"}
+                              {isSelected ? "선택 완료" : "선택"}
                             </button>
                           </div>
                         </div>
@@ -1406,6 +1447,12 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
                   </p>
+                ) : null}
+
+                {analyzeError ? (
+                  <div className="aiInlineError" style={{ marginTop: 10 }}>
+                    {analyzeError}
+                  </div>
                 ) : null}
 
                 <div className="divider" />

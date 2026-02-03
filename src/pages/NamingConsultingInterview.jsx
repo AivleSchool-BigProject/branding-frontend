@@ -316,6 +316,16 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [toast, setToast] = useState({
+    msg: "",
+    variant: "success",
+    muted: false,
+  });
+  const toastTimerRef = useRef(null);
+  const toastMsg = toast.msg;
+  const toastMuted = toast.muted;
+  const toastVariant = toast.variant;
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -389,6 +399,25 @@ export default function NamingConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const showToast = (msg) => {
+    const text = String(msg || "");
+    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    setToast({ msg: text, variant, muted: false });
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
+      if (variant === "success") {
+        toastTimerRef.current = window.setTimeout(() => {
+          setToast((prev) =>
+            prev.msg === text ? { ...prev, muted: true } : prev,
+          );
+        }, 3500);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   /** ======================
    *  (중요) Strict Flow 가드 + brandId/진단요약 pipeline 준비
    *  ====================== */
@@ -409,7 +438,7 @@ export default function NamingConsultingInterview({ onLogout }) {
         window.alert(
           "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
         );
-        navigate("/brandconsulting", { replace: true });
+        navigate("/diagnosis", { replace: true });
         return;
       }
     } catch {
@@ -449,7 +478,7 @@ export default function NamingConsultingInterview({ onLogout }) {
           ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
           : "브랜드 컨설팅은 기업진단 요약을 기반으로 진행됩니다. 기업진단을 먼저 완료해 주세요.";
       window.alert(msg);
-      navigate(guard.redirectTo || "/diagnosisinterview", { replace: true });
+      navigate(guard.redirectTo || "/diagnosis", { replace: true });
       return;
     }
 
@@ -641,12 +670,15 @@ export default function NamingConsultingInterview({ onLogout }) {
    *   - POST /brands/{brandId}/naming
    *  ====================== */
   const handleGenerateCandidates = async (mode = "generate") => {
+    setAnalyzeError("");
+
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
     }
 
     setAnalyzing(true);
+    setAnalyzeError("");
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
@@ -700,7 +732,10 @@ export default function NamingConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
+      showToast(
+        "✅ 네이밍 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+      );
+      window.setTimeout(() => scrollToResult(), 50);
     } catch (error) {
       const status = error?.response?.status;
 
@@ -723,9 +758,13 @@ export default function NamingConsultingInterview({ onLogout }) {
         return;
       }
 
-      alert(
-        "네이밍 생성 요청에 실패했습니다. 콘솔과 네트워크 탭을 확인해주세요.",
-      );
+      const msg =
+        error?.response?.data?.message ||
+        error?.userMessage ||
+        error?.message ||
+        "요청 실패";
+      setAnalyzeError(`네이밍 생성에 실패했습니다: ${msg}`);
+      showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
       setAnalyzing(false);
     }
@@ -1140,6 +1179,41 @@ export default function NamingConsultingInterview({ onLogout }) {
 
               <div ref={refResult} />
 
+              {toastMsg ? (
+                <div
+                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {toastMsg}
+                </div>
+              ) : null}
+
+              {analyzeError ? (
+                <div className="card aiError" style={{ marginTop: 14 }}>
+                  <div className="card__head">
+                    <h2>요청에 실패했어요</h2>
+                    <p>{analyzeError}</p>
+                  </div>
+                  <div
+                    className="bottomBar"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() =>
+                        handleGenerateCandidates(
+                          hasResult ? "regen" : "generate",
+                        )
+                      }
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -1157,63 +1231,36 @@ export default function NamingConsultingInterview({ onLogout }) {
                     </p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
+                  <div className="candidateList">
                     {candidates.map((c) => {
                       const isSelected = selectedId === c.id;
                       return (
                         <div
                           key={c.id}
-                          style={{
-                            borderRadius: 16,
-                            padding: 14,
-                            border: isSelected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
-                            background: "rgba(255,255,255,0.6)",
+                          className={`candidateCard ${isSelected ? "selected" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            !isSelected && handleSelectCandidate(c.id)
+                          }
+                          onKeyDown={(e) => {
+                            if (isSelected) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectCandidate(c.id);
+                            }
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div className="candidateHead">
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
-                                {c.name}
-                              </div>
+                              <div className="candidateTitle">{c.name}</div>
                               {c.oneLiner ? (
                                 <div style={{ marginTop: 6, opacity: 0.9 }}>
                                   {c.oneLiner}
                                 </div>
                               ) : null}
                             </div>
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: isSelected
-                                  ? "rgba(99,102,241,0.12)"
-                                  : "rgba(0,0,0,0.04)",
-                                border: isSelected
-                                  ? "1px solid rgba(99,102,241,0.25)"
-                                  : "1px solid rgba(0,0,0,0.06)",
-                                color: "rgba(0,0,0,0.75)",
-                                height: "fit-content",
-                              }}
-                            >
+                            <span className="candidateBadge">
                               {isSelected ? "선택됨" : "후보"}
                             </span>
                           </div>
@@ -1313,16 +1360,14 @@ export default function NamingConsultingInterview({ onLogout }) {
                             ) : null}
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div className="candidateActions">
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 방향 선택"}
+                              {isSelected ? "선택 완료" : "선택"}
                             </button>
                           </div>
                         </div>
@@ -1433,6 +1478,12 @@ export default function NamingConsultingInterview({ onLogout }) {
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
                   </p>
+                ) : null}
+
+                {analyzeError ? (
+                  <div className="aiInlineError" style={{ marginTop: 10 }}>
+                    {analyzeError}
+                  </div>
                 ) : null}
 
                 <div className="divider" />

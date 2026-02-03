@@ -340,6 +340,16 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [toast, setToast] = useState({
+    msg: "",
+    variant: "success",
+    muted: false,
+  });
+  const toastTimerRef = useRef(null);
+  const toastMsg = toast.msg;
+  const toastMuted = toast.muted;
+  const toastVariant = toast.variant;
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -400,6 +410,25 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const scrollToResult = () => {
     if (!refResult?.current) return;
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const showToast = (msg) => {
+    const text = String(msg || "");
+    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    setToast({ msg: text, variant, muted: false });
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
+      if (variant === "success") {
+        toastTimerRef.current = window.setTimeout(() => {
+          setToast((prev) =>
+            prev.msg === text ? { ...prev, muted: true } : prev,
+          );
+        }, 3500);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // ✅ draft 로드
@@ -553,6 +582,8 @@ export default function ConceptConsultingInterview({ onLogout }) {
   };
 
   const handleGenerateCandidates = async (mode = "generate") => {
+    setAnalyzeError("");
+
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
@@ -575,6 +606,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setAnalyzeError("");
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
@@ -610,7 +642,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
+      showToast(
+        "✅ 컨셉 후보 3안이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+      );
+      window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
       const msg =
@@ -627,7 +662,8 @@ export default function ConceptConsultingInterview({ onLogout }) {
         return;
       }
 
-      alert(`컨셉 생성 요청에 실패했습니다: ${msg || "요청 실패"}`);
+      setAnalyzeError(`컨셉 생성에 실패했습니다: ${msg || "요청 실패"}`);
+      showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
       setAnalyzing(false);
     }
@@ -1012,6 +1048,41 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
+              {toastMsg ? (
+                <div
+                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {toastMsg}
+                </div>
+              ) : null}
+
+              {analyzeError ? (
+                <div className="card aiError" style={{ marginTop: 14 }}>
+                  <div className="card__head">
+                    <h2>요청에 실패했어요</h2>
+                    <p>{analyzeError}</p>
+                  </div>
+                  <div
+                    className="bottomBar"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() =>
+                        handleGenerateCandidates(
+                          hasResult ? "regen" : "generate",
+                        )
+                      }
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -1027,13 +1098,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
+                  <div className="candidateList">
                     {candidates.map((c) => {
                       const isSelected = selectedId === c.id;
 
@@ -1058,27 +1123,23 @@ export default function ConceptConsultingInterview({ onLogout }) {
                       return (
                         <div
                           key={c.id}
-                          style={{
-                            borderRadius: 16,
-                            padding: 14,
-                            border: isSelected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
-                            background: "rgba(255,255,255,0.6)",
+                          className={`candidateCard ${isSelected ? "selected" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            !isSelected && handleSelectCandidate(c.id)
+                          }
+                          onKeyDown={(e) => {
+                            if (isSelected) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectCandidate(c.id);
+                            }
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div className="candidateHead">
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
+                              <div className="candidateTitle">
                                 {title ||
                                   `후보 ${String(c?.id || "").replace(/\D/g, "") || ""}`.trim() ||
                                   "후보"}
@@ -1180,36 +1241,19 @@ export default function ConceptConsultingInterview({ onLogout }) {
                               {!hasAnyContent ? null : null}
                             </div>
 
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: isSelected
-                                  ? "rgba(99,102,241,0.12)"
-                                  : "rgba(0,0,0,0.04)",
-                                border: isSelected
-                                  ? "1px solid rgba(99,102,241,0.25)"
-                                  : "1px solid rgba(0,0,0,0.06)",
-                                color: "rgba(0,0,0,0.75)",
-                                height: "fit-content",
-                              }}
-                            >
+                            <span className="candidateBadge">
                               {isSelected ? "선택됨" : "후보"}
                             </span>
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div className="candidateActions">
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 방향 선택"}
+                              {isSelected ? "선택 완료" : "선택"}
                             </button>
                           </div>
                         </div>
@@ -1301,6 +1345,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
                   </p>
+                ) : null}
+
+                {analyzeError ? (
+                  <div className="aiInlineError" style={{ marginTop: 10 }}>
+                    {analyzeError}
+                  </div>
                 ) : null}
 
                 <div className="divider" />
