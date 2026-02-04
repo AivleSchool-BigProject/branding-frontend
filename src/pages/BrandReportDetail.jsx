@@ -114,7 +114,7 @@ export default function BrandReportDetail({ onLogout }) {
         setLoadError("리포트를 찾을 수 없습니다.");
         setReport(null);
       } catch (e) {
-        const status = e?.status;
+        const status = e?.response?.status ?? e?.status;
         if (status === 401 || status === 403) {
           forceRelogin(
             "로그인이 만료되었거나 권한이 없습니다(401/403). 다시 로그인해주세요.",
