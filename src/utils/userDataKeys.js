@@ -26,6 +26,8 @@ export const USER_DATA_KEYS = [
   // concept (구 homepage 컨설팅 키 포함)
   "conceptConsultingInterviewDraft_v1",
   "conceptConsultingInterviewResult_v1",
+  "conceptInterviewDraft_homepage_v7",
+  "conceptInterviewResult_homepage_v7",
   "conceptInterviewDraft_homepage_v6",
   "conceptInterviewResult_homepage_v6",
   "conceptInterviewDraft_homepage_v5",

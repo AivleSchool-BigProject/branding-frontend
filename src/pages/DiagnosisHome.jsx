@@ -12,7 +12,8 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import bannerImage from "../Image/banner_image/Banner_D.png";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
-import { userGetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import { userGetItem } from "../utils/userLocalStorage.js";
+import { resetBrandConsultingToDiagnosisStart } from "../utils/brandPipelineStorage.js";
 
 const INTERVIEW_STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_SUMMARY_KEY = "diagnosisDraft";
@@ -144,8 +145,7 @@ export default function DiagnosisHome({ onLogout }) {
   };
 
   const handleRestart = () => {
-    userRemoveItem(INTERVIEW_STORAGE_KEY);
-    userRemoveItem(HOME_SUMMARY_KEY);
+    resetBrandConsultingToDiagnosisStart("manual_reset");
     setDraft(null);
     alert("진단 데이터를 초기화했습니다. 이제 인터뷰는 공백으로 시작됩니다.");
   };

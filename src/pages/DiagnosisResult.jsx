@@ -311,7 +311,7 @@ export default function DiagnosisResult({ onLogout }) {
     userRemoveItem(DIAGNOSIS_RESULT_KEY_LEGACY);
     localStorage.removeItem(DIAGNOSIS_RESULT_KEY);
     alert("기업진단 입력/결과 데이터를 초기화했습니다.");
-    navigate("/diagnosisinterview");
+    navigate("/diagnosisinterview", { state: { mode: "start" } });
   };
 
   // 입력 요약 카드: 필드형(raw_qa_fields) 우선 → 질문/답변 맵(raw_qa)에서 유추 fallback
@@ -389,7 +389,11 @@ export default function DiagnosisResult({ onLogout }) {
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
+      <PolicyModal
+        open={openType === "terms"}
+        title="이용약관"
+        onClose={closeModal}
+      >
         <TermsContent />
       </PolicyModal>
 
@@ -413,7 +417,8 @@ export default function DiagnosisResult({ onLogout }) {
               진행 순서: <b>네이밍 → 컨셉 → 스토리 → 로고</b>
             </li>
             <li>
-              진행 중 이탈(뒤로가기/메뉴 이동/새로고침 등) 시 <b>이탈 방지 안내</b>가 표시됩니다.
+              진행 중 이탈(뒤로가기/메뉴 이동/새로고침 등) 시{" "}
+              <b>이탈 방지 안내</b>가 표시됩니다.
             </li>
             <li>
               중간에 나가면 <b>네이밍부터 다시 진행</b>하도록 구성되어 있습니다.
@@ -508,7 +513,11 @@ export default function DiagnosisResult({ onLogout }) {
                     >
                       인터뷰 작성하러 가기
                     </button>
-                    <button type="button" className="btn ghost" onClick={goHome}>
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={goHome}
+                    >
                       기업진단 홈
                     </button>
                   </div>
@@ -698,7 +707,11 @@ export default function DiagnosisResult({ onLogout }) {
 
                 <div className="divider" />
 
-                <button type="button" className="btn primary w100" onClick={goInterview}>
+                <button
+                  type="button"
+                  className="btn primary w100"
+                  onClick={goInterview}
+                >
                   입력 수정하기
                 </button>
 

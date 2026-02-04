@@ -193,7 +193,7 @@ export default function MainPage({ onLogout }) {
       resetBrandConsultingToDiagnosisStart("mainpage_restart");
     }
     closeBrandGuide();
-    navigate("/diagnosisinterview");
+    navigate("/diagnosisinterview", { state: { mode: "start" } });
   };
 
   return (

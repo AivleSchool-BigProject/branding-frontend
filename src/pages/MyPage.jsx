@@ -18,6 +18,13 @@ import { clearAccessToken } from "../api/client.js";
 
 import { userSafeParse, userSetJSON } from "../utils/userLocalStorage.js";
 
+import {
+  readPipeline,
+  readDiagnosisDraftForm,
+  buildDiagnosisSummaryFromDraft,
+  resetBrandConsultingToDiagnosisStart,
+} from "../utils/brandPipelineStorage.js";
+
 import { listPromoReports } from "../utils/promoReportHistory.js";
 
 import {
@@ -33,6 +40,72 @@ function fmt(ts) {
   return d.toLocaleString();
 }
 
+// ✅ 로컬에 남아있는 '진행중(미완료)' 상태를 마이페이지에 카드로 노출(서버가 미완료를 안 내려주는 경우 대비)
+function buildLocalWipBrandReport() {
+  try {
+    const p = readPipeline() || {};
+    const diagForm = readDiagnosisDraftForm();
+
+    const hasDiagDraft =
+      diagForm &&
+      typeof diagForm === "object" &&
+      Object.keys(diagForm).length > 0;
+
+    const hasBrandId =
+      p?.brandId != null && String(p.brandId).trim().length > 0;
+
+    const hasAnyStep =
+      Boolean(p?.naming?.selectedId || p?.naming?.selected) ||
+      Boolean(p?.concept?.selectedId || p?.concept?.selected) ||
+      Boolean(p?.story?.selectedId || p?.story?.selected) ||
+      Boolean(p?.logo?.selectedId || p?.logo?.selected);
+
+    const hasAny =
+      hasDiagDraft || hasBrandId || hasAnyStep || Boolean(p?.brandFlow?.active);
+    if (!hasAny) return null;
+
+    let pct = 0;
+    if (p?.logo?.selectedId || p?.logo?.selected) pct = 90;
+    else if (p?.story?.selectedId || p?.story?.selected) pct = 75;
+    else if (p?.concept?.selectedId || p?.concept?.selected) pct = 50;
+    else if (p?.naming?.selectedId || p?.naming?.selected) pct = 25;
+    else if (hasBrandId) pct = 10;
+    else pct = 5;
+
+    const summary =
+      buildDiagnosisSummaryFromDraft(hasDiagDraft ? diagForm : {}) || {};
+    const title = summary.companyName || "진행중 브랜드";
+    const oneLine = summary.oneLine || summary.shortText || "";
+
+    const id = hasBrandId ? String(p.brandId) : "local_wip";
+    const resumePath = hasBrandId ? "/brandconsulting" : "/diagnosis";
+
+    return {
+      id,
+      kind: "brand",
+      serviceLabel: "브랜드 컨설팅",
+      title,
+      subtitle: oneLine ? oneLine : "진행중(미완료)",
+      createdAt: p?.updatedAt || null,
+      progressPercent: pct,
+      isComplete: false,
+      backendStep: "LOCAL_WIP",
+      resumePath,
+      resumeState: { from: "mypage" },
+      _localWip: true,
+      snapshot: {
+        diagnosisSummary: {
+          companyName: title,
+          oneLine: oneLine || "",
+        },
+        selections: {},
+      },
+      _raw: { local: true },
+    };
+  } catch {
+    return null;
+  }
+}
 const PROFILE_KEY = "userProfile_v1";
 
 // ✅ 마이페이지 카드 삭제(목록 숨김) 키(사용자 스코프)
@@ -316,6 +389,12 @@ export default function MyPage({ onLogout }) {
 
     setDeletingId(String(r.id));
     try {
+      // ✅ 로컬 진행중(brandId 없음) 카드 삭제: 서버 호출 없이 로컬 진행만 초기화
+      if (r?.kind === "brand" && r?._localWip && !/^\d+$/.test(String(r.id))) {
+        resetBrandConsultingToDiagnosisStart("delete_local_wip");
+        hideReportCard(r);
+        return;
+      }
       // ✅ 브랜드는 서버 삭제 API가 있을 경우 먼저 시도
       if (r?.kind === "brand") {
         try {
@@ -343,6 +422,11 @@ export default function MyPage({ onLogout }) {
       }
 
       hideReportCard(r);
+
+      // ✅ 진행중 카드였다면 로컬 진행도 같이 초기화(재등장 방지)
+      if (r?.kind === "brand" && r?._localWip) {
+        resetBrandConsultingToDiagnosisStart("delete_wip");
+      }
     } finally {
       setDeletingId(null);
     }
@@ -391,7 +475,18 @@ export default function MyPage({ onLogout }) {
 
         // ✅ 완료/미완료 모두 노출 (삭제/상태 확인을 위해)
         if (!alive) return;
-        setBrandReports(mapped.filter((r) => !hiddenSet.has(String(r.id))));
+        let visible = mapped.filter((r) => !hiddenSet.has(String(r.id)));
+
+        // ✅ 로컬 진행중 카드(미완료) 폴백 추가
+        const localWip = buildLocalWipBrandReport();
+        if (localWip && !hiddenSet.has(String(localWip.id))) {
+          const dup = visible.some(
+            (x) => String(x?.id) === String(localWip.id),
+          );
+          if (!dup) visible = [localWip, ...visible];
+        }
+
+        setBrandReports(visible);
       } catch (e) {
         const status = e?.response?.status ?? e?.status;
         if (status === 401 || status === 403) {
@@ -479,9 +574,16 @@ export default function MyPage({ onLogout }) {
     if (!r?.id) return;
     if (r.kind === "promo") {
       navigate(`/mypage/promo-report/${r.id}`, { state: { report: r } });
-    } else {
-      navigate(`/mypage/brand-report/${r.id}`, { state: { report: r } });
+      return;
     }
+
+    // ✅ 로컬 진행중(미완료) 카드면: 상세가 아니라 "이어하기"로 이동
+    if (r?.resumePath) {
+      navigate(r.resumePath, { state: r.resumeState || undefined });
+      return;
+    }
+
+    navigate(`/mypage/brand-report/${r.id}`, { state: { report: r } });
   };
 
   return (

@@ -661,7 +661,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       alert(
         "brandId를 확인할 수 없습니다. 기업진단 → 네이밍을 먼저 진행해 주세요.",
       );
-      navigate("/diagnosisinterview");
+      navigate("/diagnosisinterview", { state: { mode: "start" } });
       return;
     }
 

@@ -629,7 +629,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       alert(
         "brandId를 확인할 수 없습니다. 기업진단 → 네이밍/컨셉/스토리 완료 후 로고 단계로 진행해 주세요.",
       );
-      navigate("/diagnosisinterview");
+      navigate("/diagnosisinterview", { state: { mode: "start" } });
       return;
     }
 
