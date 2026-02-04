@@ -20,8 +20,6 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import {
   migrateLegacyToPipelineIfNeeded,
   readPipeline,
-  consumeBrandFlowPendingAbort,
-  resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
 
 export default function BrandConsulting({ onLogout }) {
@@ -36,26 +34,6 @@ export default function BrandConsulting({ onLogout }) {
 
   // ✅ 1회 마이그레이션 + 상태 동기화
   useEffect(() => {
-    // ✅ 새로고침/탭닫기 등 중도 이탈 감지 → 기업진단부터 재시작 유도
-    try {
-      const hadPending = consumeBrandFlowPendingAbort();
-      if (hadPending) {
-        try {
-          resetBrandConsultingToDiagnosisStart("interrupted");
-        } catch {
-          // ignore
-        }
-
-        window.alert(
-          "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
-        );
-        navigate("/brandconsulting", { replace: true });
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
     const next = migrateLegacyToPipelineIfNeeded();
     setPipeline(next);
   }, []);

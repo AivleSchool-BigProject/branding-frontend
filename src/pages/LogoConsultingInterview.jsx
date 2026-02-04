@@ -21,20 +21,19 @@ import {
 // ✅ 파이프라인(단계 잠금/결과 저장)
 import {
   ensureStrictStepAccess,
+  migrateLegacyToPipelineIfNeeded,
   readPipeline,
   upsertPipeline,
   setStepResult,
   clearStepsFrom,
   getSelected,
   setBrandFlowCurrent,
-  markBrandFlowPendingAbort,
-  consumeBrandFlowPendingAbort,
-  resetBrandConsultingToDiagnosisStart,
+  startBrandFlow,
   completeBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
-import { apiRequest } from "../api/client.js";
+import { apiRequest, apiRequestAI } from "../api/client.js";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
@@ -282,71 +281,32 @@ const INITIAL_FORM = {
 export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
-  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
-  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
-  // 규칙:
-  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
-  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
+
+  // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
     try {
-      const qs = new URLSearchParams(location.search || "");
-      const raw = qs.get("brandId");
-      const incoming = raw ? Number(raw) : NaN;
-      if (!Number.isFinite(incoming) || incoming <= 0) return;
+      migrateLegacyToPipelineIfNeeded();
+
+      const access = ensureStrictStepAccess("logo");
+      if (!access?.ok) {
+        if (access?.reason === "no_back") {
+          alert(
+            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
+          );
+        }
+        if (access?.redirectTo) {
+          navigate(access.redirectTo, { replace: true });
+        }
+        return;
+      }
 
       const p = readPipeline();
-      const curRaw = p?.brandId;
-      const cur = Number(curRaw);
-
-      // pipeline이 비어 있으면 URL 값을 채운다
-      if (!Number.isFinite(cur) || cur <= 0) {
-        upsertPipeline({ brandId: incoming });
-        return;
-      }
-
-      // pipeline이 이미 있으면 URL 값은 무시(오염 방지) + 쿼리 제거
-      if (cur !== incoming) {
-        navigate(location.pathname, { replace: true });
-      }
-    } catch {
-      // ignore
-    }
-  }, [location.search, location.pathname, navigate]);
-
-  // ✅ Strict Flow 가드(로고 단계) + 이탈/새로고침 처리
-  useEffect(() => {
-    try {
-      const hadPending = consumeBrandFlowPendingAbort();
-      if (hadPending) {
-        try {
-          resetBrandConsultingToDiagnosisStart("interrupted");
-        } catch {
-          // ignore
-        }
-
-        window.alert(
-          "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
-        );
-        navigate("/diagnosis", { replace: true });
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    const guard = ensureStrictStepAccess("logo");
-    if (!guard.ok) {
-      const msg =
-        guard?.reason === "no_back"
-          ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
-          : "이전 단계를 먼저 완료해 주세요.";
-      window.alert(msg);
-      navigate(guard.redirectTo || "/brand/story", { replace: true });
-      return;
-    }
-
-    try {
+      const brandId =
+        location?.state?.brandId ??
+        location?.state?.report?.brandId ??
+        p?.brandId ??
+        null;
+      startBrandFlow({ brandId });
       setBrandFlowCurrent("logo");
     } catch {
       // ignore
@@ -354,21 +314,12 @@ export default function LogoConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ 새로고침/탭닫기 경고 + 다음 진입 시 네이밍부터 리셋
-  useEffect(() => {
-    const onBeforeUnload = (e) => {
-      try {
-        markBrandFlowPendingAbort("beforeunload");
-      } catch {
-        // ignore
-      }
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
+  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
+  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
+  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
+  // 규칙:
+  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
+  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -711,7 +662,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       };
 
       // ✅ 로고 생성
-      const res = await apiRequest(`/brands/${brandId}/logo`, {
+      const res = await apiRequestAI(`/brands/${brandId}/logo`, {
         method: "POST",
         data: payload,
       });
