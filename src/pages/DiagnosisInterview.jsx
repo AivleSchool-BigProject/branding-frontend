@@ -1,3 +1,1182 @@
+// // src/pages/DiagnosisInterview.jsx
+// import React, { useEffect, useMemo, useRef, useState } from "react";
+// import { useLocation, useNavigate } from "react-router-dom";
+
+// import SiteHeader from "../components/SiteHeader.jsx";
+// import SiteFooter from "../components/SiteFooter.jsx";
+
+// import PolicyModal from "../components/PolicyModal.jsx";
+// import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
+
+// // ✅ 백 연동
+// import { apiRequest } from "../api/client.js";
+
+// // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
+// import { userGetItem, userSetItem } from "../utils/userLocalStorage.js";
+
+// import { abortBrandFlow, upsertPipeline } from "../utils/brandPipelineStorage.js";
+
+// const STORAGE_KEY = "diagnosisInterviewDraft_v1";
+// const HOME_SUMMARY_KEY = "diagnosisDraft";
+
+// // ✅ 백 응답 저장 키(결과 페이지에서 읽음)
+// const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
+
+// /**
+//  * ✅ AI 팀 질문지(JSON) 기반 렌더링 Step1
+//  * - question_type: short_answer | long_answer | single_choice | multiple_choice
+//  * - options: { id, text, value, description, has_text_input, text_input_placeholder }
+//  * - context_key: 답변 저장 키
+//  */
+// const STEP_1 = {
+//   title: "Identity & Foundation",
+//   description: "브랜드의 본질과 기반을 정의합니다",
+//   questions: [
+//     {
+//       id: "s1_one_line_definition",
+//       category: "Identity",
+//       question_text:
+//         "우리 서비스를 전혀 모르는 10살 조카에게 설명한다고 가정하고, 한 문장으로 서비스를 정의해주세요.",
+//       question_type: "short_answer",
+//       placeholder:
+//         "예: 바쁜 사람들이 5분 만에 건강한 식사를 주문할 수 있게 도와주는 앱이야",
+//       required: true,
+//       context_key: "service_definition",
+//     },
+//     {
+//       id: "s1_core_problem",
+//       category: "Problem Solving",
+//       question_text:
+//         "고객이 우리 서비스를 쓰지 않을 때 겪는 가장 고통스러운 문제점은 무엇인가요?",
+//       question_type: "long_answer",
+//       placeholder: "구체적인 상황과 감정을 포함해서 작성해주세요",
+//       required: true,
+//       context_key: "pain_point",
+//     },
+//     {
+//       id: "s1_target_persona",
+//       category: "Target",
+//       question_text: "우리 서비스의 '찐팬'이 될 핵심 고객층은 누구인가요?",
+//       question_type: "single_choice",
+//       options: [
+//         {
+//           id: "opt_2030_trendsetter",
+//           text: "새로운 것을 먼저 시도하는 2030 얼리어답터",
+//           value: "2030 Early Adopter",
+//           description: "트렌드에 민감하고 SNS 활동이 활발한 젊은 층",
+//         },
+//         {
+//           id: "opt_3040_worker",
+//           text: "효율을 중시하는 3040 직장인",
+//           value: "3040 Efficiency Seeker",
+//           description: "시간이 부족하고 실용성을 중요시하는 워킹맘/워킹대디",
+//         },
+//         {
+//           id: "opt_professional",
+//           text: "전문성을 추구하는 프리랜서/전문직",
+//           value: "Professional/Freelancer",
+//           description: "개인 브랜드와 전문성이 중요한 독립적인 워커",
+//         },
+//         {
+//           id: "opt_student",
+//           text: "자기계발에 진지한 대학생/취준생",
+//           value: "Self-improving Student",
+//           description: "미래를 준비하고 스펙을 쌓는 데 집중하는 청년층",
+//         },
+//         {
+//           id: "opt_senior",
+//           text: "새로운 도전을 시작하는 시니어",
+//           value: "Active Senior",
+//           description:
+//             "은퇴 후 제2의 인생이나 취미 활동을 적극적으로 추구하는 중장년층",
+//         },
+//         {
+//           id: "opt_other",
+//           text: "기타",
+//           value: "Other",
+//           has_text_input: true,
+//           text_input_placeholder: "구체적인 고객 페르소나를 설명해주세요",
+//         },
+//       ],
+//       required: true,
+//       context_key: "target_persona",
+//     },
+//     {
+//       id: "s1_current_alternatives",
+//       category: "Competition",
+//       question_text:
+//         "고객들이 현재 우리 서비스를 사용하지 않을 때 대신 사용하고 있는 대안(경쟁사, 다른 방법)은 무엇인가요?",
+//       question_type: "long_answer",
+//       placeholder: "예: 수기로 엑셀 관리, 경쟁사 A 서비스, 아예 하지 않음 등",
+//       required: true,
+//       context_key: "current_alternatives",
+//     },
+//     {
+//       id: "s1_differentiation",
+//       category: "USP",
+//       question_text:
+//         "경쟁사가 절대 따라 할 수 없는 우리 서비스만의 '무기'는 무엇인가요?",
+//       question_type: "long_answer",
+//       placeholder:
+//         "기술력, 데이터, 네트워크, 창업자 경험 등 구체적으로 작성해주세요",
+//       required: false,
+//       context_key: "usp",
+//     },
+//     {
+//       id: "s1_industry",
+//       category: "Market",
+//       question_text: "비즈니스가 속한 산업군은 어디인가요?",
+//       question_type: "single_choice",
+//       options: [
+//         {
+//           id: "opt_saas",
+//           text: "SaaS/B2B 플랫폼",
+//           value: "SaaS/B2B Platform",
+//           description: "기업용 소프트웨어, 업무 도구",
+//         },
+//         {
+//           id: "opt_commerce",
+//           text: "이커머스/리테일",
+//           value: "E-commerce/Retail",
+//           description: "온라인 쇼핑, 판매 플랫폼",
+//         },
+//         {
+//           id: "opt_fintech",
+//           text: "핀테크/금융",
+//           value: "Fintech/Finance",
+//           description: "결제, 투자, 대출, 자산관리",
+//         },
+//         {
+//           id: "opt_health",
+//           text: "헬스케어/웰니스",
+//           value: "Healthcare/Wellness",
+//           description: "건강, 의료, 피트니스",
+//         },
+//         {
+//           id: "opt_edu",
+//           text: "에듀테크/교육",
+//           value: "Edutech/Education",
+//           description: "온라인 교육, 학습 플랫폼",
+//         },
+//         {
+//           id: "opt_contents",
+//           text: "콘텐츠/미디어",
+//           value: "Contents/Media",
+//           description: "OTT, 음악, 웹툰, 뉴스",
+//         },
+//         {
+//           id: "opt_social",
+//           text: "소셜/커뮤니티",
+//           value: "Social/Community",
+//           description: "SNS, 커뮤니케이션, 네트워킹",
+//         },
+//         {
+//           id: "opt_mobility",
+//           text: "모빌리티/물류",
+//           value: "Mobility/Logistics",
+//           description: "배달, 운송, 차량 공유",
+//         },
+//         {
+//           id: "opt_proptech",
+//           text: "프롭테크/부동산",
+//           value: "Proptech/Real Estate",
+//           description: "부동산 중개, 임대, 관리",
+//         },
+//         {
+//           id: "opt_other",
+//           text: "기타",
+//           value: "Other",
+//           has_text_input: true,
+//           text_input_placeholder: "산업군을 직접 입력해주세요",
+//         },
+//       ],
+//       required: true,
+//       context_key: "industry",
+//     },
+//     {
+//       id: "s1_vision",
+//       category: "Vision",
+//       question_text:
+//         "5년 뒤, 우리 회사가 뉴스 헤드라인에 나온다면 어떤 제목일까요?",
+//       question_type: "short_answer",
+//       placeholder:
+//         "예: 'OO, 국내 1위 배달 플랫폼 등극', 'OO 서비스, 500만 사용자 돌파'",
+//       required: true,
+//       context_key: "vision_headline",
+//     },
+//     {
+//       id: "s1_revenue_model",
+//       category: "Revenue Model",
+//       question_text: "주요 수익 모델은 무엇인가요?",
+//       question_type: "single_choice",
+//       options: [
+//         {
+//           id: "opt_subscription",
+//           text: "구독",
+//           value: "Subscription",
+//           description: "정기적인 구독료",
+//         },
+//         {
+//           id: "opt_advertising",
+//           text: "광고",
+//           value: "Advertising",
+//           description: "광고 수익",
+//         },
+//         {
+//           id: "opt_commission",
+//           text: "수수료",
+//           value: "Commission",
+//           description: "거래 수수료",
+//         },
+//         {
+//           id: "opt_sales",
+//           text: "판매",
+//           value: "Sales",
+//           description: "제품 판매",
+//         },
+//         {
+//           id: "opt_other",
+//           text: "기타",
+//           value: "Other",
+//           has_text_input: true,
+//           text_input_placeholder: "수익 모델을 직접 입력해주세요",
+//         },
+//       ],
+//       required: true,
+//       context_key: "revenue_model",
+//     },
+//     {
+//       id: "s1_brand_priority",
+//       category: "Brand Goal",
+//       question_text:
+//         "향후 6~12개월 동안 브랜드가 가장 집중해야 할 목표는 무엇인가요? (최대 2개 선택)",
+//       question_type: "multiple_choice",
+//       options: [
+//         {
+//           id: "opt_brand_awareness",
+//           text: "브랜드 인지도",
+//           value: "Brand Awareness",
+//           description: "더 많은 사람들이 우리 브랜드를 알게 하기",
+//         },
+//         {
+//           id: "opt_customer_acquisition",
+//           text: "고객 확보",
+//           value: "Customer Acquisition",
+//           description: "신규 고객 수 증가",
+//         },
+//         {
+//           id: "opt_customer_retention",
+//           text: "유료 전환율 상승",
+//           value: "Conversion Rate Improvement",
+//           description: "무료 사용자를 유료 고객으로 전환",
+//         },
+//         {
+//           id: "opt_investment_attraction",
+//           text: "투자 유치",
+//           value: "Investment Attraction",
+//           description: "외부 투자 유치 및 펀딩",
+//         },
+//         {
+//           id: "opt_other",
+//           text: "기타",
+//           value: "Other",
+//           has_text_input: true,
+//           text_input_placeholder: "브랜드 목표를 직접 입력해주세요",
+//         },
+//       ],
+//       required: true,
+//       context_key: "brand_priority",
+//       max_select: 2,
+//     },
+//   ],
+// };
+
+// const getLabelByValue = (value, options) => {
+//   const v = String(value ?? "").trim();
+//   if (!v) return "";
+//   return options?.find((o) => o.value === v)?.text || v;
+// };
+
+// export default function DiagnosisInterview({ onLogout }) {
+//   const navigate = useNavigate();
+//   const location = useLocation();
+
+//   // ✅ 약관/방침 모달 UI
+//   const [openType, setOpenType] = useState(null);
+//   const closeModal = () => setOpenType(null);
+
+//   // ✅ 폼 상태 (JSON 기반: context_key로 저장)
+//   // - Other 텍스트는 `${context_key}__other` 키에 저장
+//   const [form, setForm] = useState({
+//     companyName: "", // ✅ 선택(요청 반영)
+//     website: "", // ✅ 선택
+//     // context_key들이 동적으로 붙지만, 저장/로드는 통째로 JSON
+//   });
+
+//   // ✅ 저장 상태 UI (자동저장만 사용)
+//   const [saveMsg, setSaveMsg] = useState("");
+//   const [lastSaved, setLastSaved] = useState("-");
+//   const [loaded, setLoaded] = useState(false);
+
+//   // ✅ 제출 상태(백 요청 중)
+//   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const submitOnceRef = useRef(false);
+
+//   // ✅ 스크롤 ref
+//   const refBasic = useRef(null);
+
+//   // ✅ category(영역) 순서 유지 + ref 생성
+//   const categoriesOrdered = useMemo(() => {
+//     const arr = [];
+//     STEP_1.questions.forEach((q) => {
+//       const key = q.category || "기타";
+//       if (!arr.includes(key)) arr.push(key);
+//     });
+//     return arr;
+//   }, []);
+
+//   const categoryRefs = useMemo(() => {
+//     const map = {};
+//     categoriesOrdered.forEach((cat) => {
+//       map[cat] = React.createRef();
+//     });
+//     return map;
+//   }, [categoriesOrdered]);
+
+//   const setValue = (key, value) =>
+//     setForm((prev) => ({ ...prev, [key]: value }));
+
+//   const getValue = (key) => form?.[key];
+//   const otherKeyOf = (contextKey) => `${contextKey}__other`;
+
+//   const hasText = (v) => Boolean(String(v ?? "").trim());
+
+//   // ✅ category별 질문 그룹
+//   const questionsByCategory = useMemo(() => {
+//     const grouped = {};
+//     STEP_1.questions.forEach((q) => {
+//       const cat = q.category || "기타";
+//       if (!grouped[cat]) grouped[cat] = [];
+//       grouped[cat].push(q);
+//     });
+//     return grouped;
+//   }, []);
+
+//   const resolveAnswerForSend = (q) => {
+//     const ck = q.context_key;
+//     const base = getValue(ck);
+
+//     if (q.question_type === "multiple_choice") {
+//       const arr = Array.isArray(base) ? base : [];
+//       const resolved = arr
+//         .map((val) => {
+//           if (val !== "Other") return val;
+//           return String(getValue(otherKeyOf(ck)) || "").trim();
+//         })
+//         .filter(Boolean);
+//       return resolved;
+//     }
+
+//     if (q.question_type === "single_choice") {
+//       const v = String(base ?? "").trim();
+//       if (!v) return "";
+//       if (v !== "Other") return v;
+//       return String(getValue(otherKeyOf(ck)) || "").trim();
+//     }
+
+//     return String(base ?? "").trim();
+//   };
+
+//   // ✅ 필수 항목(회사명 제외: 요청 반영)
+//   const requiredKeys = useMemo(() => {
+//     const keys = [];
+//     STEP_1.questions.forEach((q) => {
+//       if (q.required) keys.push(q.context_key);
+//     });
+//     return keys;
+//   }, []);
+
+//   const requiredStatus = useMemo(() => {
+//     const status = {};
+
+//     STEP_1.questions.forEach((q) => {
+//       if (!q.required) return;
+
+//       const ck = q.context_key;
+//       const raw = getValue(ck);
+
+//       if (q.question_type === "multiple_choice") {
+//         const arr = Array.isArray(raw) ? raw : [];
+//         if (!arr.length) {
+//           status[ck] = false;
+//           return;
+//         }
+//         if (arr.includes("Other") && !hasText(getValue(otherKeyOf(ck)))) {
+//           status[ck] = false;
+//           return;
+//         }
+//         status[ck] = true;
+//         return;
+//       }
+
+//       if (q.question_type === "single_choice") {
+//         const v = String(raw ?? "").trim();
+//         if (!v) {
+//           status[ck] = false;
+//           return;
+//         }
+//         if (v === "Other" && !hasText(getValue(otherKeyOf(ck)))) {
+//           status[ck] = false;
+//           return;
+//         }
+//         status[ck] = true;
+//         return;
+//       }
+
+//       status[ck] = hasText(raw);
+//     });
+
+//     return status;
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [form]);
+
+//   const completedRequired = useMemo(
+//     () => requiredKeys.filter((k) => Boolean(requiredStatus[k])).length,
+//     [requiredKeys, requiredStatus]
+//   );
+
+//   const progress = useMemo(() => {
+//     if (requiredKeys.length === 0) return 0;
+//     return Math.round((completedRequired / requiredKeys.length) * 100);
+//   }, [completedRequired, requiredKeys.length]);
+
+//   const canAnalyze = completedRequired === requiredKeys.length;
+
+//   const currentSectionLabel = useMemo(() => {
+//     for (const q of STEP_1.questions) {
+//       if (q.required && !requiredStatus[q.context_key]) {
+//         return q.category || "진행 중";
+//       }
+//     }
+//     return "완료";
+//   }, [requiredStatus]);
+
+//   const scrollToSection = (ref) => {
+//     if (!ref?.current) return;
+//     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+//   };
+
+//   const getFirstIncompleteRef = () => {
+//     for (const q of STEP_1.questions) {
+//       if (q.required && !requiredStatus[q.context_key]) {
+//         const cat = q.category || "기타";
+//         return categoryRefs[cat] || refBasic;
+//       }
+//     }
+//     // 모두 완료면 마지막 카테고리로
+//     const lastCat = categoriesOrdered[categoriesOrdered.length - 1];
+//     return categoryRefs[lastCat] || refBasic;
+//   };
+
+//   const sections = useMemo(() => {
+//     const items = [{ id: "basic", label: "기본 정보(선택)", ref: refBasic }];
+//     categoriesOrdered.forEach((cat, idx) => {
+//       items.push({ id: `cat_${cat}`, label: `${idx + 1}. ${cat}`, ref: categoryRefs[cat] });
+//     });
+//     return items;
+//   }, [categoriesOrdered, categoryRefs]);
+
+//   const saveHomeSummary = (updatedAtTs) => {
+//     try {
+//       const summary = {
+//         progress,
+//         completedRequired,
+//         requiredTotal: requiredKeys.length,
+//         stageLabel: currentSectionLabel,
+//         updatedAt: updatedAtTs,
+//       };
+//       userSetItem(HOME_SUMMARY_KEY, JSON.stringify(summary));
+//     } catch {
+//       // ignore
+//     }
+//   };
+
+//   // ✅ draft 로드
+//   useEffect(() => {
+//     try {
+//       const raw = userGetItem(STORAGE_KEY);
+//       if (!raw) {
+//         setLoaded(true);
+//         return;
+//       }
+//       const parsed = JSON.parse(raw);
+//       if (parsed?.form) setForm((prev) => ({ ...prev, ...parsed.form }));
+
+//       if (parsed?.updatedAt) {
+//         const d = new Date(parsed.updatedAt);
+//         if (!Number.isNaN(d.getTime())) setLastSaved(d.toLocaleString());
+//       }
+//     } catch {
+//       // ignore
+//     } finally {
+//       setLoaded(true);
+//     }
+//   }, []);
+
+//   // ✅ resume 모드 이동
+//   useEffect(() => {
+//     if (!loaded) return;
+//     const mode = location.state?.mode;
+//     if (mode !== "resume") return;
+
+//     const t = setTimeout(() => {
+//       scrollToSection(getFirstIncompleteRef());
+//     }, 60);
+
+//     return () => clearTimeout(t);
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [loaded]);
+
+//   // ✅ 자동 저장(디바운스)
+//   useEffect(() => {
+//     if (!loaded) return;
+//     setSaveMsg("");
+
+//     const t = setTimeout(() => {
+//       try {
+//         const payload = { form, updatedAt: Date.now() };
+//         userSetItem(STORAGE_KEY, JSON.stringify(payload));
+//         setLastSaved(new Date(payload.updatedAt).toLocaleString());
+//         setSaveMsg("자동 저장됨");
+//         saveHomeSummary(payload.updatedAt);
+//       } catch {
+//         // ignore
+//       }
+//     }, 600);
+
+//     return () => clearTimeout(t);
+//   }, [
+//     form,
+//     loaded,
+//     progress,
+//     completedRequired,
+//     requiredKeys.length,
+//     currentSectionLabel,
+//   ]);
+
+//   // ✅ UI용: 멀티 선택 토글(최대 2개 등)
+//   const toggleMulti = (contextKey, value, maxSelect = 2) => {
+//     setForm((prev) => {
+//       const cur = Array.isArray(prev[contextKey]) ? prev[contextKey] : [];
+//       const exists = cur.includes(value);
+
+//       if (exists) {
+//         const next = cur.filter((v) => v !== value);
+//         return { ...prev, [contextKey]: next };
+//       }
+
+//       if (cur.length >= maxSelect) return prev;
+//       return { ...prev, [contextKey]: [...cur, value] };
+//     });
+//   };
+
+//   // ✅ 백이 원하는 "질문:key / 답변:value" JSON 만들기
+//   const buildQaMap = () => {
+//     // 회사/웹사이트는 선택이지만, 있으면 같이 보냄
+//     const qa = {
+//       "회사/프로젝트명(선택)": String(form.companyName || "").trim(),
+//       "웹사이트/소개 링크 (선택)": String(form.website || "").trim(),
+//     };
+
+//     STEP_1.questions.forEach((q) => {
+//       const ans = resolveAnswerForSend(q);
+//       if (q.question_type === "multiple_choice") {
+//         qa[q.question_text] = Array.isArray(ans) ? ans.join(", ") : "";
+//       } else {
+//         qa[q.question_text] = String(ans ?? "").trim();
+//       }
+//     });
+
+//     return qa;
+//   };
+
+//   // ✅ 정형 필드(context_key) 기반(AI/백에서 파싱 쉬움)
+//   const buildRawQaFields = () => {
+//     const fields = {
+//       company_name: String(form.companyName || "").trim(),
+//       website: String(form.website || "").trim(),
+//     };
+
+//     STEP_1.questions.forEach((q) => {
+//       const ck = q.context_key;
+//       const ans = resolveAnswerForSend(q);
+//       fields[ck] = ans;
+//     });
+
+//     return fields;
+//   };
+
+//   // ✅ 안전한 brandId 추출 (하드코딩 금지)
+//   const toValidBrandId = (v) => {
+//     if (v == null) return null;
+//     if (typeof v === "number") return Number.isFinite(v) ? v : null;
+//     const s = String(v).trim();
+//     if (!s) return null;
+//     if (/^\d+$/.test(s)) return Number(s);
+//     return s; // UUID 등
+//   };
+
+//   const pickBrandId = (data) => {
+//     const d = data || {};
+//     const candidates = [
+//       d.brandId,
+//       d.brand_id,
+//       d.id,
+//       d?.data?.brandId,
+//       d?.data?.brand_id,
+//       d?.interviewReport?.brandId,
+//       d?.interviewReport?.brand_id,
+//       d?.interviewReport?.id,
+//       d?.report?.brandId,
+//       d?.report?.brand_id,
+//       d?.report?.id,
+//     ];
+//     for (const c of candidates) {
+//       const bid = toValidBrandId(c);
+//       if (bid != null) return bid;
+//     }
+//     return null;
+//   };
+
+//   const asMultilineText = (v) => {
+//     if (v == null) return "";
+//     if (typeof v === "string") return v;
+//     if (Array.isArray(v)) {
+//       const arr = v.map((x) => String(x ?? "").trim()).filter(Boolean);
+//       return arr.length ? arr.map((t) => `- ${t}`).join("\n") : "";
+//     }
+//     try {
+//       return JSON.stringify(v, null, 2);
+//     } catch {
+//       return String(v);
+//     }
+//   };
+
+//   const buildFoundationSummary = () => {
+//     const oneLine = String(form.service_definition || "").trim();
+//     const personaQ = STEP_1.questions.find((q) => q.context_key === "target_persona");
+//     const industryQ = STEP_1.questions.find((q) => q.context_key === "industry");
+
+//     const personaValue = String(resolveAnswerForSend(personaQ) || "").trim();
+//     const industryValue = String(resolveAnswerForSend(industryQ) || "").trim();
+
+//     const personaLabel = personaQ?.options
+//       ? getLabelByValue(personaValue, personaQ.options)
+//       : personaValue;
+
+//     const industryLabel = industryQ?.options
+//       ? getLabelByValue(industryValue, industryQ.options)
+//       : industryValue;
+
+//     const parts = [
+//       oneLine ? `정의: ${oneLine}` : null,
+//       personaLabel ? `타겟: ${personaLabel}` : null,
+//       industryLabel ? `산업: ${industryLabel}` : null,
+//     ].filter(Boolean);
+
+//     return parts.join(" | ");
+//   };
+
+//   const renderQuestion = (q) => {
+//     const ck = q.context_key;
+//     const otherKey = otherKeyOf(ck);
+//     const value = getValue(ck);
+
+//     const label = (
+//       <label>
+//         {q.question_text} {q.required ? <span className="req">*</span> : null}
+//       </label>
+//     );
+
+//     if (q.question_type === "short_answer") {
+//       return (
+//         <div className="field">
+//           {label}
+//           <input
+//             value={String(value ?? "")}
+//             onChange={(e) => setValue(ck, e.target.value)}
+//             placeholder={q.placeholder || ""}
+//           />
+//         </div>
+//       );
+//     }
+
+//     if (q.question_type === "long_answer") {
+//       return (
+//         <div className="field">
+//           {label}
+//           <textarea
+//             value={String(value ?? "")}
+//             onChange={(e) => setValue(ck, e.target.value)}
+//             placeholder={q.placeholder || ""}
+//             rows={5}
+//           />
+//         </div>
+//       );
+//     }
+
+//     if (q.question_type === "single_choice") {
+//       const opts = q.options || [];
+//       const selected = String(value ?? "");
+
+//       const selectedOpt = opts.find((o) => o.value === selected);
+//       const needsOtherInput = selectedOpt?.has_text_input && selected === "Other";
+
+//       return (
+//         <div className="field">
+//           {label}
+
+//           <select value={selected} onChange={(e) => setValue(ck, e.target.value)}>
+//             <option value="">선택</option>
+//             {opts.map((opt) => (
+//               <option key={opt.id || opt.value} value={opt.value}>
+//                 {opt.text}
+//               </option>
+//             ))}
+//           </select>
+
+//           {selectedOpt?.description ? (
+//             <p className="hint" style={{ marginTop: 8 }}>
+//               {selectedOpt.description}
+//             </p>
+//           ) : null}
+
+//           {needsOtherInput ? (
+//             <input
+//               style={{ marginTop: 10 }}
+//               value={String(getValue(otherKey) ?? "")}
+//               onChange={(e) => setValue(otherKey, e.target.value)}
+//               placeholder={selectedOpt.text_input_placeholder || "직접 입력해주세요"}
+//             />
+//           ) : null}
+//         </div>
+//       );
+//     }
+
+//     if (q.question_type === "multiple_choice") {
+//       const opts = q.options || [];
+//       const arr = Array.isArray(value) ? value : [];
+//       const maxSelect = Number(q.max_select || 2);
+
+//       const otherSelected = arr.includes("Other");
+//       const otherOpt = opts.find((o) => o.value === "Other");
+
+//       return (
+//         <div className="field">
+//           {label}
+
+//           {/* ✅ 레이아웃 깨짐 방지: 기존 CSS(checkGroup/checkItem) 영향을 안 받도록 고정 */}
+//           <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+//             {opts.map((opt) => {
+//               const checked = arr.includes(opt.value);
+//               const disableNew = !checked && arr.length >= maxSelect;
+
+//               return (
+//                 <label
+//                   key={opt.id || opt.value}
+//                   style={{
+//                     display: "grid",
+//                     gridTemplateColumns: "22px 1fr",
+//                     gap: 12,
+//                     alignItems: "start",
+//                     width: "100%",
+//                     cursor: disableNew ? "not-allowed" : "pointer",
+//                     opacity: disableNew ? 0.55 : 1,
+//                     textAlign: "left",
+//                   }}
+//                 >
+//                   <input
+//                     type="checkbox"
+//                     checked={checked}
+//                     disabled={disableNew}
+//                     onChange={() => toggleMulti(ck, opt.value, maxSelect)}
+//                     style={{ marginTop: 3 }}
+//                   />
+
+//                   <div style={{ display: "grid", gap: 4 }}>
+//                     <div style={{ fontWeight: 600 }}>{opt.text}</div>
+//                     {opt.description ? (
+//                       <div style={{ opacity: 0.8, fontSize: 13 }}>
+//                         {opt.description}
+//                       </div>
+//                     ) : null}
+//                   </div>
+//                 </label>
+//               );
+//             })}
+//           </div>
+
+//           <p className="hint" style={{ marginTop: 10 }}>
+//             * 최대 {maxSelect}개까지 선택할 수 있어요.
+//           </p>
+
+//           {otherSelected ? (
+//             <input
+//               style={{ marginTop: 10 }}
+//               value={String(getValue(otherKey) ?? "")}
+//               onChange={(e) => setValue(otherKey, e.target.value)}
+//               placeholder={otherOpt?.text_input_placeholder || "직접 입력해주세요"}
+//             />
+//           ) : null}
+//         </div>
+//       );
+//     }
+
+//     return (
+//       <div className="field">
+//         <p className="hint">지원하지 않는 질문 타입: {q.question_type}</p>
+//       </div>
+//     );
+//   };
+
+//   const handleViewResult = async () => {
+//     if (!canAnalyze) {
+//       alert("필수 항목을 모두 입력하면 AI 요약 결과를 볼 수 있어요.");
+//       return;
+//     }
+//     if (isSubmitting) return;
+//     if (submitOnceRef.current) return;
+//     submitOnceRef.current = true;
+
+//     // 홈 진행 요약 저장(기존 로직 유지)
+//     try {
+//       const payload = {
+//         progress,
+//         completedRequired,
+//         requiredTotal: requiredKeys.length,
+//         stageLabel: currentSectionLabel,
+//         updatedAt: Date.now(),
+//       };
+//       userSetItem(HOME_SUMMARY_KEY, JSON.stringify(payload));
+//     } catch {
+//       // ignore
+//     }
+
+//     setIsSubmitting(true);
+
+//     try {
+//       const qa = buildQaMap();
+//       const raw_qa_fields = buildRawQaFields();
+
+//       // ✅ payload는 안전하게 최소 구성 유지
+//       const requestBody = {
+//         companyName: String(form.companyName || "").trim(),
+//         website: String(form.website || "").trim(),
+//         qa,
+//         raw_qa_fields,
+//       };
+
+//       const responseData = await apiRequest("/brands/interview", {
+//   method: "POST",
+//   data: requestBody,
+// });
+
+// // ✅ axios response면 responseData.data에 payload가 있음
+// const res = responseData?.data ?? responseData;
+// console.log("[interview] raw:", responseData);
+// console.log("[interview] normalized:", res);
+
+// // ✅ 1) brandId 추출은 res 기준
+// const extractedBrandId = pickBrandId(res);
+
+// // ✅ 2) interviewReport 경로도 res 기준(변형 대비)
+// const interviewReport =
+//   res?.interviewReport ||
+//   res?.interview_report ||
+//   res?.report ||
+//   res?.data?.interviewReport ||
+//   {};
+
+// // ✅ 구버전 user_result fallback
+// const legacyUserResult =
+//   interviewReport?.user_result ||
+//   interviewReport?.userResult ||
+//   res?.user_result ||
+//   res?.userResult ||
+//   {};
+
+// const resultPayload = {
+//   brandId: extractedBrandId,
+
+//   // ✅ 핵심: Summary(대문자 S) / summary(소문자) 둘 다 대응
+//   summary: asMultilineText(
+//     res?.summary ??
+//       interviewReport?.summary ??
+//       interviewReport?.Summary ??
+//       legacyUserResult?.summary
+//   ),
+//   analysis: asMultilineText(
+//     res?.analysis ??
+//       interviewReport?.analysis ??
+//       legacyUserResult?.analysis
+//   ),
+//   key_insights: asMultilineText(
+//     res?.key_insights ??
+//       interviewReport?.key_insights ??
+//       interviewReport?.keyInsights ??
+//       legacyUserResult?.key_insights ??
+//       legacyUserResult?.keyInsights
+//   ),
+
+//   raw_qa: qa,
+//   raw_qa_fields,
+
+//   receivedAt: Date.now(),
+//   updatedAt: new Date().toISOString(),
+//   _source: "diagnosisInterview",
+//   _schema: "step_1_json_driven",
+// };
+
+// userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
+
+//       abortBrandFlow("new_diagnosis");
+
+//       if (extractedBrandId != null) {
+//         // 1) 프론트 입력 기반 요약
+//         let summaryStr = buildFoundationSummary();
+        
+//         // 2) 비어있으면 AI 응답 summary로 대체 (중요!)
+//         if (!String(summaryStr || "").trim()) {
+//           summaryStr = String(resultPayload.summary || "").trim();
+//         }
+        
+//         // 3) 그것도 비면 최소 문구라도 넣기 (브랜드컨설팅 진입 조건 충족)
+//         if (!String(summaryStr || "").trim()) {
+//           summaryStr = "기업진단 완료";
+//         }
+        
+//         upsertPipeline({
+//           brandId: extractedBrandId,
+//           diagnosisSummary: summaryStr,
+//         });
+
+//       } else {
+//         upsertPipeline({
+//           brandId: null,
+//           diagnosisSummary: null,
+//         });
+//         alert(
+//           "서버 응답에 brandId가 없어 다음 단계 진행이 불가능해요. (백엔드 응답 확인 필요)\n결과는 표시되지만, 브랜드 컨설팅은 시작할 수 없습니다."
+//         );
+//       }
+
+//       navigate("/diagnosis/result", {
+//         state: {
+//           from: "diagnosisInterview",
+//           next: "/brandconsulting",
+//           brandId: extractedBrandId,
+//           report: resultPayload,
+//         },
+//       });
+//     } catch (err) {
+//       console.error(err);
+//       const msg =
+//         err?.userMessage ||
+//         err?.response?.data?.message ||
+//         err?.message ||
+//         "요청 실패";
+//       alert(msg);
+//     } finally {
+//       setIsSubmitting(false);
+//       submitOnceRef.current = false;
+//     }
+//   };
+
+//   return (
+//     <div className="diagInterview">
+//       <PolicyModal
+//         open={openType === "privacy"}
+//         title="개인정보 처리방침"
+//         onClose={closeModal}
+//       >
+//         <PrivacyContent />
+//       </PolicyModal>
+
+//       <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
+//         <TermsContent />
+//       </PolicyModal>
+
+//       <SiteHeader onLogout={onLogout} />
+
+//       <main className="diagInterview__main">
+//         <div className="diagInterview__container">
+//           <div className="diagInterview__titleRow">
+//             <div>
+//               <h1 className="diagInterview__title">초기 진단 인터뷰 (Foundation)</h1>
+//               <p className="diagInterview__sub">
+//                 AI 팀 질문지(JSON) 기준으로 자동 렌더링됩니다. 필수 입력을 완료하면
+//                 백엔드로 전송하고, “진단 결과” 페이지에서 결과를 보여줘요.
+//               </p>
+//             </div>
+
+//             <div className="diagInterview__topActions">
+//               <button
+//                 type="button"
+//                 className="btn ghost"
+//                 onClick={() => navigate("/brandconsulting")}
+//               >
+//                 브랜드 컨설팅 홈으로
+//               </button>
+//             </div>
+//           </div>
+
+//           <div className="diagInterview__grid">
+//             <section className="diagInterview__left">
+//               {/* 0) BASIC (선택) */}
+//               <div className="card" ref={refBasic}>
+//                 <div className="card__head">
+//                   <h2>기본 정보 (선택)</h2>
+//                   <p>AI 질문지에는 포함되지 않지만, 작성하면 분석에 도움이 돼요.</p>
+//                 </div>
+
+//                 <div className="formGrid">
+//                   <div className="field">
+//                     <label>회사/프로젝트명 (선택)</label>
+//                     <input
+//                       value={form.companyName}
+//                       onChange={(e) => setValue("companyName", e.target.value)}
+//                       placeholder="예) BRANDPILOT"
+//                     />
+//                   </div>
+
+//                   <div className="field">
+//                     <label>웹사이트/소개 링크 (선택)</label>
+//                     <input
+//                       value={form.website}
+//                       onChange={(e) => setValue("website", e.target.value)}
+//                       placeholder="예) https://... 또는 노션/구글독 링크"
+//                     />
+//                   </div>
+//                 </div>
+//               </div>
+
+//               {/* ✅ 영역(카테고리)별 카드 분리 */}
+//               {categoriesOrdered.map((cat, idx) => (
+//                 <div key={cat} className="card" ref={categoryRefs[cat]}>
+//                   <div className="card__head">
+//                     <h2>
+//                       {idx + 1}. {cat}
+//                     </h2>
+//                     <p>{STEP_1.description}</p>
+//                   </div>
+
+//                   {(questionsByCategory[cat] || []).map((q) => (
+//                     <div key={q.id} style={{ marginTop: 14 }}>
+//                       {renderQuestion(q)}
+//                     </div>
+//                   ))}
+//                 </div>
+//               ))}
+//             </section>
+
+//             <aside className="diagInterview__right">
+//               <div className="sideCard">
+//                 <div className="sideCard__titleRow">
+//                   <h3>진행 상태</h3>
+//                   <span className="badge">{progress}%</span>
+//                 </div>
+
+//                 <div
+//                   className="progressBar"
+//                   role="progressbar"
+//                   aria-valuemin={0}
+//                   aria-valuemax={100}
+//                   aria-valuenow={progress}
+//                 >
+//                   <div
+//                     className="progressBar__fill"
+//                     style={{ width: `${progress}%` }}
+//                   />
+//                 </div>
+
+//                 <div className="sideMeta">
+//                   <div className="sideMeta__row">
+//                     <span className="k">현재 단계</span>
+//                     <span className="v">{currentSectionLabel}</span>
+//                   </div>
+//                   <div className="sideMeta__row">
+//                     <span className="k">필수 완료</span>
+//                     <span className="v">
+//                       {completedRequired}/{requiredKeys.length}
+//                     </span>
+//                   </div>
+//                   <div className="sideMeta__row">
+//                     <span className="k">마지막 저장</span>
+//                     <span className="v">{lastSaved}</span>
+//                   </div>
+//                 </div>
+
+//                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+//                 <div className="divider" />
+
+//                 <h4 className="sideSubTitle">필수 입력 체크</h4>
+//                 <ul className="checkList">
+//                   {STEP_1.questions
+//                     .filter((q) => q.required)
+//                     .map((q) => (
+//                       <li
+//                         key={`req_${q.context_key}`}
+//                         className={requiredStatus[q.context_key] ? "ok" : ""}
+//                       >
+//                         {q.category}
+//                       </li>
+//                     ))}
+//                 </ul>
+
+//                 <div className="divider" />
+
+//                 <h4 className="sideSubTitle">빠른 이동</h4>
+//                 <div className="jumpGrid">
+//                   {sections.map((s) => (
+//                     <button
+//                       key={s.id}
+//                       type="button"
+//                       className="jumpBtn"
+//                       onClick={() => scrollToSection(s.ref)}
+//                     >
+//                       {s.label}
+//                     </button>
+//                   ))}
+//                 </div>
+
+//                 <button
+//                   type="button"
+//                   className={`btn primary sideAnalyze ${
+//                     canAnalyze && !isSubmitting ? "" : "disabled"
+//                   }`}
+//                   onClick={handleViewResult}
+//                   disabled={!canAnalyze || isSubmitting}
+//                 >
+//                   {isSubmitting ? "요청 중..." : "AI 요약 결과 보기"}
+//                 </button>
+
+//                 {!canAnalyze ? (
+//                   <p className="hint">
+//                     * 필수 항목을 모두 입력하면 결과 보기 버튼이 활성화됩니다.
+//                   </p>
+//                 ) : null}
+//               </div>
+//             </aside>
+//           </div>
+//         </div>
+//       </main>
+
+//       <SiteFooter onOpenPolicy={setOpenType} />
+//     </div>
+//   );
+// }
+
 // src/pages/DiagnosisInterview.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -14,11 +1193,7 @@ import { apiRequest } from "../api/client.js";
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem, userSetItem } from "../utils/userLocalStorage.js";
 
-import {
-  abortBrandFlow,
-  buildDiagnosisSummaryFromDraft,
-  upsertPipeline,
-} from "../utils/brandPipelineStorage.js";
+import { abortBrandFlow, upsertPipeline } from "../utils/brandPipelineStorage.js";
 
 const STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_SUMMARY_KEY = "diagnosisDraft";
@@ -26,32 +1201,279 @@ const HOME_SUMMARY_KEY = "diagnosisDraft";
 // ✅ 백 응답 저장 키(결과 페이지에서 읽음)
 const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
 
-const INDUSTRY_OPTIONS = [
-  { value: "saas_platform", label: "SaaS/플랫폼" },
-  { value: "commerce", label: "커머스" },
-  { value: "healthcare", label: "헬스케어" },
-  { value: "education", label: "교육" },
-];
+/**
+ * ✅ AI 팀 질문지(JSON) 기반 렌더링 Step1
+ * - question_type: short_answer | long_answer | single_choice | multiple_choice
+ * - options: { id, text, value, description, has_text_input, text_input_placeholder }
+ * - context_key: 답변 저장 키
+ */
+const STEP_1 = {
+  title: "Identity & Foundation",
+  description: "브랜드의 본질과 기반을 정의합니다",
+  questions: [
+    {
+      id: "s1_one_line_definition",
+      category: "Identity",
+      question_text:
+        "우리 서비스를 전혀 모르는 10살 조카에게 설명한다고 가정하고, 한 문장으로 서비스를 정의해주세요.",
+      question_type: "short_answer",
+      placeholder:
+        "예: 바쁜 사람들이 5분 만에 건강한 식사를 주문할 수 있게 도와주는 앱이야",
+      required: true,
+      context_key: "service_definition",
+    },
+    {
+      id: "s1_core_problem",
+      category: "Problem Solving",
+      question_text:
+        "고객이 우리 서비스를 쓰지 않을 때 겪는 가장 고통스러운 문제점은 무엇인가요?",
+      question_type: "long_answer",
+      placeholder: "구체적인 상황과 감정을 포함해서 작성해주세요",
+      required: true,
+      context_key: "pain_point",
+    },
+    {
+      id: "s1_target_persona",
+      category: "Target",
+      question_text: "우리 서비스의 '찐팬'이 될 핵심 고객층은 누구인가요?",
+      question_type: "single_choice",
+      options: [
+        {
+          id: "opt_2030_trendsetter",
+          text: "새로운 것을 먼저 시도하는 2030 얼리어답터",
+          value: "2030 Early Adopter",
+          description: "트렌드에 민감하고 SNS 활동이 활발한 젊은 층",
+        },
+        {
+          id: "opt_3040_worker",
+          text: "효율을 중시하는 3040 직장인",
+          value: "3040 Efficiency Seeker",
+          description: "시간이 부족하고 실용성을 중요시하는 워킹맘/워킹대디",
+        },
+        {
+          id: "opt_professional",
+          text: "전문성을 추구하는 프리랜서/전문직",
+          value: "Professional/Freelancer",
+          description: "개인 브랜드와 전문성이 중요한 독립적인 워커",
+        },
+        {
+          id: "opt_student",
+          text: "자기계발에 진지한 대학생/취준생",
+          value: "Self-improving Student",
+          description: "미래를 준비하고 스펙을 쌓는 데 집중하는 청년층",
+        },
+        {
+          id: "opt_senior",
+          text: "새로운 도전을 시작하는 시니어",
+          value: "Active Senior",
+          description:
+            "은퇴 후 제2의 인생이나 취미 활동을 적극적으로 추구하는 중장년층",
+        },
+        {
+          id: "opt_other",
+          text: "기타",
+          value: "Other",
+          has_text_input: true,
+          text_input_placeholder: "구체적인 고객 페르소나를 설명해주세요",
+        },
+      ],
+      required: true,
+      context_key: "target_persona",
+    },
+    {
+      id: "s1_current_alternatives",
+      category: "Competition",
+      question_text:
+        "고객들이 현재 우리 서비스를 사용하지 않을 때 대신 사용하고 있는 대안(경쟁사, 다른 방법)은 무엇인가요?",
+      question_type: "long_answer",
+      placeholder: "예: 수기로 엑셀 관리, 경쟁사 A 서비스, 아예 하지 않음 등",
+      required: true,
+      context_key: "current_alternatives",
+    },
+    {
+      id: "s1_differentiation",
+      category: "USP",
+      question_text:
+        "경쟁사가 절대 따라 할 수 없는 우리 서비스만의 '무기'는 무엇인가요?",
+      question_type: "long_answer",
+      placeholder:
+        "기술력, 데이터, 네트워크, 창업자 경험 등 구체적으로 작성해주세요",
+      required: false,
+      context_key: "usp",
+    },
+    {
+      id: "s1_industry",
+      category: "Market",
+      question_text: "비즈니스가 속한 산업군은 어디인가요?",
+      question_type: "single_choice",
+      options: [
+        {
+          id: "opt_saas",
+          text: "SaaS/B2B 플랫폼",
+          value: "SaaS/B2B Platform",
+          description: "기업용 소프트웨어, 업무 도구",
+        },
+        {
+          id: "opt_commerce",
+          text: "이커머스/리테일",
+          value: "E-commerce/Retail",
+          description: "온라인 쇼핑, 판매 플랫폼",
+        },
+        {
+          id: "opt_fintech",
+          text: "핀테크/금융",
+          value: "Fintech/Finance",
+          description: "결제, 투자, 대출, 자산관리",
+        },
+        {
+          id: "opt_health",
+          text: "헬스케어/웰니스",
+          value: "Healthcare/Wellness",
+          description: "건강, 의료, 피트니스",
+        },
+        {
+          id: "opt_edu",
+          text: "에듀테크/교육",
+          value: "Edutech/Education",
+          description: "온라인 교육, 학습 플랫폼",
+        },
+        {
+          id: "opt_contents",
+          text: "콘텐츠/미디어",
+          value: "Contents/Media",
+          description: "OTT, 음악, 웹툰, 뉴스",
+        },
+        {
+          id: "opt_social",
+          text: "소셜/커뮤니티",
+          value: "Social/Community",
+          description: "SNS, 커뮤니케이션, 네트워킹",
+        },
+        {
+          id: "opt_mobility",
+          text: "모빌리티/물류",
+          value: "Mobility/Logistics",
+          description: "배달, 운송, 차량 공유",
+        },
+        {
+          id: "opt_proptech",
+          text: "프롭테크/부동산",
+          value: "Proptech/Real Estate",
+          description: "부동산 중개, 임대, 관리",
+        },
+        {
+          id: "opt_other",
+          text: "기타",
+          value: "Other",
+          has_text_input: true,
+          text_input_placeholder: "산업군을 직접 입력해주세요",
+        },
+      ],
+      required: true,
+      context_key: "industry",
+    },
+    {
+      id: "s1_vision",
+      category: "Vision",
+      question_text:
+        "5년 뒤, 우리 회사가 뉴스 헤드라인에 나온다면 어떤 제목일까요?",
+      question_type: "short_answer",
+      placeholder:
+        "예: 'OO, 국내 1위 배달 플랫폼 등극', 'OO 서비스, 500만 사용자 돌파'",
+      required: true,
+      context_key: "vision_headline",
+    },
+    {
+      id: "s1_revenue_model",
+      category: "Revenue Model",
+      question_text: "주요 수익 모델은 무엇인가요?",
+      question_type: "single_choice",
+      options: [
+        {
+          id: "opt_subscription",
+          text: "구독",
+          value: "Subscription",
+          description: "정기적인 구독료",
+        },
+        {
+          id: "opt_advertising",
+          text: "광고",
+          value: "Advertising",
+          description: "광고 수익",
+        },
+        {
+          id: "opt_commission",
+          text: "수수료",
+          value: "Commission",
+          description: "거래 수수료",
+        },
+        {
+          id: "opt_sales",
+          text: "판매",
+          value: "Sales",
+          description: "제품 판매",
+        },
+        {
+          id: "opt_other",
+          text: "기타",
+          value: "Other",
+          has_text_input: true,
+          text_input_placeholder: "수익 모델을 직접 입력해주세요",
+        },
+      ],
+      required: true,
+      context_key: "revenue_model",
+    },
+    {
+      id: "s1_brand_priority",
+      category: "Brand Goal",
+      question_text:
+        "향후 6~12개월 동안 브랜드가 가장 집중해야 할 목표는 무엇인가요? (최대 2개 선택)",
+      question_type: "multiple_choice",
+      options: [
+        {
+          id: "opt_brand_awareness",
+          text: "브랜드 인지도",
+          value: "Brand Awareness",
+          description: "더 많은 사람들이 우리 브랜드를 알게 하기",
+        },
+        {
+          id: "opt_customer_acquisition",
+          text: "고객 확보",
+          value: "Customer Acquisition",
+          description: "신규 고객 수 증가",
+        },
+        {
+          id: "opt_customer_retention",
+          text: "유료 전환율 상승",
+          value: "Conversion Rate Improvement",
+          description: "무료 사용자를 유료 고객으로 전환",
+        },
+        {
+          id: "opt_investment_attraction",
+          text: "투자 유치",
+          value: "Investment Attraction",
+          description: "외부 투자 유치 및 펀딩",
+        },
+        {
+          id: "opt_other",
+          text: "기타",
+          value: "Other",
+          has_text_input: true,
+          text_input_placeholder: "브랜드 목표를 직접 입력해주세요",
+        },
+      ],
+      required: true,
+      context_key: "brand_priority",
+      max_select: 2,
+    },
+  ],
+};
 
-const STAGE_OPTIONS = [
-  { value: "idea", label: "아이디어 단계" },
-  { value: "mvp", label: "MVP 개발 중" },
-  { value: "early_revenue", label: "초기 매출 발생" },
-  { value: "scaleup", label: "스케일업" },
-];
-
-const PERSONA_OPTIONS = [
-  { value: "trend_2030", label: "2030 트렌드 세터" },
-  { value: "worker_3040", label: "3040 직장인" },
-  { value: "startup_ceo", label: "초기 스타트업 대표" },
-  { value: "mid_team_lead", label: "중견기업 팀장" },
-  { value: "professional", label: "전문직" },
-];
-
-const getLabel = (value, options) => {
-  const v = String(value || "").trim();
+const getLabelByValue = (value, options) => {
+  const v = String(value ?? "").trim();
   if (!v) return "";
-  return options.find((o) => o.value === v)?.label || v;
+  return options?.find((o) => o.value === v)?.text || v;
 };
 
 export default function DiagnosisInterview({ onLogout }) {
@@ -62,18 +1484,12 @@ export default function DiagnosisInterview({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ 폼 상태
+  // ✅ 폼 상태 (JSON 기반: context_key로 저장)
+  // - Other 텍스트는 `${context_key}__other` 키에 저장
   const [form, setForm] = useState({
-    companyName: "", // ✅ 필수
+    companyName: "", // ✅ 선택(요청 반영)
     website: "", // ✅ 선택
-
-    oneLine: "",
-    customerProblem: "",
-    targetPersona: "",
-    usp: "",
-    stage: "",
-    industry: "",
-    visionHeadline: "",
+    // context_key들이 동적으로 붙지만, 저장/로드는 통째로 JSON
   });
 
   // ✅ 저장 상태 UI (자동저장만 사용)
@@ -85,52 +1501,127 @@ export default function DiagnosisInterview({ onLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOnceRef = useRef(false);
 
-  // ✅ 섹션 스크롤용 ref
+  // ✅ 스크롤 ref
   const refBasic = useRef(null);
-  const refOneLine = useRef(null);
-  const refCustomer = useRef(null);
-  const refUsp = useRef(null);
-  const refStatus = useRef(null);
-  const refVision = useRef(null);
 
-  const sections = useMemo(
-    () => [
-      { id: "basic", label: "기본 정보", ref: refBasic },
-      { id: "oneLine", label: "한 문장 정의", ref: refOneLine },
-      { id: "customer", label: "문제/타겟", ref: refCustomer },
-      { id: "usp", label: "USP", ref: refUsp },
-      { id: "status", label: "단계/산업군", ref: refStatus },
-      { id: "vision", label: "헤드라인", ref: refVision },
-    ],
-    [],
-  );
+  // ✅ category(영역) 순서 유지 + ref 생성
+  const categoriesOrdered = useMemo(() => {
+    const arr = [];
+    STEP_1.questions.forEach((q) => {
+      const key = q.category || "기타";
+      if (!arr.includes(key)) arr.push(key);
+    });
+    return arr;
+  }, []);
 
-  // ✅ 필수 항목(website 제외)
-  const requiredKeys = useMemo(
-    () => [
-      "companyName",
-      "oneLine",
-      "customerProblem",
-      "targetPersona",
-      "usp",
-      "stage",
-      "industry",
-      "visionHeadline",
-    ],
-    [],
-  );
+  const categoryRefs = useMemo(() => {
+    const map = {};
+    categoriesOrdered.forEach((cat) => {
+      map[cat] = React.createRef();
+    });
+    return map;
+  }, [categoriesOrdered]);
+
+  const setValue = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const getValue = (key) => form?.[key];
+  const otherKeyOf = (contextKey) => `${contextKey}__other`;
+
+  const hasText = (v) => Boolean(String(v ?? "").trim());
+
+  // ✅ category별 질문 그룹
+  const questionsByCategory = useMemo(() => {
+    const grouped = {};
+    STEP_1.questions.forEach((q) => {
+      const cat = q.category || "기타";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(q);
+    });
+    return grouped;
+  }, []);
+
+  const resolveAnswerForSend = (q) => {
+    const ck = q.context_key;
+    const base = getValue(ck);
+
+    if (q.question_type === "multiple_choice") {
+      const arr = Array.isArray(base) ? base : [];
+      const resolved = arr
+        .map((val) => {
+          if (val !== "Other") return val;
+          return String(getValue(otherKeyOf(ck)) || "").trim();
+        })
+        .filter(Boolean);
+      return resolved;
+    }
+
+    if (q.question_type === "single_choice") {
+      const v = String(base ?? "").trim();
+      if (!v) return "";
+      if (v !== "Other") return v;
+      return String(getValue(otherKeyOf(ck)) || "").trim();
+    }
+
+    return String(base ?? "").trim();
+  };
+
+  // ✅ 필수 항목(회사명 제외: 요청 반영)
+  const requiredKeys = useMemo(() => {
+    const keys = [];
+    STEP_1.questions.forEach((q) => {
+      if (q.required) keys.push(q.context_key);
+    });
+    return keys;
+  }, []);
 
   const requiredStatus = useMemo(() => {
     const status = {};
-    requiredKeys.forEach((k) => {
-      status[k] = Boolean(String(form[k] || "").trim());
+
+    STEP_1.questions.forEach((q) => {
+      if (!q.required) return;
+
+      const ck = q.context_key;
+      const raw = getValue(ck);
+
+      if (q.question_type === "multiple_choice") {
+        const arr = Array.isArray(raw) ? raw : [];
+        if (!arr.length) {
+          status[ck] = false;
+          return;
+        }
+        if (arr.includes("Other") && !hasText(getValue(otherKeyOf(ck)))) {
+          status[ck] = false;
+          return;
+        }
+        status[ck] = true;
+        return;
+      }
+
+      if (q.question_type === "single_choice") {
+        const v = String(raw ?? "").trim();
+        if (!v) {
+          status[ck] = false;
+          return;
+        }
+        if (v === "Other" && !hasText(getValue(otherKeyOf(ck)))) {
+          status[ck] = false;
+          return;
+        }
+        status[ck] = true;
+        return;
+      }
+
+      status[ck] = hasText(raw);
     });
+
     return status;
-  }, [form, requiredKeys]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
 
   const completedRequired = useMemo(
-    () => requiredKeys.filter((k) => requiredStatus[k]).length,
-    [requiredKeys, requiredStatus],
+    () => requiredKeys.filter((k) => Boolean(requiredStatus[k])).length,
+    [requiredKeys, requiredStatus]
   );
 
   const progress = useMemo(() => {
@@ -141,19 +1632,13 @@ export default function DiagnosisInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
 
   const currentSectionLabel = useMemo(() => {
-    if (!String(form.companyName || "").trim()) return "기본 정보";
-    if (!String(form.oneLine || "").trim()) return "한 문장 정의";
-    if (
-      !String(form.customerProblem || "").trim() ||
-      !String(form.targetPersona || "").trim()
-    )
-      return "문제/타겟";
-    if (!String(form.usp || "").trim()) return "USP";
-    if (!String(form.stage || "").trim() || !String(form.industry || "").trim())
-      return "단계/산업군";
-    if (!String(form.visionHeadline || "").trim()) return "헤드라인";
+    for (const q of STEP_1.questions) {
+      if (q.required && !requiredStatus[q.context_key]) {
+        return q.category || "진행 중";
+      }
+    }
     return "완료";
-  }, [form]);
+  }, [requiredStatus]);
 
   const scrollToSection = (ref) => {
     if (!ref?.current) return;
@@ -161,19 +1646,24 @@ export default function DiagnosisInterview({ onLogout }) {
   };
 
   const getFirstIncompleteRef = () => {
-    if (!String(form.companyName || "").trim()) return refBasic;
-    if (!String(form.oneLine || "").trim()) return refOneLine;
-    if (
-      !String(form.customerProblem || "").trim() ||
-      !String(form.targetPersona || "").trim()
-    )
-      return refCustomer;
-    if (!String(form.usp || "").trim()) return refUsp;
-    if (!String(form.stage || "").trim() || !String(form.industry || "").trim())
-      return refStatus;
-    if (!String(form.visionHeadline || "").trim()) return refVision;
-    return refVision;
+    for (const q of STEP_1.questions) {
+      if (q.required && !requiredStatus[q.context_key]) {
+        const cat = q.category || "기타";
+        return categoryRefs[cat] || refBasic;
+      }
+    }
+    // 모두 완료면 마지막 카테고리로
+    const lastCat = categoriesOrdered[categoriesOrdered.length - 1];
+    return categoryRefs[lastCat] || refBasic;
   };
+
+  const sections = useMemo(() => {
+    const items = [{ id: "basic", label: "기본 정보(선택)", ref: refBasic }];
+    categoriesOrdered.forEach((cat, idx) => {
+      items.push({ id: `cat_${cat}`, label: `${idx + 1}. ${cat}`, ref: categoryRefs[cat] });
+    });
+    return items;
+  }, [categoriesOrdered, categoryRefs]);
 
   const saveHomeSummary = (updatedAtTs) => {
     try {
@@ -253,32 +1743,279 @@ export default function DiagnosisInterview({ onLogout }) {
     currentSectionLabel,
   ]);
 
-  const setValue = (key, value) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  // ✅ UI용: 멀티 선택 토글(최대 2개 등)
+  const toggleMulti = (contextKey, value, maxSelect = 2) => {
+    setForm((prev) => {
+      const cur = Array.isArray(prev[contextKey]) ? prev[contextKey] : [];
+      const exists = cur.includes(value);
+
+      if (exists) {
+        const next = cur.filter((v) => v !== value);
+        return { ...prev, [contextKey]: next };
+      }
+
+      if (cur.length >= maxSelect) return prev;
+      return { ...prev, [contextKey]: [...cur, value] };
+    });
+  };
 
   // ✅ 백이 원하는 "질문:key / 답변:value" JSON 만들기
   const buildQaMap = () => {
-    const personaLabel = getLabel(form.targetPersona, PERSONA_OPTIONS);
-    const stageLabel = getLabel(form.stage, STAGE_OPTIONS);
-    const industryLabel = getLabel(form.industry, INDUSTRY_OPTIONS);
-
-    return {
-      "회사/프로젝트명": String(form.companyName || "").trim(),
+    // 회사/웹사이트는 선택이지만, 있으면 같이 보냄
+    const qa = {
+      "회사/프로젝트명(선택)": String(form.companyName || "").trim(),
       "웹사이트/소개 링크 (선택)": String(form.website || "").trim(),
-      "10살 조카에게 설명한다면 한 문장으로?": String(
-        form.oneLine || "",
-      ).trim(),
-      "서비스를 안 쓰면 겪는 가장 큰 문제는?": String(
-        form.customerProblem || "",
-      ).trim(),
-      "핵심 고객층(찐팬 페르소나 선택)":
-        personaLabel || String(form.targetPersona || "").trim(),
-      "경쟁사가 못 따라 할 우리만의 무기(USP)": String(form.usp || "").trim(),
-      "현재 비즈니스 완성도(단계 선택)":
-        stageLabel || String(form.stage || "").trim(),
-      "산업군 선택": industryLabel || String(form.industry || "").trim(),
-      "어떤 제목으로 기사에 나올까?": String(form.visionHeadline || "").trim(),
     };
+
+    STEP_1.questions.forEach((q) => {
+      const ans = resolveAnswerForSend(q);
+      if (q.question_type === "multiple_choice") {
+        qa[q.question_text] = Array.isArray(ans) ? ans.join(", ") : "";
+      } else {
+        qa[q.question_text] = String(ans ?? "").trim();
+      }
+    });
+
+    return qa;
+  };
+
+  // ✅ 정형 필드(context_key) 기반(AI/백에서 파싱 쉬움)
+  const buildRawQaFields = () => {
+    const fields = {
+      company_name: String(form.companyName || "").trim(),
+      website: String(form.website || "").trim(),
+    };
+
+    STEP_1.questions.forEach((q) => {
+      const ck = q.context_key;
+      const ans = resolveAnswerForSend(q);
+      fields[ck] = ans;
+    });
+
+    return fields;
+  };
+
+  // ✅ 안전한 brandId 추출 (하드코딩 금지)
+  const toValidBrandId = (v) => {
+    if (v == null) return null;
+    if (typeof v === "number") return Number.isFinite(v) ? v : null;
+    const s = String(v).trim();
+    if (!s) return null;
+    if (/^\d+$/.test(s)) return Number(s);
+    return s; // UUID 등
+  };
+
+  const pickBrandId = (data) => {
+    const d = data || {};
+    const candidates = [
+      d.brandId,
+      d.brand_id,
+      d.id,
+      d?.data?.brandId,
+      d?.data?.brand_id,
+      d?.interviewReport?.brandId,
+      d?.interviewReport?.brand_id,
+      d?.interviewReport?.id,
+      d?.report?.brandId,
+      d?.report?.brand_id,
+      d?.report?.id,
+    ];
+    for (const c of candidates) {
+      const bid = toValidBrandId(c);
+      if (bid != null) return bid;
+    }
+    return null;
+  };
+
+  const asMultilineText = (v) => {
+    if (v == null) return "";
+    if (typeof v === "string") return v;
+    if (Array.isArray(v)) {
+      const arr = v.map((x) => String(x ?? "").trim()).filter(Boolean);
+      return arr.length ? arr.map((t) => `- ${t}`).join("\n") : "";
+    }
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
+  };
+
+  const buildFoundationSummary = () => {
+    const oneLine = String(form.service_definition || "").trim();
+    const personaQ = STEP_1.questions.find((q) => q.context_key === "target_persona");
+    const industryQ = STEP_1.questions.find((q) => q.context_key === "industry");
+
+    const personaValue = String(resolveAnswerForSend(personaQ) || "").trim();
+    const industryValue = String(resolveAnswerForSend(industryQ) || "").trim();
+
+    const personaLabel = personaQ?.options
+      ? getLabelByValue(personaValue, personaQ.options)
+      : personaValue;
+
+    const industryLabel = industryQ?.options
+      ? getLabelByValue(industryValue, industryQ.options)
+      : industryValue;
+
+    const parts = [
+      oneLine ? `정의: ${oneLine}` : null,
+      personaLabel ? `타겟: ${personaLabel}` : null,
+      industryLabel ? `산업: ${industryLabel}` : null,
+    ].filter(Boolean);
+
+    return parts.join(" | ");
+  };
+
+  const renderQuestion = (q) => {
+    const ck = q.context_key;
+    const otherKey = otherKeyOf(ck);
+    const value = getValue(ck);
+
+    const label = (
+      <label>
+        {q.question_text} {q.required ? <span className="req">*</span> : null}
+      </label>
+    );
+
+    if (q.question_type === "short_answer") {
+      return (
+        <div className="field">
+          {label}
+          <input
+            value={String(value ?? "")}
+            onChange={(e) => setValue(ck, e.target.value)}
+            placeholder={q.placeholder || ""}
+          />
+        </div>
+      );
+    }
+
+    if (q.question_type === "long_answer") {
+      return (
+        <div className="field">
+          {label}
+          <textarea
+            value={String(value ?? "")}
+            onChange={(e) => setValue(ck, e.target.value)}
+            placeholder={q.placeholder || ""}
+            rows={5}
+          />
+        </div>
+      );
+    }
+
+    if (q.question_type === "single_choice") {
+      const opts = q.options || [];
+      const selected = String(value ?? "");
+
+      const selectedOpt = opts.find((o) => o.value === selected);
+      const needsOtherInput = selectedOpt?.has_text_input && selected === "Other";
+
+      return (
+        <div className="field">
+          {label}
+
+          <select value={selected} onChange={(e) => setValue(ck, e.target.value)}>
+            <option value="">선택</option>
+            {opts.map((opt) => (
+              <option key={opt.id || opt.value} value={opt.value}>
+                {opt.text}
+              </option>
+            ))}
+          </select>
+
+          {selectedOpt?.description ? (
+            <p className="hint" style={{ marginTop: 8 }}>
+              {selectedOpt.description}
+            </p>
+          ) : null}
+
+          {needsOtherInput ? (
+            <input
+              style={{ marginTop: 10 }}
+              value={String(getValue(otherKey) ?? "")}
+              onChange={(e) => setValue(otherKey, e.target.value)}
+              placeholder={selectedOpt.text_input_placeholder || "직접 입력해주세요"}
+            />
+          ) : null}
+        </div>
+      );
+    }
+
+    if (q.question_type === "multiple_choice") {
+      const opts = q.options || [];
+      const arr = Array.isArray(value) ? value : [];
+      const maxSelect = Number(q.max_select || 2);
+
+      const otherSelected = arr.includes("Other");
+      const otherOpt = opts.find((o) => o.value === "Other");
+
+      return (
+        <div className="field">
+          {label}
+
+          {/* ✅ 레이아웃 깨짐 방지: 기존 CSS(checkGroup/checkItem) 영향을 안 받도록 고정 */}
+          <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+            {opts.map((opt) => {
+              const checked = arr.includes(opt.value);
+              const disableNew = !checked && arr.length >= maxSelect;
+
+              return (
+                <label
+                  key={opt.id || opt.value}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "22px 1fr",
+                    gap: 12,
+                    alignItems: "start",
+                    width: "100%",
+                    cursor: disableNew ? "not-allowed" : "pointer",
+                    opacity: disableNew ? 0.55 : 1,
+                    textAlign: "left",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disableNew}
+                    onChange={() => toggleMulti(ck, opt.value, maxSelect)}
+                    style={{ marginTop: 3 }}
+                  />
+
+                  <div style={{ display: "grid", gap: 4 }}>
+                    <div style={{ fontWeight: 600 }}>{opt.text}</div>
+                    {opt.description ? (
+                      <div style={{ opacity: 0.8, fontSize: 13 }}>
+                        {opt.description}
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          <p className="hint" style={{ marginTop: 10 }}>
+            * 최대 {maxSelect}개까지 선택할 수 있어요.
+          </p>
+
+          {otherSelected ? (
+            <input
+              style={{ marginTop: 10 }}
+              value={String(getValue(otherKey) ?? "")}
+              onChange={(e) => setValue(otherKey, e.target.value)}
+              placeholder={otherOpt?.text_input_placeholder || "직접 입력해주세요"}
+            />
+          ) : null}
+        </div>
+      );
+    }
+
+    return (
+      <div className="field">
+        <p className="hint">지원하지 않는 질문 타입: {q.question_type}</p>
+      </div>
+    );
   };
 
   const handleViewResult = async () => {
@@ -305,72 +2042,120 @@ export default function DiagnosisInterview({ onLogout }) {
     }
 
     setIsSubmitting(true);
+
     try {
       const qa = buildQaMap();
+      const raw_qa_fields = buildRawQaFields();
 
-      // ✅ 호환성 위해 "원본 입력값(form)"도 같이 보냄(백 DTO가 flat일 수도 있어서)
+      // ✅ payload는 안전하게 최소 구성 유지
       const requestBody = {
-        // 기존 flat
-        ...form,
-        // 백 요구: 질문(key):답변(value)
+        companyName: String(form.companyName || "").trim(),
+        website: String(form.website || "").trim(),
         qa,
+        raw_qa_fields,
       };
 
-      // ✅ 백 호출 (JWT는 apiRequest가 붙여준다고 가정)
-      // 백이 더미 응답을 내려주면 data로 받음
-      const data = await apiRequest("/brands/interview", {
+      const responseData = await apiRequest("/brands/interview", {
         method: "POST",
         data: requestBody,
       });
-
-      // ✅ 결과 저장 (백 응답 구조가 뭐든 저장해두고 Result 페이지에서 유연 렌더)
+      
+      // ✅ axios response면 responseData.data에 payload가 있음
+      const res = responseData?.data ?? responseData;
+      console.log("[interview] raw:", responseData);
+      console.log("[interview] normalized:", res);
+      
+      // ✅ 1) brandId 추출은 res 기준
+      const extractedBrandId = pickBrandId(res);
+      
+      // ✅ 2) interviewReport 경로도 res 기준(변형 대비)
+      const interviewReport =
+      res?.interviewReport ||
+      res?.interview_report ||
+      res?.report ||
+      res?.data?.interviewReport ||
+      {};
+      
+      // ✅ 구버전 user_result fallback
+      const legacyUserResult =
+      interviewReport?.user_result ||
+      interviewReport?.userResult ||
+      res?.user_result ||
+      res?.userResult ||
+      {};
+      
       const resultPayload = {
-        brandId: data?.brandId ?? data?.id ?? null,
-        interviewReport: data?.interviewReport ?? data?.report ?? data,
-        receivedAt: Date.now(),
-      };
+        brandId: extractedBrandId,
+        
+        // ✅ 핵심: Summary(대문자 S) / summary(소문자) 둘 다 대응
+        summary: asMultilineText(
+          res?.summary ??
+          interviewReport?.summary ??
+          interviewReport?.Summary ??
+          legacyUserResult?.summary
+        ),
+        analysis: asMultilineText(
+          res?.analysis ??
+      interviewReport?.analysis ??
+      legacyUserResult?.analysis
+    ),
+    key_insights: asMultilineText(
+      res?.key_insights ??
+      interviewReport?.key_insights ??
+      interviewReport?.keyInsights ??
+      legacyUserResult?.key_insights ??
+      legacyUserResult?.keyInsights
+  ),
+  
+  raw_qa: qa,
+  raw_qa_fields,
 
-      try {
-        userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
-      } catch {
-        // ignore
-      }
+  receivedAt: Date.now(),
+  updatedAt: new Date().toISOString(),
+  _source: "diagnosisInterview",
+  _schema: "step_1_json_driven",
+};
 
-      // ✅ pipeline에 brandId/진단요약 저장 + 기존 브랜드 컨설팅 진행 초기화(brandId 섞임 방지)
-      try {
-        const summary = buildDiagnosisSummaryFromDraft(form);
-        abortBrandFlow("new_diagnosis");
+userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
+
+
+      abortBrandFlow("new_diagnosis");
+
+      if (extractedBrandId != null) {
+        const summaryStr = buildFoundationSummary();
         upsertPipeline({
-          brandId: resultPayload.brandId,
-          diagnosisSummary: summary,
+          brandId: extractedBrandId,
+          diagnosisSummary: summaryStr,
         });
-      } catch {
-        // ignore
+      } else {
+        upsertPipeline({
+          brandId: null,
+          diagnosisSummary: null,
+        });
+        alert(
+          "서버 응답에 brandId가 없어 다음 단계 진행이 불가능해요. (백엔드 응답 확인 필요)\n결과는 표시되지만, 브랜드 컨설팅은 시작할 수 없습니다."
+        );
       }
 
-      // ✅ 결과 페이지 이동 + state로도 넘김(우선순위)
       navigate("/diagnosis/result", {
         state: {
           from: "diagnosisInterview",
           next: "/brandconsulting",
-          brandId: resultPayload.brandId,
-          interviewReport: resultPayload.interviewReport,
+          brandId: extractedBrandId,
+          report: resultPayload,
         },
       });
     } catch (err) {
-      submitOnceRef.current = false;
-      const status = err?.status || err?.response?.status;
-      if (status === 401 || status === 403) {
-        alert("세션이 만료되었어요. 다시 로그인 해주세요.");
-        navigate("/", { replace: true });
-        return;
-      }
-      alert(
+      console.error(err);
+      const msg =
         err?.userMessage ||
-          "요청에 실패했습니다. 백 서버 로그/네트워크 탭을 확인해 주세요.",
-      );
+        err?.response?.data?.message ||
+        err?.message ||
+        "요청 실패";
+      alert(msg);
     } finally {
       setIsSubmitting(false);
+      submitOnceRef.current = false;
     }
   };
 
@@ -384,11 +2169,7 @@ export default function DiagnosisInterview({ onLogout }) {
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
@@ -398,12 +2179,10 @@ export default function DiagnosisInterview({ onLogout }) {
         <div className="diagInterview__container">
           <div className="diagInterview__titleRow">
             <div>
-              <h1 className="diagInterview__title">
-                초기 진단 인터뷰 (Foundation)
-              </h1>
+              <h1 className="diagInterview__title">초기 진단 인터뷰 (Foundation)</h1>
               <p className="diagInterview__sub">
-                필수 항목을 모두 입력하면 백엔드로 전송하고, 더미/AI 결과를
-                “진단 결과” 페이지에서 보여줘요.
+                AI 팀 질문지(JSON) 기준으로 자동 렌더링됩니다. 필수 입력을 완료하면
+                백엔드로 전송하고, “진단 결과” 페이지에서 결과를 보여줘요.
               </p>
             </div>
 
@@ -420,18 +2199,16 @@ export default function DiagnosisInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 0) BASIC */}
+              {/* 0) BASIC (선택) */}
               <div className="card" ref={refBasic}>
                 <div className="card__head">
-                  <h2>0. 기본 정보</h2>
-                  <p>회사/프로젝트명은 필수입니다. 링크는 있으면 좋아요.</p>
+                  <h2>기본 정보 (선택)</h2>
+                  <p>AI 질문지에는 포함되지 않지만, 작성하면 분석에 도움이 돼요.</p>
                 </div>
 
                 <div className="formGrid">
                   <div className="field">
-                    <label>
-                      회사/프로젝트명 <span className="req">*</span>
-                    </label>
+                    <label>회사/프로젝트명 (선택)</label>
                     <input
                       value={form.companyName}
                       onChange={(e) => setValue("companyName", e.target.value)}
@@ -450,151 +2227,23 @@ export default function DiagnosisInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 1) ONE LINE */}
-              <div className="card" ref={refOneLine}>
-                <div className="card__head">
-                  <h2>1. 한 문장 정의</h2>
-                  <p>아주 쉬운 말로 한 문장만 딱 적어보세요.</p>
-                </div>
-
-                <div className="field">
-                  <label>
-                    10살 조카에게 설명한다면 한 문장으로?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <input
-                    value={form.oneLine}
-                    onChange={(e) => setValue("oneLine", e.target.value)}
-                    placeholder="예) 누구를 위해 무엇을 도와주는 서비스인지 한 문장으로"
-                  />
-                </div>
-              </div>
-
-              {/* 2~3) CUSTOMER / PERSONA */}
-              <div className="card" ref={refCustomer}>
-                <div className="card__head">
-                  <h2>2. 문제 / 3. 타겟</h2>
-                  <p>문제와 타겟이 또렷할수록 분석 결과가 더 정확해져요.</p>
-                </div>
-
-                <div className="field">
-                  <label>
-                    서비스를 안 쓰면 겪는 가장 큰 문제는?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.customerProblem}
-                    onChange={(e) =>
-                      setValue("customerProblem", e.target.value)
-                    }
-                    placeholder="예) 고객이 겪는 상황, 불편함, 손해(시간/돈/스트레스)를 구체적으로"
-                    rows={5}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    핵심 고객층(찐팬 페르소나 선택){" "}
-                    <span className="req">*</span>
-                  </label>
-                  <select
-                    value={form.targetPersona}
-                    onChange={(e) => setValue("targetPersona", e.target.value)}
-                  >
-                    <option value="">선택</option>
-                    {PERSONA_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* 4) USP */}
-              <div className="card" ref={refUsp}>
-                <div className="card__head">
-                  <h2>4. USP</h2>
-                  <p>경쟁사가 못 따라 하는 ‘결정적 이유’를 적어보세요.</p>
-                </div>
-
-                <div className="field">
-                  <label>
-                    경쟁사가 못 따라 할 우리만의 무기(USP){" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.usp}
-                    onChange={(e) => setValue("usp", e.target.value)}
-                    placeholder="예) 데이터/네트워크/실행력/전문성/독점 자원 등"
-                    rows={4}
-                  />
-                </div>
-              </div>
-
-              {/* 5~6) STAGE / INDUSTRY */}
-              <div className="card" ref={refStatus}>
-                <div className="card__head">
-                  <h2>5. 단계 / 6. 산업군</h2>
-                  <p>현재 상태를 선택하면 분석 기준이 더 명확해져요.</p>
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>
-                      현재 비즈니스 완성도(단계 선택){" "}
-                      <span className="req">*</span>
-                    </label>
-                    <select
-                      value={form.stage}
-                      onChange={(e) => setValue("stage", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {STAGE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+              {/* ✅ 영역(카테고리)별 카드 분리 */}
+              {categoriesOrdered.map((cat, idx) => (
+                <div key={cat} className="card" ref={categoryRefs[cat]}>
+                  <div className="card__head">
+                    <h2>
+                      {idx + 1}. {cat}
+                    </h2>
+                    <p>{STEP_1.description}</p>
                   </div>
 
-                  <div className="field">
-                    <label>
-                      산업군 선택 <span className="req">*</span>
-                    </label>
-                    <select
-                      value={form.industry}
-                      onChange={(e) => setValue("industry", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {INDUSTRY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {(questionsByCategory[cat] || []).map((q) => (
+                    <div key={q.id} style={{ marginTop: 14 }}>
+                      {renderQuestion(q)}
+                    </div>
+                  ))}
                 </div>
-              </div>
-
-              {/* 7) VISION HEADLINE */}
-              <div className="card" ref={refVision}>
-                <div className="card__head">
-                  <h2>7. 헤드라인</h2>
-                </div>
-
-                <div className="field">
-                  <label>
-                    어떤 제목으로 기사에 나올까? <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.visionHeadline}
-                    onChange={(e) => setValue("visionHeadline", e.target.value)}
-                    placeholder='예) "OOO, 1만 기업의 브랜딩 실행을 자동화하다"'
-                    rows={4}
-                  />
-                </div>
-              </div>
+              ))}
             </section>
 
             <aside className="diagInterview__right">
@@ -640,28 +2289,16 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
                 <ul className="checkList">
-                  <li className={requiredStatus.companyName ? "ok" : ""}>
-                    회사/프로젝트명
-                  </li>
-                  <li className={requiredStatus.oneLine ? "ok" : ""}>
-                    1) 한 문장 정의
-                  </li>
-                  <li className={requiredStatus.customerProblem ? "ok" : ""}>
-                    2) 가장 큰 문제
-                  </li>
-                  <li className={requiredStatus.targetPersona ? "ok" : ""}>
-                    3) 핵심 고객층
-                  </li>
-                  <li className={requiredStatus.usp ? "ok" : ""}>4) USP</li>
-                  <li className={requiredStatus.stage ? "ok" : ""}>
-                    5) 비즈니스 단계
-                  </li>
-                  <li className={requiredStatus.industry ? "ok" : ""}>
-                    6) 산업군
-                  </li>
-                  <li className={requiredStatus.visionHeadline ? "ok" : ""}>
-                    7) 헤드라인
-                  </li>
+                  {STEP_1.questions
+                    .filter((q) => q.required)
+                    .map((q) => (
+                      <li
+                        key={`req_${q.context_key}`}
+                        className={requiredStatus[q.context_key] ? "ok" : ""}
+                      >
+                        {q.category}
+                      </li>
+                    ))}
                 </ul>
 
                 <div className="divider" />

@@ -417,7 +417,7 @@
 
 .mypage-page .reportCard__grid {
   display: grid;
-  grid-template-columns: 64px 1fr auto;
+  grid-template-columns: 64px 1fr;
   gap: 14px;
   align-items: start;
 }
@@ -636,19 +636,9 @@
   white-space: nowrap;
 }
 
-.mypage-page .reportCTA {
-  display: flex;
-  align-items: flex-start;
-}
-
 @media (max-width: 720px) {
   .mypage-page .reportCard__grid {
     grid-template-columns: 56px 1fr;
-  }
-  .mypage-page .reportCTA {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    margin-top: 8px;
   }
 }
 
@@ -696,30 +686,87 @@
 }
 
 /* ---- 카드 우측 액션 버튼(삭제) ---- */
-.mypage-page .iconBtn {
-  width: 34px;
+.mypage-page .btn.btn-sm {
   height: 34px;
+  padding: 0 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  background: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mypage-page .deleteBtn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.mypage-page .deleteBtn.is-busy {
+  opacity: 0.75;
+}
+
+.mypage-page .btn.btn-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* --- 버튼 레이아웃 및 정렬 수정 --- */
+
+/* 1. 공통 버튼 기본기능 강화 */
+.mypage-page .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  user-select: none;
+  padding: 0 16px; 
+  min-height: 40px;    
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap; 
+  transition: all 0.2s ease;
 }
 
-.mypage-page .iconBtn:hover {
-  background: rgba(23, 102, 229, 0.06);
-  border-color: rgba(23, 102, 229, 0.35);
+/* 2. 상단 '홈으로', '컨설팅 시작' 버튼 정렬 */
+.mypage-page .mypage-headerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center; /* 세로축 중앙 정렬 */
 }
 
-.mypage-page .iconBtn.danger:hover {
-  background: rgba(239, 68, 68, 0.09);
-  border-color: rgba(239, 68, 68, 0.38);
+/* 3. '프로필 편집' 버튼 영역 */
+.mypage-page .myprofileActions {
+  display: flex;
+  align-items: center; 
+  align-self: flex-start; /* 부모가 flex일 때 늘어남 방지 */
 }
 
-.mypage-page .iconBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* 4. '최신순' 셀렉트박스와 '새로 만들기' 버튼 정렬 */
+.mypage-page .myhub-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 5. 리포트 카드 내부의 '리포트 보기' 버튼 */
+.mypage-page .reportCTA {
+  display: flex;
+  align-items: center; 
+  justify-content: flex-end; /* 오른쪽 정렬 유지 */
+}
+
+.mypage-page .reportCTA .btn {
+  height: 44px;
+  padding: 0 20px;
+}
+
+/* 6. 모바일(반응형)에서 버튼이 겹치지 않게 수정 */
+@media (max-width: 720px) {
+  .mypage-page .reportCard__grid {
+    grid-template-columns: 56px 1fr; /* 레이아웃 유지 */
+  }
+  .mypage-page .reportCTA {
+    grid-column: 1 / -1; 
+    margin-top: 12px;
+  }
+  .mypage-page .reportCTA .btn {
+    width: 100%; /* 모바일에서는 터치하기 편하게 꽉 채움 */
+  }
 }

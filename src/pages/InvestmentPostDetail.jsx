@@ -67,7 +67,6 @@ export default function InvestmentPostDetail({ onLogout }) {
           hashtags: Array.isArray(data?.hashtags) ? data.hashtags : [],
           contactName: data?.contactName || "",
           contactEmail: data?.contactEmail || "",
-          website: data?.website || data?.homepage || "",
           summary: data?.companyDescription || "",
           updatedAt: data?.updatedAt ? data.updatedAt.slice(0, 10) : "",
           authorId,
@@ -112,8 +111,6 @@ export default function InvestmentPostDetail({ onLogout }) {
   const locationText = Array.isArray(item?.locations)
     ? item.locations.join(", ")
     : item?.location || "-";
-  const detailAddress = "-";
-
   if (loading) {
     return (
       <div className="invest-detail-page">
@@ -261,14 +258,6 @@ export default function InvestmentPostDetail({ onLogout }) {
                 <li>
                   <strong>지역</strong>
                   <span>{locationText}</span>
-                </li>
-                <li>
-                  <strong>상세 주소</strong>
-                  <span>{detailAddress}</span>
-                </li>
-                <li className="invest-detail-fields-group">
-                  <strong>홈페이지</strong>
-                  <span>{item.website ? item.website : "-"}</span>
                 </li>
                 <li>
                   <strong>담당자</strong>

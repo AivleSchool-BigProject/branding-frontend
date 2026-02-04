@@ -1,6 +1,6 @@
 // src/pages/ConceptConsultingInterview.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
@@ -20,20 +20,19 @@ import {
 
 import {
   ensureStrictStepAccess,
+  migrateLegacyToPipelineIfNeeded,
   setBrandFlowCurrent,
-  markBrandFlowPendingAbort,
-  consumeBrandFlowPendingAbort,
-  abortBrandFlow,
   setStepResult,
   clearStepsFrom,
   readPipeline,
+  startBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
-import { apiRequest } from "../api/client.js";
+import { apiRequest, apiRequestAI } from "../api/client.js";
 
-const STORAGE_KEY = "conceptInterviewDraft_homepage_v6";
-const RESULT_KEY = "conceptInterviewResult_homepage_v6";
+const STORAGE_KEY = "conceptInterviewDraft_homepage_v7";
+const RESULT_KEY = "conceptInterviewResult_homepage_v7";
 const LEGACY_KEY = "brandInterview_homepage_v1";
 const NEXT_PATH = "/brand/story";
 
@@ -43,11 +42,9 @@ function safeText(v, fallback = "") {
   const s = String(v ?? "").trim();
   return s ? s : fallback;
 }
-
 function hasText(v) {
   return Boolean(String(v ?? "").trim());
 }
-
 function stageLabel(v) {
   const s = String(v || "")
     .trim()
@@ -62,7 +59,6 @@ function stageLabel(v) {
   if (s === "rebrand") return "리브랜딩";
   return String(v);
 }
-
 function safeParse(raw) {
   try {
     return raw ? JSON.parse(raw) : null;
@@ -73,7 +69,6 @@ function safeParse(raw) {
 
 /** ======================
  *  ✅ 백 응답 후보 normalize (3안 형태로 통일)
- *  - 백에서 내려준 데이터만 사용
  *  ====================== */
 function normalizeConceptCandidates(raw) {
   const payload = raw?.data ?? raw?.result ?? raw;
@@ -99,10 +94,8 @@ function normalizeConceptCandidates(raw) {
     return list;
   };
 
-  // 1) 배열로 직접 온 경우
   let list = Array.isArray(payload) ? payload : null;
 
-  // 2) candidates / concepts 키로 온 경우
   if (!list && payload && typeof payload === "object") {
     list =
       payload?.candidates ||
@@ -114,7 +107,6 @@ function normalizeConceptCandidates(raw) {
       null;
   }
 
-  // 3) object에 concept1/2/3 형태로 담긴 경우
   if (
     !list &&
     payload &&
@@ -134,11 +126,6 @@ function normalizeConceptCandidates(raw) {
         title,
         summary: "",
         tone: "",
-        coreValues: [],
-        brandArchetype: [],
-        keyMessage: "",
-        trustFactors: "",
-        conceptVibe: "",
         keywords: [],
         slogan: "",
         oneLine: "",
@@ -169,13 +156,6 @@ function normalizeConceptCandidates(raw) {
         "",
       ),
       tone: safeText(obj.tone || obj.brandTone || obj.voice || "", ""),
-      coreValues: Array.isArray(obj.coreValues) ? obj.coreValues : [],
-      brandArchetype: Array.isArray(obj.brandArchetype)
-        ? obj.brandArchetype
-        : [],
-      keyMessage: safeText(obj.keyMessage || obj.key_message || "", ""),
-      trustFactors: safeText(obj.trustFactors || obj.trust_factors || "", ""),
-      conceptVibe: safeText(obj.conceptVibe || obj.vibe || "", ""),
       keywords: Array.isArray(obj.keywords) ? obj.keywords : [],
       slogan: safeText(obj.slogan || obj.tagline || "", ""),
       oneLine: safeText(obj.oneLine || obj.one_line || obj.oneLiner || "", ""),
@@ -195,50 +175,86 @@ function readDiagnosisForm() {
   return null;
 }
 
-function isFilled(v) {
-  if (Array.isArray(v)) return v.length > 0;
-  return Boolean(String(v ?? "").trim());
-}
-
-/** ✅ multiple 선택용 칩 UI */
+/** ✅ 칩 UI (중요 수정: CSS 없어도 선택 색이 무조건 보이도록 inline style 적용) */
 function MultiChips({ value, options, onChange, max = null }) {
   const current = Array.isArray(value) ? value : [];
 
-  const toggle = (opt) => {
-    const exists = current.includes(opt);
-    let next = exists ? current.filter((x) => x !== opt) : [...current, opt];
+  const normalized = (Array.isArray(options) ? options : []).map((opt) => {
+    if (typeof opt === "string") return { value: opt, label: opt };
+    const o = opt && typeof opt === "object" ? opt : {};
+    return {
+      value: String(o.value ?? ""),
+      label: String(o.label ?? o.value ?? ""),
+    };
+  });
 
-    if (typeof max === "number" && max > 0 && next.length > max) {
-      next = next.slice(0, max);
+  const toggle = (optValue) => {
+    const exists = current.includes(optValue);
+
+    // ✅ 단일 선택(max=1): 교체 동작 보장
+    if (max === 1) {
+      const next = exists ? [] : [optValue];
+      onChange(next);
+      return;
     }
+
+    // ✅ 다중 선택
+    let next = exists
+      ? current.filter((x) => x !== optValue)
+      : [...current, optValue];
+
+    // ✅ max 초과 시: "방금 누른 항목"이 남도록 최근 선택 유지
+    if (typeof max === "number" && max > 0 && next.length > max) {
+      next = next.slice(next.length - max);
+    }
+
     onChange(next);
   };
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {options.map((opt) => {
-        const active = current.includes(opt);
+      {normalized.map((opt) => {
+        const active = current.includes(opt.value);
+
+        // ✅ CSS가 없어도 눈에 띄게 표시되도록 inline style 고정
+        const baseStyle = {
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(0,0,0,0.14)",
+          background: "transparent",
+          color: "rgba(0,0,0,0.85)",
+          fontSize: 13,
+          fontWeight: 800,
+          lineHeight: 1,
+          cursor: "pointer",
+          transition:
+            "transform 120ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease",
+          userSelect: "none",
+          outline: "none",
+        };
+
+        const activeStyle = active
+          ? {
+              background: "rgba(34,197,94,0.18)", // ✅ 선택 표시(연한 초록)
+              border: "1px solid rgba(34,197,94,0.55)",
+              color: "rgba(0,0,0,0.9)",
+              boxShadow: "0 0 0 3px rgba(34,197,94,0.14)",
+            }
+          : {};
+
         return (
           <button
-            key={opt}
+            key={opt.value}
             type="button"
-            className="chip"
+            onClick={() => toggle(opt.value)}
+            className={`chip ${active ? "active" : ""}`}
             aria-pressed={active}
-            onClick={() => toggle(opt)}
-            style={{
-              fontSize: 12,
-              fontWeight: 800,
-              padding: "6px 10px",
-              borderRadius: 999,
-              background: active ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
-              border: active
-                ? "1px solid rgba(99,102,241,0.25)"
-                : "1px solid rgba(0,0,0,0.10)",
-              color: "rgba(0,0,0,0.78)",
-              cursor: "pointer",
-            }}
+            style={{ ...baseStyle, ...activeStyle }}
           >
-            {opt}
+            {opt.label}
           </button>
         );
       })}
@@ -246,16 +262,44 @@ function MultiChips({ value, options, onChange, max = null }) {
   );
 }
 
-const CORE_VALUE_OPTIONS = ["혁신", "신뢰", "단순함"];
-const BRAND_VOICE_OPTIONS = [
-  "전문적인 박사님",
-  "친절한 가이드",
-  "위트 있는 친구",
+/** ======================
+ * ✅ Step 3 질문지 옵션
+ * ====================== */
+const CORE_VALUE_OPTIONS = [
+  { value: "Innovation", label: "혁신" },
+  { value: "Trust", label: "신뢰" },
+  { value: "Simplicity", label: "단순함" },
+  { value: "Speed", label: "속도" },
+  { value: "Customer Focus", label: "고객 중심" },
+  { value: "Quality", label: "품질" },
+  { value: "Collaboration", label: "협력" },
+  { value: "Sustainability", label: "지속가능성" },
+  { value: "Accessibility", label: "접근성" },
+  { value: "Other", label: "기타" },
 ];
-const ARCHETYPE_OPTIONS = ["현자(Sage)", "영웅(Hero)", "창조자(Creator)"];
+
+const BRAND_VOICE_OPTIONS = [
+  { value: "Professional Expert", label: "전문적인 박사님" },
+  { value: "Friendly Guide", label: "친절한 가이드" },
+  { value: "Witty Friend", label: "위트 있는 친구" },
+  { value: "Supportive Coach", label: "응원하는 코치" },
+  { value: "Minimalist", label: "간결한 전달자" },
+  { value: "Other", label: "기타" },
+];
+
+const POSITIONING_AXES_OPTIONS = [
+  { value: "More Mass/Friendly", label: "더 대중적/친근한" },
+  { value: "More Premium/Luxury", label: "더 프리미엄/고급스러운" },
+  { value: "Faster/More Efficient", label: "더 빠르고 효율적인" },
+  { value: "More Innovative/Experimental", label: "더 혁신적이고 실험적인" },
+  { value: "Simpler/More Intuitive", label: "더 심플하고 직관적인" },
+  { value: "More Fun/Witty", label: "더 재미있고 위트 있는" },
+  { value: "More Stable/Conservative", label: "더 안정적이고 보수적인" },
+  { value: "Other", label: "기타" },
+];
 
 const INITIAL_FORM = {
-  // ✅ 기업 진단에서 자동 반영(편집 X)
+  // ✅ 자동 반영
   brandName: "",
   category: "",
   stage: "",
@@ -263,68 +307,53 @@ const INITIAL_FORM = {
   targetCustomer: "",
   referenceLink: "",
 
-  // ✅ Step 3. 브랜드 컨셉/톤 (편집 O)
+  // ✅ Step 3
   core_values: [],
+  core_values_other: "",
   brand_voice: [],
-  brand_archetype: [],
+  brand_voice_other: "",
+  brand_promise: "",
   key_message: "",
-  trust_factors: "",
   concept_vibe: "",
-  slogan_keywords: "",
+  positioning_axes: [],
+  positioning_axes_other: "",
   notes: "",
 };
 
 export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ Strict Flow 가드(컨셉 단계) + 이탈/새로고침 처리
   useEffect(() => {
     try {
-      const hadPending = consumeBrandFlowPendingAbort();
-      if (hadPending) {
-        abortBrandFlow("interrupted");
-        window.alert(
-          "브랜드 컨설팅 진행이 중단되어, 네이밍부터 다시 시작합니다.",
-        );
+      migrateLegacyToPipelineIfNeeded();
+
+      const access = ensureStrictStepAccess("concept");
+      if (!access?.ok) {
+        if (access?.reason === "no_back") {
+          alert(
+            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
+          );
+        }
+        if (access?.redirectTo) {
+          navigate(access.redirectTo, { replace: true });
+        }
+        return;
       }
-    } catch {
-      // ignore
-    }
 
-    const guard = ensureStrictStepAccess("concept");
-    if (!guard.ok) {
-      const msg =
-        guard?.reason === "no_back"
-          ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
-          : "이전 단계를 먼저 완료해 주세요.";
-      window.alert(msg);
-      navigate(guard.redirectTo || "/brand/naming/interview", {
-        replace: true,
-      });
-      return;
-    }
+      const p = readPipeline();
+      const brandId =
+        location?.state?.brandId ??
+        location?.state?.report?.brandId ??
+        p?.brandId ??
+        null;
 
-    try {
+      startBrandFlow({ brandId });
       setBrandFlowCurrent("concept");
     } catch {
       // ignore
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ✅ 새로고침/탭닫기 경고 + 다음 진입 시 네이밍부터 리셋
-  useEffect(() => {
-    const onBeforeUnload = (e) => {
-      try {
-        markBrandFlowPendingAbort("beforeunload");
-      } catch {
-        // ignore
-      }
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
   // ✅ 약관/방침 모달
@@ -334,12 +363,24 @@ export default function ConceptConsultingInterview({ onLogout }) {
   // ✅ 폼 상태
   const [form, setForm] = useState(INITIAL_FORM);
 
-  // ✅ 저장 상태 UI
+  // ✅ 저장 UI
   const [saveMsg, setSaveMsg] = useState("");
   const [lastSaved, setLastSaved] = useState("-");
 
-  // ✅ 결과(후보/선택) 상태
+  // ✅ 결과
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [toast, setToast] = useState({
+    msg: "",
+    variant: "success",
+    muted: false,
+  });
+  const toastTimerRef = useRef(null);
+
+  const toastMsg = toast.msg;
+  const toastMuted = toast.muted;
+  const toastVariant = toast.variant;
+
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -350,38 +391,35 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const refConcept = useRef(null);
   const refNotes = useRef(null);
 
-  const sections = useMemo(
-    () => [
-      { id: "basic", label: "기본 정보", ref: refBasic },
-      { id: "concept", label: "브랜드 컨셉/톤", ref: refConcept },
-      { id: "notes", label: "추가 요청", ref: refNotes },
-    ],
-    [],
-  );
-
-  // ✅ 필수 항목(이번 Step3 질문 기준)
   const requiredKeys = useMemo(
     () => [
       "core_values",
       "brand_voice",
-      "brand_archetype",
+      "brand_promise",
       "key_message",
-      "trust_factors",
       "concept_vibe",
+      "positioning_axes",
     ],
     [],
   );
 
   const requiredStatus = useMemo(() => {
     const status = {};
-    requiredKeys.forEach((k) => {
-      status[k] = isFilled(form?.[k]);
-    });
+    status.core_values =
+      Array.isArray(form?.core_values) && form.core_values.length >= 2; // 2~3
+    status.brand_voice =
+      Array.isArray(form?.brand_voice) && form.brand_voice.length >= 1; // 1
+    status.brand_promise = hasText(form?.brand_promise);
+    status.key_message = hasText(form?.key_message);
+    status.concept_vibe = hasText(form?.concept_vibe);
+    status.positioning_axes =
+      Array.isArray(form?.positioning_axes) &&
+      form.positioning_axes.length >= 1; // 1~2
     return status;
-  }, [form, requiredKeys]);
+  }, [form]);
 
   const completedRequired = useMemo(
-    () => requiredKeys.filter((k) => requiredStatus[k]).length,
+    () => requiredKeys.filter((k) => Boolean(requiredStatus[k])).length,
     [requiredKeys, requiredStatus],
   );
 
@@ -402,6 +440,25 @@ export default function ConceptConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const showToast = (msg) => {
+    const text = String(msg || "");
+    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    setToast({ msg: text, variant, muted: false });
+
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      if (variant === "success") {
+        toastTimerRef.current = window.setTimeout(() => {
+          setToast((prev) =>
+            prev.msg === text ? { ...prev, muted: true } : prev,
+          );
+        }, 3500);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // ✅ draft 로드
   useEffect(() => {
     try {
@@ -420,7 +477,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // ✅ 기업 진단&인터뷰 값 자동 반영
+  // ✅ 진단 값 자동 반영
   useEffect(() => {
     try {
       const diag = readDiagnosisForm();
@@ -468,7 +525,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // ✅ 결과 로드(후보/선택)
+  // ✅ 결과 로드
   useEffect(() => {
     try {
       const raw = userGetItem(RESULT_KEY);
@@ -516,7 +573,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ legacy 저장(통합 결과/결과 리포트 페이지 호환)
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
@@ -535,7 +591,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ pipeline 저장 + 이후 단계 초기화(컨셉이 바뀌면 스토리/로고는 무효)
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
@@ -552,8 +607,44 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   };
 
+  const buildPayloadForAI = (mode, nextSeed) => {
+    const coreValues = Array.isArray(form.core_values)
+      ? [...form.core_values]
+      : [];
+    const brandVoice = Array.isArray(form.brand_voice)
+      ? [...form.brand_voice]
+      : [];
+    const positioning = Array.isArray(form.positioning_axes)
+      ? [...form.positioning_axes]
+      : [];
+
+    return {
+      ...form,
+      core_values: coreValues,
+      brand_voice: brandVoice,
+      positioning_axes: positioning,
+      mode,
+      regenSeed: nextSeed,
+      questionnaire: {
+        step: "concept",
+        version: "concept_v1",
+        locale: "ko-KR",
+      },
+    };
+  };
+
   const handleGenerateCandidates = async (mode = "generate") => {
+    setAnalyzeError("");
+
     if (!canAnalyze) {
+      if (
+        Array.isArray(form?.core_values) &&
+        form.core_values.length > 0 &&
+        form.core_values.length < 2
+      ) {
+        alert("핵심 가치는 최소 2개를 선택해주세요. (2~3개 선택)");
+        return;
+      }
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
     }
@@ -575,22 +666,14 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setAnalyzeError("");
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
-      const payload = {
-        ...form,
-        mode,
-        regenSeed: nextSeed,
-        questionnaire: {
-          step: "concept",
-          version: "concept_v1",
-          locale: "ko-KR",
-        },
-      };
+      const payload = buildPayloadForAI(mode, nextSeed);
 
-      const res = await apiRequest(`/brands/${brandId}/concept`, {
+      const res = await apiRequestAI(`/brands/${brandId}/concept`, {
         method: "POST",
         data: payload,
       });
@@ -598,9 +681,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       const nextCandidates = normalizeConceptCandidates(res);
 
       if (!nextCandidates.length) {
-        alert(
-          "컨셉 후보를 받지 못했습니다. 백 응답 포맷(concept1~3 또는 candidates 배열)을 확인해주세요.",
-        );
+        alert("컨셉 제안을 받지 못했습니다. 백 응답 포맷을 확인해주세요.");
         setCandidates([]);
         setSelectedId(null);
         persistResult([], null, nextSeed);
@@ -610,7 +691,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
+      showToast(
+        "✅ 컨셉 컨설팅 제안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+      );
+      window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
       const msg =
@@ -622,12 +706,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
         alert(
           status === 401
             ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
-            : "권한이 없습니다(403). 현재 로그인한 계정의 brandId가 아닐 수 있어요. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
+            : "권한이 없습니다(403). brandId 권한 문제일 수 있어요. 기업진단을 다시 진행해 brandId를 새로 만든 뒤 시도해주세요.",
         );
         return;
       }
 
-      alert(`컨셉 생성 요청에 실패했습니다: ${msg || "요청 실패"}`);
+      setAnalyzeError(`컨셉 생성에 실패했습니다: ${msg || "요청 실패"}`);
+      showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
       setAnalyzing(false);
     }
@@ -649,14 +734,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
       p?.diagnosis?.brandId ||
       null;
 
-    const selected =
-      candidates.find((c) => c.id === selectedId) ||
-      candidates.find((c) => c.id === (selectedId || "")) ||
-      null;
-
+    const selected = candidates.find((c) => c.id === selectedId) || null;
     const selectedConcept =
       selected?.title ||
-      selected?.conceptTitle ||
       selected?.oneLiner ||
       selected?.summary ||
       selected?.oneLine ||
@@ -667,7 +747,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       return;
     }
     if (!String(selectedConcept).trim()) {
-      alert("선택된 컨셉을 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      alert("선택된 컨셉을 찾을 수 없습니다. 제안을 다시 선택해 주세요.");
       return;
     }
 
@@ -687,15 +767,18 @@ export default function ConceptConsultingInterview({ onLogout }) {
         alert(
           status === 401
             ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
-            : "권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
+            : "권한이 없습니다(403). brandId 권한 문제일 수 있어요. 기업진단을 다시 진행해 brandId를 새로 만든 뒤 시도해주세요.",
         );
         return;
       }
+      alert(`컨셉 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
+      return;
+    }
 
-      if (!String(msg).includes("컨셉")) {
-        alert(`컨셉 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
-        return;
-      }
+    try {
+      setBrandFlowCurrent("story");
+    } catch {
+      // ignore
     }
 
     navigate(NEXT_PATH);
@@ -767,7 +850,11 @@ export default function ConceptConsultingInterview({ onLogout }) {
     setRegenSeed(0);
     setSaveMsg("");
     setLastSaved("-");
+    setAnalyzeError("");
+    setToast({ msg: "", variant: "success", muted: false });
   };
+
+  const isOtherSelected = (arr) => Array.isArray(arr) && arr.includes("Other");
 
   return (
     <div className="diagInterview consultingInterview">
@@ -796,7 +883,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
               <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
                 기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 브랜드
-                컨셉/톤(가치·말투·아키타입·키메시지·신뢰·분위기)을 입력합니다.
+                컨셉(가치·말투·약속·키메시지·분위기·포지셔닝)을 입력합니다.
               </p>
             </div>
 
@@ -815,7 +902,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 1) BASIC (자동 반영) */}
+              {/* 1) BASIC */}
               <div className="card" ref={refBasic}>
                 <div className="card__head">
                   <h2>1. 기본 정보 (자동 반영)</h2>
@@ -863,7 +950,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   </div>
                 </div>
 
-                {String(form.targetCustomer || "").trim() ? (
+                {hasText(form.targetCustomer) ? (
                   <div className="field">
                     <label>타깃(진단 기준)</label>
                     <input value={form.targetCustomer} disabled />
@@ -881,110 +968,148 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 2) Step 3. 브랜드 컨셉/톤 */}
+              {/* 2) Step 3 */}
               <div className="card" ref={refConcept}>
                 <div className="card__head">
-                  <h2>2. 브랜드 컨셉/톤 (Concept)</h2>
+                  <h2>2. 브랜드 컨셉 (Brand Concept)</h2>
                   <p>
-                    브랜드의 중심 가치, 말투, 성격(아키타입)을 정하고
-                    메시지/신뢰/분위기를 정리합니다.
+                    핵심 가치·말투·약속·키메시지·분위기·포지셔닝을 정리합니다.
                   </p>
                 </div>
 
                 <div className="field">
                   <label>
-                    절대 포기할 수 없는 가치 2가지{" "}
-                    <span className="req">*</span>
+                    브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요? (2-3개
+                    선택) <span className="req">*</span>
                   </label>
                   <div className="hint" style={{ marginTop: 6 }}>
-                    최대 2개까지 선택되도록 저장됩니다.
+                    최소 2개 선택 필요 / 최대 3개까지 선택됩니다.
                   </div>
                   <div style={{ marginTop: 10 }}>
                     <MultiChips
                       value={form.core_values}
                       options={CORE_VALUE_OPTIONS}
-                      max={2}
+                      max={3}
                       onChange={(next) => setValue("core_values", next)}
                     />
                   </div>
+
+                  {isOtherSelected(form.core_values) ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>기타(핵심 가치) 직접 입력</label>
+                      <input
+                        value={form.core_values_other}
+                        onChange={(e) =>
+                          setValue("core_values_other", e.target.value)
+                        }
+                        placeholder="핵심 가치를 직접 입력해주세요"
+                      />
+                    </div>
+                  ) : null}
+
+                  {!requiredStatus.core_values ? (
+                    <div className="hint" style={{ marginTop: 8 }}>
+                      * 핵심 가치는 최소 2개를 선택해주세요.
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="field">
                   <label>
-                    고객에게 말 건다면 말투 <span className="req">*</span>
+                    고객에게 말을 건넨다면 어떤 말투일까요?{" "}
+                    <span className="req">*</span>
                   </label>
                   <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능 (추천: 1~2개)
+                    1개 선택
                   </div>
                   <div style={{ marginTop: 10 }}>
                     <MultiChips
                       value={form.brand_voice}
                       options={BRAND_VOICE_OPTIONS}
+                      max={1}
                       onChange={(next) => setValue("brand_voice", next)}
                     />
                   </div>
+
+                  {isOtherSelected(form.brand_voice) ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>기타(말투) 직접 입력</label>
+                      <input
+                        value={form.brand_voice_other}
+                        onChange={(e) =>
+                          setValue("brand_voice_other", e.target.value)
+                        }
+                        placeholder="브랜드의 말투를 구체적으로 설명해주세요"
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="field">
                   <label>
-                    브랜드 성격(아키타입) <span className="req">*</span>
+                    우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
+                    <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능 (추천: 1개를 대표로)
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.brand_archetype}
-                      options={ARCHETYPE_OPTIONS}
-                      onChange={(next) => setValue("brand_archetype", next)}
-                    />
-                  </div>
+                  <input
+                    value={form.brand_promise}
+                    onChange={(e) => setValue("brand_promise", e.target.value)}
+                    placeholder="예: 3일 안에 배송 / 24시간 응대 / 100% 환불"
+                  />
                 </div>
 
                 <div className="field">
                   <label>
-                    고객이 기억해야 할 한 문장(키 메시지){" "}
+                    고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <input
                     value={form.key_message}
                     onChange={(e) => setValue("key_message", e.target.value)}
-                    placeholder="예) 우리는 당신의 결정을 더 빠르고 확실하게 만듭니다."
+                    placeholder="예: '당신의 시간을 아껴드립니다'"
                   />
                 </div>
 
                 <div className="field">
                   <label>
-                    고객을 안심시키는 근거(신뢰 포인트){" "}
+                    브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
                     <span className="req">*</span>
-                  </label>
-                  <input
-                    value={form.trust_factors}
-                    onChange={(e) => setValue("trust_factors", e.target.value)}
-                    placeholder="예) 실제 데이터 기반 추천 / 검증된 파트너 / 성과 지표"
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    브랜드 전체 분위기(시각/심리) <span className="req">*</span>
                   </label>
                   <input
                     value={form.concept_vibe}
                     onChange={(e) => setValue("concept_vibe", e.target.value)}
-                    placeholder="예) 미니멀, 차분, 선명, 고급스러움, 따뜻함"
+                    placeholder="예: 깨끗하고 미니멀 / 따뜻한 카페 / 활기찬 스타트업"
                   />
                 </div>
 
                 <div className="field">
-                  <label>슬로건에 들어갈 핵심 단어(선택)</label>
-                  <input
-                    value={form.slogan_keywords}
-                    onChange={(e) =>
-                      setValue("slogan_keywords", e.target.value)
-                    }
-                    placeholder="예) 신뢰 / 실행 / 성장 / 단순"
-                  />
+                  <label>
+                    우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
+                    가깝나요? (최대 2개) <span className="req">*</span>
+                  </label>
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    최대 2개까지 선택됩니다.
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <MultiChips
+                      value={form.positioning_axes}
+                      options={POSITIONING_AXES_OPTIONS}
+                      max={2}
+                      onChange={(next) => setValue("positioning_axes", next)}
+                    />
+                  </div>
+
+                  {isOtherSelected(form.positioning_axes) ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>기타(포지셔닝 방향) 직접 입력</label>
+                      <input
+                        value={form.positioning_axes_other}
+                        onChange={(e) =>
+                          setValue("positioning_axes_other", e.target.value)
+                        }
+                        placeholder="원하는 포지셔닝 방향을 구체적으로 설명해주세요"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -1009,82 +1134,113 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 결과 영역 */}
+              {/* 결과 anchor */}
               <div ref={refResult} />
+
+              {toastMsg ? (
+                <div
+                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {toastMsg}
+                </div>
+              ) : null}
+
+              {analyzeError ? (
+                <div className="card aiError" style={{ marginTop: 14 }}>
+                  <div className="card__head">
+                    <h2>요청에 실패했어요</h2>
+                    <p>{analyzeError}</p>
+                  </div>
+                  <div
+                    className="bottomBar"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() =>
+                        handleGenerateCandidates(
+                          hasResult ? "regen" : "generate",
+                        )
+                      }
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>컨셉 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <h2>컨셉 제안 생성 중</h2>
+                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>컨셉 후보 3안</h2>
-                    <p>후보 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
+                    <h2>컨셉 컨설팅 제안 3가지</h2>
+                    <p>제안 1개를 선택하면 다음 단계로 진행할 수 있어요.</p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
-                    {candidates.map((c) => {
+                  <div className="candidateList">
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
 
                       const title = safeText(c?.title, "");
                       const summary = safeText(c?.summary, "");
                       const oneLine = safeText(c?.oneLine, "");
                       const slogan = safeText(c?.slogan, "");
-                      const keyMessage = safeText(c?.keyMessage, "");
+                      const tone = safeText(c?.tone, "");
                       const note = safeText(c?.note, "");
                       const keywords = Array.isArray(c?.keywords)
                         ? c.keywords.filter((x) => hasText(x))
                         : [];
 
-                      const hasAnyContent =
-                        hasText(summary) ||
-                        hasText(oneLine) ||
-                        hasText(slogan) ||
-                        hasText(keyMessage) ||
-                        keywords.length > 0 ||
-                        hasText(note);
-
                       return (
                         <div
                           key={c.id}
+                          className={`candidateCard ${isSelected ? "selected" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            !isSelected && handleSelectCandidate(c.id)
+                          }
+                          onKeyDown={(e) => {
+                            if (isSelected) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectCandidate(c.id);
+                            }
+                          }}
                           style={{
-                            borderRadius: 16,
-                            padding: 14,
                             border: isSelected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(0,0,0,0.08)",
+                              ? "2px solid rgba(34,197,94,0.65)"
+                              : undefined,
                             boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
-                            background: "rgba(255,255,255,0.6)",
+                              ? "0 0 0 3px rgba(34,197,94,0.14)"
+                              : undefined,
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div className="candidateHead">
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
-                                {title ||
-                                  `후보 ${String(c?.id || "").replace(/\D/g, "") || ""}`.trim() ||
-                                  "후보"}
-                              </div>
+                              <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
 
-                              {/* ✅ 값이 있을 때만 노출 */}
+                              {hasText(title) ? (
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    opacity: 0.92,
+                                    whiteSpace: "pre-wrap",
+                                  }}
+                                >
+                                  {title}
+                                </div>
+                              ) : null}
                               {hasText(summary) ? (
                                 <div
                                   style={{
@@ -1096,7 +1252,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   {summary}
                                 </div>
                               ) : null}
-
                               {hasText(oneLine) ? (
                                 <div
                                   style={{
@@ -1108,7 +1263,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   {oneLine}
                                 </div>
                               ) : null}
-
                               {hasText(slogan) ? (
                                 <div
                                   style={{
@@ -1121,20 +1275,18 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   “{slogan}”
                                 </div>
                               ) : null}
-
-                              {hasText(keyMessage) ? (
+                              {hasText(tone) ? (
                                 <div
                                   style={{
                                     marginTop: 10,
-                                    fontSize: 13,
-                                    opacity: 0.92,
+                                    fontSize: 12,
+                                    opacity: 0.85,
                                     whiteSpace: "pre-wrap",
                                   }}
                                 >
-                                  {keyMessage}
+                                  말투/톤: {tone}
                                 </div>
                               ) : null}
-
                               {keywords.length ? (
                                 <div
                                   style={{
@@ -1162,7 +1314,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   ))}
                                 </div>
                               ) : null}
-
                               {hasText(note) ? (
                                 <div
                                   style={{
@@ -1175,41 +1326,21 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   {note}
                                 </div>
                               ) : null}
-
-                              {/* ✅ 아무 내용도 없으면(타이틀만 내려온 경우) 추가 라인은 아예 없음 */}
-                              {!hasAnyContent ? null : null}
                             </div>
 
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: isSelected
-                                  ? "rgba(99,102,241,0.12)"
-                                  : "rgba(0,0,0,0.04)",
-                                border: isSelected
-                                  ? "1px solid rgba(99,102,241,0.25)"
-                                  : "1px solid rgba(0,0,0,0.06)",
-                                color: "rgba(0,0,0,0.75)",
-                                height: "fit-content",
-                              }}
-                            >
-                              {isSelected ? "선택됨" : "후보"}
+                            <span className="candidateBadge">
+                              {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div className="candidateActions">
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 방향 선택"}
+                              {isSelected ? "선택 완료" : "선택"}
                             </button>
                           </div>
                         </div>
@@ -1220,13 +1351,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘스토리 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
             </section>
 
-            {/* ✅ 오른쪽: 진행률 */}
+            {/* 오른쪽 */}
             <aside className="diagInterview__right">
               <div className="sideCard">
                 <ConsultingFlowMini activeKey="concept" />
@@ -1300,7 +1431,14 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 {!canAnalyze ? (
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
+                    <br />* 핵심 가치는 최소 2개 선택이 필요합니다.
                   </p>
+                ) : null}
+
+                {analyzeError ? (
+                  <div className="aiInlineError" style={{ marginTop: 10 }}>
+                    {analyzeError}
+                  </div>
                 ) : null}
 
                 <div className="divider" />
@@ -1317,7 +1455,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

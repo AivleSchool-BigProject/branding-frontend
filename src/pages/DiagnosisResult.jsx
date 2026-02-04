@@ -26,40 +26,6 @@ function safeParse(raw) {
   }
 }
 
-function stageLabel(stage) {
-  const s = String(stage || "");
-  if (s === "idea") return "아이디어 단계";
-  if (s === "mvp") return "MVP/테스트 중";
-  if (s === "pmf") return "PMF 탐색";
-  if (s === "revenue") return "매출 발생";
-  if (s === "invest") return "투자 유치 진행";
-  if (s.includes("단계")) return s;
-  return "-";
-}
-
-function industryLabel(industry) {
-  const s = String(industry || "").toLowerCase();
-  if (s === "education") return "교육";
-  if (s === "it") return "IT";
-  if (s === "finance") return "금융";
-  if (s === "commerce") return "커머스";
-  if (
-    s === "saas_platform" ||
-    s === "saas platform" ||
-    s === "saas" ||
-    s === "saas/플랫폼"
-  )
-    return "SaaS/플랫폼";
-  return industry ? String(industry) : "-";
-}
-
-function personaLabel(code) {
-  const s = String(code || "");
-  if (s === "trend_2030") return "2030 트렌드 세터";
-  if (s === "trend2030") return "2030 트렌드 세터";
-  return s || "-";
-}
-
 function isPlainObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
 }
@@ -95,24 +61,6 @@ function Chips({ items }) {
         >
           {t}
         </span>
-      ))}
-    </div>
-  );
-}
-
-function InfoGrid({ rows }) {
-  const items = (rows || []).filter((r) => r && r.k);
-  if (!items.length) return null;
-
-  return (
-    <div className="summaryGrid">
-      {items.map((r) => (
-        <div className="summaryItem" key={r.k}>
-          <div className="k">{r.k}</div>
-          <div className="v" style={{ whiteSpace: "pre-wrap" }}>
-            {renderText(r.v)}
-          </div>
-        </div>
       ))}
     </div>
   );
@@ -160,8 +108,8 @@ function QACard({ qa }) {
   const entries = isPlainObject(qa) ? Object.entries(qa) : [];
   return (
     <Card
-      title="인터뷰 Q&A"
-      sub="사용자가 실제로 입력한 질문/답변을 보기 좋게 정리했습니다."
+      title="인터뷰 원문(Q&A)"
+      sub="사용자가 작성한 입력을 그대로 정리했습니다."
     >
       {entries.length ? (
         <div style={{ display: "grid", gap: 10 }}>
@@ -198,13 +146,23 @@ export default function DiagnosisResult({ onLogout }) {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ 추가: 브랜드 컨설팅 시작 안내 모달
+  // ✅ 브랜드 컨설팅 시작 안내 모달
   const [openBrandStartGuide, setOpenBrandStartGuide] = useState(false);
 
+  // ✅ report 로드: state 우선 → userLocalStorage → localStorage
   const report = useMemo(() => {
     const state = location.state || {};
     const fromState =
-      state?.report || state?.result || state?.diagnosisResult || null;
+      state?.report ||
+      state?.result ||
+      state?.diagnosisResult ||
+      (state?.interviewReport
+        ? {
+            brandId: state?.brandId ?? null,
+            interviewReport: state.interviewReport,
+            receivedAt: Date.now(),
+          }
+        : null);
     if (fromState) return fromState;
 
     const raw =
@@ -216,41 +174,134 @@ export default function DiagnosisResult({ onLogout }) {
     return safeParse(raw);
   }, [location.state]);
 
-  const interviewReport =
-    report?.interviewReport || report?.data?.interviewReport || report || null;
-  const rag = interviewReport?.rag_context || interviewReport?.ragContext || {};
-  const step1 =
-    rag?.step_1_analysis || rag?.step1_analysis || rag?.step1Analysis || {};
-  const rawAnswers =
-    rag?.step_1_raw_answers || rag?.step1_raw_answers || rag?.rawAnswers || {};
-  const userResult =
-    interviewReport?.user_result || interviewReport?.userResult || {};
+  // =========================================================
+  // ✅ 백 응답(flat) 기준 + (추후) nested 구조도 fallback 지원
+  // =========================================================
+
+  // 1) flat 값 (FastAPI 더미 응답)
+  const flatSummary = report?.summary ?? "";
+  const flatAnalysisText = report?.analysis ?? ""; // ✅ 문자열일 수 있음
+  const flatKeyInsights = report?.key_insights ?? ""; // ✅ snake_case
+  const flatRawQA = report?.raw_qa ?? {}; // ✅ 우리가 저장해두면 Q&A 표시 가능
+
+  // ✅ legacy(이전 코드/백 응답) 구조 fallback
+  const legacyInterviewReport =
+    report?.interviewReport ||
+    report?.data?.interviewReport ||
+    report?.interview_report ||
+    null;
+
+  const legacyUserResult =
+    legacyInterviewReport?.user_result ||
+    legacyInterviewReport?.userResult ||
+    {};
+
+  const legacyRag =
+    legacyInterviewReport?.rag_context ||
+    legacyInterviewReport?.ragContext ||
+    {};
+
+  const legacyRawAnswers =
+    legacyRag?.step_1_raw_answers ||
+    legacyRag?.step1_raw_answers ||
+    legacyRag?.rawAnswers ||
+    {};
+
+  // ✅ 입력 요약(필드형) 우선 사용
+  const rawQAFields =
+    (isPlainObject(report?.raw_qa_fields) && report.raw_qa_fields) ||
+    (isPlainObject(report?.rawQaFields) && report.rawQaFields) ||
+    (isPlainObject(legacyRawAnswers) && legacyRawAnswers) ||
+    {};
+
+  // 2) nested 구조가 있을 경우 fallback (미래 대비)
+  const nestedAnalysis =
+    report?.analysis && typeof report.analysis === "object"
+      ? report.analysis
+      : {};
+  const nestedOutput = report?.output || {};
+
+  // 3) 화면용 값: flat 우선 → nested fallback
+  const uiSummary = String(
+    flatSummary ||
+      legacyUserResult?.summary ||
+      nestedOutput?.summary ||
+      nestedAnalysis?.diagnosis_summary ||
+      nestedAnalysis?.summary ||
+      "",
+  ).trim();
+
+  const uiAnalysisText = String(
+    // flatAnalysisText가 문자열이면 그대로
+    (typeof flatAnalysisText === "string" ? flatAnalysisText : "") ||
+      nestedAnalysis?.analysis ||
+      "",
+  ).trim();
+
+  const uiKeyInsights = String(
+    flatKeyInsights ||
+      nestedAnalysis?.key_insights ||
+      nestedAnalysis?.keyInsights ||
+      "",
+  ).trim();
+
+  const uiKeywords =
+    nestedOutput?.keywords ||
+    nestedAnalysis?.core_keywords ||
+    nestedAnalysis?.keywords ||
+    [];
+
+  const uiPersona =
+    nestedOutput?.persona ||
+    nestedAnalysis?.target_persona ||
+    nestedAnalysis?.persona ||
+    "-";
+
+  const uiPerspectives =
+    nestedOutput?.perspectives ||
+    nestedAnalysis?.multi_perspective_analysis ||
+    {};
+
+  // Q&A: 최신 저장(raw_qa) 우선 → (optional) raw_qa_verbose → legacy → nested fallback
+  const rawQA =
+    (isPlainObject(report?.raw_qa) && Object.keys(report.raw_qa).length > 0
+      ? report.raw_qa
+      : isPlainObject(report?.raw_qa_verbose) &&
+          Object.keys(report.raw_qa_verbose).length > 0
+        ? report.raw_qa_verbose
+        : isPlainObject(legacyRawAnswers) &&
+            Object.keys(legacyRawAnswers).length > 0
+          ? legacyRawAnswers
+          : nestedAnalysis?.raw_qa) || {};
 
   const brandId = useMemo(() => {
     return (
       report?.brandId ??
       report?.data?.brandId ??
-      interviewReport?.brandId ??
+      legacyInterviewReport?.brandId ??
       location.state?.brandId ??
       null
     );
-  }, [report, interviewReport, location.state]);
+  }, [report, location.state]);
 
   const lastSaved = useMemo(() => {
-    const t = report?.updatedAt || interviewReport?.updatedAt || null;
+    const t = report?.updatedAt || report?.receivedAt || null;
     if (!t) return "-";
     const d = new Date(t);
     return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
-  }, [report, interviewReport]);
+  }, [report]);
 
   const goInterview = () =>
     navigate("/diagnosisinterview", { state: { mode: "resume" } });
   const goHome = () => navigate("/brandconsulting");
 
-  // ✅ 브랜드 컨설팅 실제 이동 (모달 확인 후 호출)
-  // - brandId는 pipeline(userLocalStorage)에 이미 저장되어 흐름이 유지됩니다.
-  // - URL 쿼리로 brandId를 전달하면 마지막 단계(로고)에서 잘못된 brandId로 덮어쓰이는 케이스가 있어 제거합니다.
   const goBrandConsultingStart = () => {
+    if (brandId == null || String(brandId).trim() === "") {
+      alert(
+        "brandId가 없어 다음 단계로 진행할 수 없습니다.\n기업진단 인터뷰를 다시 진행해주세요.",
+      );
+      return;
+    }
     navigate("/brand/naming/interview");
   };
 
@@ -263,28 +314,73 @@ export default function DiagnosisResult({ onLogout }) {
     navigate("/diagnosisinterview");
   };
 
+  // 입력 요약 카드: 필드형(raw_qa_fields) 우선 → 질문/답변 맵(raw_qa)에서 유추 fallback
   const inputSummaryRows = useMemo(() => {
-    if (!rawAnswers) return [];
-    return [
-      { k: "회사/프로젝트명", v: rawAnswers.companyName },
-      { k: "웹사이트/링크", v: rawAnswers.website },
-      { k: "한 줄 소개", v: rawAnswers.oneLine },
-      { k: "고객 문제", v: rawAnswers.customerProblem },
-      { k: "타깃 페르소나", v: personaLabel(rawAnswers.targetPersona) },
-      { k: "USP", v: rawAnswers.usp },
-      { k: "성장 단계", v: stageLabel(rawAnswers.stage) },
-      { k: "산업군", v: industryLabel(rawAnswers.industry) },
-      { k: "비전 헤드라인", v: rawAnswers.visionHeadline },
-    ].filter((x) => String(x.v ?? "").trim());
-  }, [rawAnswers]);
+    const f = rawQAFields || {};
+    const qa = rawQA || {};
 
-  const progress = interviewReport ? 100 : 0;
-  const requiredDone = interviewReport ? 1 : 0;
+    const findByQuestionIncludes = (needles) => {
+      const ns = (needles || []).map((x) => String(x));
+      for (const [q, a] of Object.entries(qa)) {
+        const qs = String(q);
+        if (ns.some((n) => qs.includes(n))) return a;
+      }
+      return "";
+    };
+
+    const pick = (key, needles) => {
+      const v1 = String(f?.[key] ?? "").trim();
+      if (v1) return v1;
+      const v2 = String(findByQuestionIncludes(needles) ?? "").trim();
+      return v2;
+    };
+
+    const rows = [
+      {
+        k: "회사/프로젝트명",
+        v: pick("company_name", ["회사/프로젝트명", "회사", "프로젝트명"]),
+      },
+      { k: "웹사이트", v: pick("website", ["웹사이트", "홈페이지", "URL"]) },
+      {
+        k: "서비스 정의",
+        v: pick("service_definition", ["서비스", "한 문장", "10살"]),
+      },
+      { k: "Pain Point", v: pick("pain_point", ["문제", "불편", "pain"]) },
+      {
+        k: "타깃 페르소나",
+        v: pick("target_persona", ["핵심 고객층", "고객층", "타깃", "persona"]),
+      },
+      { k: "USP", v: pick("usp", ["무기", "차별", "USP"]) },
+      { k: "성장 단계", v: pick("growth_stage", ["단계", "성장", "stage"]) },
+      { k: "산업군", v: pick("industry", ["산업군", "산업", "업종"]) },
+      {
+        k: "비전 헤드라인",
+        v: pick("vision_headline", ["기사", "제목", "헤드라인"]),
+      },
+    ];
+    return rows.filter((x) => String(x.v ?? "").trim());
+  }, [rawQAFields, rawQA]);
+  // ✅ 분기 기준
+  const hasReport = Boolean(report);
+
+  const canContinue = brandId != null && String(brandId).trim() !== "";
+
+  // flat 응답은 keywords/persona가 없을 수 있으니
+  // summary/analysis/key_insights 중 하나라도 있으면 "AI 내용 있음"으로 판단
+  const hasAIContent =
+    Boolean(uiSummary) ||
+    Boolean(uiAnalysisText) ||
+    Boolean(uiKeyInsights) ||
+    (Array.isArray(uiKeywords) && uiKeywords.length > 0);
+
+  // ✅ 진행 상태(저장만 되어도 100)
+  const progress = hasReport ? 100 : 0;
+  const requiredDone = hasReport ? 1 : 0;
   const requiredTotal = 1;
 
   return (
     <div className="diagResult">
-      {/* 기존 정책 모달 */}
+      {/* 정책 모달 */}
       <PolicyModal
         open={openType === "privacy"}
         title="개인정보 처리방침"
@@ -293,15 +389,11 @@ export default function DiagnosisResult({ onLogout }) {
         <PrivacyContent />
       </PolicyModal>
 
-      <PolicyModal
-        open={openType === "terms"}
-        title="이용약관"
-        onClose={closeModal}
-      >
+      <PolicyModal open={openType === "terms"} title="이용약관" onClose={closeModal}>
         <TermsContent />
       </PolicyModal>
 
-      {/* ✅ 추가: 브랜드 컨설팅 시작 안내 모달 */}
+      {/* 브랜드 컨설팅 시작 안내 모달 */}
       <PolicyModal
         open={openBrandStartGuide}
         title="브랜드 컨설팅 시작 안내"
@@ -321,8 +413,7 @@ export default function DiagnosisResult({ onLogout }) {
               진행 순서: <b>네이밍 → 컨셉 → 스토리 → 로고</b>
             </li>
             <li>
-              진행 중 이탈(뒤로가기/메뉴 이동/새로고침 등) 시{" "}
-              <b>이탈 방지 안내</b>가 표시됩니다.
+              진행 중 이탈(뒤로가기/메뉴 이동/새로고침 등) 시 <b>이탈 방지 안내</b>가 표시됩니다.
             </li>
             <li>
               중간에 나가면 <b>네이밍부터 다시 진행</b>하도록 구성되어 있습니다.
@@ -375,9 +466,15 @@ export default function DiagnosisResult({ onLogout }) {
             <div>
               <h1 className="diagResult__title">기업 진단 결과 리포트</h1>
               <p className="diagResult__sub">
-                AI/백엔드 응답을 JSON 그대로 출력하지 않고, 섹션/카드로 정리해
-                보여줍니다.
-                {brandId ? ` (brandId: ${brandId})` : ""}
+                백엔드 응답을 카드 형태로 정리해 보여줍니다.
+                {brandId ? (
+                  ` (brandId: ${brandId})`
+                ) : (
+                  <span style={{ color: "#b91c1c" }}>
+                    {" "}
+                    (brandId 없음: 다음 단계 진행 불가)
+                  </span>
+                )}
               </p>
             </div>
 
@@ -392,13 +489,15 @@ export default function DiagnosisResult({ onLogout }) {
           </div>
 
           <div className="diagResult__grid">
+            {/* ===================== LEFT ===================== */}
             <section className="diagResult__left">
-              {!interviewReport ? (
+              {!hasReport ? (
+                // ✅ 저장된 report가 없을 때만
                 <div className="card">
                   <div className="card__head">
                     <h2>저장된 결과가 없습니다</h2>
                     <p>
-                      인터뷰에서 <b>AI 분석 요청</b>을 누르면 결과가 생성됩니다.
+                      인터뷰에서 <b>AI 진단하기</b>를 누르면 결과가 생성됩니다.
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
@@ -409,101 +508,157 @@ export default function DiagnosisResult({ onLogout }) {
                     >
                       인터뷰 작성하러 가기
                     </button>
-                    <button
-                      type="button"
-                      className="btn ghost"
-                      onClick={goHome}
-                    >
+                    <button type="button" className="btn ghost" onClick={goHome}>
                       기업진단 홈
                     </button>
                   </div>
                 </div>
+              ) : !hasAIContent ? (
+                // ✅ 저장은 됐는데 summary/analysis/insights가 비어있을 때
+                <Card
+                  title="AI 결과를 받지 못했습니다"
+                  sub="저장은 되었지만 서버 응답이 비어있습니다."
+                >
+                  <Block title="디버그: report">
+                    {JSON.stringify(report, null, 2)}
+                  </Block>
+                  <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                    <button type="button" className="btn" onClick={goInterview}>
+                      인터뷰로 돌아가기
+                    </button>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => window.location.reload()}
+                    >
+                      새로고침
+                    </button>
+                  </div>
+                </Card>
               ) : (
+                // ✅ 정상 렌더
                 <>
                   <Card
                     title="AI 진단 요약"
-                    sub="사용자에게 보여줄 최종 요약/인사이트/해석을 한 곳에 정리합니다."
+                    sub="FastAPI 응답(summary/analysis/key_insights)을 보기 좋게 정리합니다."
                     footer={
                       <div style={{ fontSize: 12, color: "#6b7280" }}>
                         마지막 저장: {lastSaved}
                       </div>
                     }
                   >
-                    <Block title="요약">{renderText(userResult.summary)}</Block>
-
-                    <div style={{ display: "grid", gap: 12, marginTop: 12 }}>
-                      <div
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 16,
-                          padding: 14,
-                          background: "#fff",
-                        }}
-                      >
-                        <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                          핵심 인사이트
-                        </div>
-                        <div style={{ whiteSpace: "pre-wrap" }}>
-                          {renderText(userResult.key_insights)}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 16,
-                          padding: 14,
-                          background: "#fff",
-                        }}
-                      >
-                        <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                          분석
-                        </div>
-                        <div style={{ whiteSpace: "pre-wrap" }}>
-                          {renderText(userResult.analysis)}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card
-                    title="근거 기반 분석(RAG)"
-                    sub="맥락/키워드/인사이트/분석을 각각 나눠서 카드처럼 보여줍니다."
-                  >
-                    <InfoGrid
-                      rows={[
-                        { k: "분석 요약", v: step1.summary },
-                        { k: "핵심 인사이트", v: step1.key_insights },
-                      ]}
-                    />
+                    <Block title="요약">{renderText(uiSummary)}</Block>
+                    <Block title="분석">{renderText(uiAnalysisText)}</Block>
+                    <Block title="핵심 인사이트">
+                      {renderText(uiKeyInsights)}
+                    </Block>
 
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontWeight: 900 }}>키워드</div>
-                      <Chips items={step1.keywords} />
+                      <Chips items={uiKeywords} />
                     </div>
 
                     <div style={{ marginTop: 12 }}>
                       <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                        상세 분석
+                        타깃 페르소나
                       </div>
-                      <div style={{ whiteSpace: "pre-wrap", color: "#111827" }}>
-                        {renderText(step1.analysis)}
+                      <div style={{ whiteSpace: "pre-wrap" }}>
+                        {renderText(uiPersona)}
                       </div>
                     </div>
                   </Card>
 
-                  <Card
-                    title="인터뷰 입력 요약"
-                    sub="원본 답변 전체를 JSON으로 보여주지 않고, 핵심 필드만 추려서 카드로 정리합니다."
-                  >
-                    <InfoGrid rows={inputSummaryRows} />
-                  </Card>
+                  {/* 다각도 분석은 현재 더미 백에서 주지 않으니,
+                      있으면 보여주고 없으면 카드 생략 */}
+                  {isPlainObject(uiPerspectives) &&
+                  Object.keys(uiPerspectives).length > 0 ? (
+                    <Card
+                      title="다각도 분석"
+                      sub="비즈니스/유저/시장 관점으로 나눠서 인사이트를 제공합니다."
+                    >
+                      <div style={{ display: "grid", gap: 12 }}>
+                        <div
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 16,
+                            padding: 14,
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                            비즈니스 관점
+                          </div>
+                          <div style={{ whiteSpace: "pre-wrap" }}>
+                            {renderText(uiPerspectives?.business_perspective)}
+                          </div>
+                        </div>
 
-                  <QACard qa={rawAnswers.qa} />
+                        <div
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 16,
+                            padding: 14,
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                            사용자 관점
+                          </div>
+                          <div style={{ whiteSpace: "pre-wrap" }}>
+                            {renderText(uiPerspectives?.user_perspective)}
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 16,
+                            padding: 14,
+                            background: "#fff",
+                          }}
+                        >
+                          <div style={{ fontWeight: 900, marginBottom: 6 }}>
+                            시장 관점
+                          </div>
+                          <div style={{ whiteSpace: "pre-wrap" }}>
+                            {renderText(uiPerspectives?.market_perspective)}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ) : null}
+
+                  {/* 입력 요약은 raw_qa가 있을 때만 보여주기 */}
+                  {inputSummaryRows.length ? (
+                    <Card
+                      title="인터뷰 입력 요약"
+                      sub="AI가 참고한 입력(원문)을 핵심 항목만 추려 정리합니다."
+                    >
+                      <div className="summaryGrid">
+                        {inputSummaryRows.map((r) => (
+                          <div className="summaryItem" key={r.k}>
+                            <div className="k">{r.k}</div>
+                            <div
+                              className="v"
+                              style={{ whiteSpace: "pre-wrap" }}
+                            >
+                              {renderText(r.v)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  ) : null}
+
+                  {/* Q&A(원문)도 raw_qa가 있을 때만 */}
+                  {isPlainObject(rawQA) && Object.keys(rawQA).length ? (
+                    <QACard qa={rawQA} />
+                  ) : null}
                 </>
               )}
             </section>
 
+            {/* ===================== RIGHT ===================== */}
             <aside className="diagResult__right">
               <div className="sideCard">
                 <div className="sideCard__titleRow">
@@ -527,7 +682,7 @@ export default function DiagnosisResult({ onLogout }) {
                 <div className="sideMeta">
                   <div className="sideMeta__row">
                     <span className="k">현재 단계</span>
-                    <span className="v">{interviewReport ? "완료" : "-"}</span>
+                    <span className="v">{hasReport ? "완료" : "-"}</span>
                   </div>
                   <div className="sideMeta__row">
                     <span className="k">필수 완료</span>
@@ -543,11 +698,7 @@ export default function DiagnosisResult({ onLogout }) {
 
                 <div className="divider" />
 
-                <button
-                  type="button"
-                  className="btn primary w100"
-                  onClick={goInterview}
-                >
+                <button type="button" className="btn primary w100" onClick={goInterview}>
                   입력 수정하기
                 </button>
 
@@ -561,41 +712,75 @@ export default function DiagnosisResult({ onLogout }) {
                 </button>
 
                 <p className="hint">
-                  * AI 결과는 인터뷰 페이지에서 “AI 요약 결과 보기” 요청이
-                  성공하면 표시됩니다.
+                  * 인터뷰 페이지에서 “AI 진단하기” 요청이 성공하면 결과가
+                  표시됩니다.
                 </p>
               </div>
 
-              {interviewReport ? (
+              {hasReport ? (
                 <div className="sideCard" style={{ marginTop: 14 }}>
                   <div className="sideCard__titleRow">
                     <h3>다음 단계</h3>
-                    <span className="badge">완료</span>
+                    <span className="badge">
+                      {canContinue ? "완료" : "확인 필요"}
+                    </span>
                   </div>
 
-                  <div style={{ marginTop: 8, color: "#111827" }}>
-                    <b>기업 진단이 완료되었습니다.</b>
-                    <div
-                      style={{
-                        marginTop: 6,
-                        color: "#374151",
-                        lineHeight: 1.55,
-                      }}
-                    >
-                      이제 브랜드 컨설팅에서{" "}
-                      <b>네이밍 · 컨셉 · 스토리 · 로고</b>까지 이어서
-                      도와드릴게요.
-                    </div>
-                  </div>
+                  {canContinue ? (
+                    <>
+                      <div style={{ marginTop: 8, color: "#111827" }}>
+                        <b>기업 진단이 완료되었습니다.</b>
+                        <div
+                          style={{
+                            marginTop: 6,
+                            color: "#374151",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          이제 브랜드 컨설팅에서{" "}
+                          <b>네이밍 · 컨셉 · 스토리 · 로고</b>까지 이어서
+                          도와드릴게요.
+                        </div>
+                      </div>
 
-                  <button
-                    type="button"
-                    className="btn primary w100"
-                    onClick={() => setOpenBrandStartGuide(true)}
-                    style={{ marginTop: 12 }}
-                  >
-                    브랜드 컨설팅 시작하기
-                  </button>
+                      <button
+                        type="button"
+                        className="btn primary w100"
+                        onClick={() => setOpenBrandStartGuide(true)}
+                        style={{ marginTop: 12 }}
+                      >
+                        브랜드 컨설팅 시작하기
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ marginTop: 8, color: "#111827" }}>
+                        <b>
+                          brandId를 받지 못해 다음 단계로 진행할 수 없습니다.
+                        </b>
+                        <div
+                          style={{
+                            marginTop: 6,
+                            color: "#374151",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          서버 응답에 brandId가 없으면 네이밍/컨셉/스토리/로고가
+                          같은 브랜드로 연결되지 않아요.{" "}
+                          <b>기업진단 인터뷰를 다시</b> 진행해 주세요.
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn primary w100"
+                        onClick={goInterview}
+                        style={{ marginTop: 12 }}
+                      >
+                        기업진단 다시하기
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : null}
             </aside>

@@ -21,20 +21,19 @@ import {
 // ✅ 파이프라인(단계 잠금/결과 저장)
 import {
   ensureStrictStepAccess,
+  migrateLegacyToPipelineIfNeeded,
   readPipeline,
   upsertPipeline,
   setStepResult,
   clearStepsFrom,
   getSelected,
   setBrandFlowCurrent,
-  markBrandFlowPendingAbort,
-  consumeBrandFlowPendingAbort,
-  resetBrandConsultingToDiagnosisStart,
+  startBrandFlow,
   completeBrandFlow,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
-import { apiRequest } from "../api/client.js";
+import { apiRequest, apiRequestAI } from "../api/client.js";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
@@ -249,7 +248,7 @@ function normalizeLogoCandidates(raw) {
     const n = idx + 1;
     return {
       id: `logo${n}`,
-      name: `로고 ${n}`,
+      name: `시안 ${n}`,
       imageUrl: url,
       url,
       summary: "AI가 생성한 로고 시안입니다.",
@@ -282,71 +281,32 @@ const INITIAL_FORM = {
 export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
-  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
-  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
-  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
-  // 규칙:
-  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
-  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
+
+  // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
     try {
-      const qs = new URLSearchParams(location.search || "");
-      const raw = qs.get("brandId");
-      const incoming = raw ? Number(raw) : NaN;
-      if (!Number.isFinite(incoming) || incoming <= 0) return;
+      migrateLegacyToPipelineIfNeeded();
+
+      const access = ensureStrictStepAccess("logo");
+      if (!access?.ok) {
+        if (access?.reason === "no_back") {
+          alert(
+            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
+          );
+        }
+        if (access?.redirectTo) {
+          navigate(access.redirectTo, { replace: true });
+        }
+        return;
+      }
 
       const p = readPipeline();
-      const curRaw = p?.brandId;
-      const cur = Number(curRaw);
-
-      // pipeline이 비어 있으면 URL 값을 채운다
-      if (!Number.isFinite(cur) || cur <= 0) {
-        upsertPipeline({ brandId: incoming });
-        return;
-      }
-
-      // pipeline이 이미 있으면 URL 값은 무시(오염 방지) + 쿼리 제거
-      if (cur !== incoming) {
-        navigate(location.pathname, { replace: true });
-      }
-    } catch {
-      // ignore
-    }
-  }, [location.search, location.pathname, navigate]);
-
-  // ✅ Strict Flow 가드(로고 단계) + 이탈/새로고침 처리
-  useEffect(() => {
-    try {
-      const hadPending = consumeBrandFlowPendingAbort();
-      if (hadPending) {
-        try {
-          resetBrandConsultingToDiagnosisStart("interrupted");
-        } catch {
-          // ignore
-        }
-
-        window.alert(
-          "브랜드 컨설팅이 중단되었습니다. 기업진단부터 다시 진행해주세요.",
-        );
-        navigate("/brandconsulting", { replace: true });
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    const guard = ensureStrictStepAccess("logo");
-    if (!guard.ok) {
-      const msg =
-        guard?.reason === "no_back"
-          ? "이전 단계로는 돌아갈 수 없습니다. 현재 진행 중인 단계에서 계속 진행해 주세요."
-          : "이전 단계를 먼저 완료해 주세요.";
-      window.alert(msg);
-      navigate(guard.redirectTo || "/brand/story", { replace: true });
-      return;
-    }
-
-    try {
+      const brandId =
+        location?.state?.brandId ??
+        location?.state?.report?.brandId ??
+        p?.brandId ??
+        null;
+      startBrandFlow({ brandId });
       setBrandFlowCurrent("logo");
     } catch {
       // ignore
@@ -354,21 +314,12 @@ export default function LogoConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ 새로고침/탭닫기 경고 + 다음 진입 시 네이밍부터 리셋
-  useEffect(() => {
-    const onBeforeUnload = (e) => {
-      try {
-        markBrandFlowPendingAbort("beforeunload");
-      } catch {
-        // ignore
-      }
-      e.preventDefault();
-      e.returnValue = "";
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
+  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
+  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
+  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
+  // 규칙:
+  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
+  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -382,6 +333,16 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const [toast, setToast] = useState({
+    msg: "",
+    variant: "success",
+    muted: false,
+  });
+  const toastTimerRef = useRef(null);
+  const toastMsg = toast.msg;
+  const toastMuted = toast.muted;
+  const toastVariant = toast.variant;
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -445,6 +406,25 @@ export default function LogoConsultingInterview({ onLogout }) {
   const scrollToResult = () => {
     if (!refResult?.current) return;
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const showToast = (msg) => {
+    const text = String(msg || "");
+    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    setToast({ msg: text, variant, muted: false });
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
+      if (variant === "success") {
+        toastTimerRef.current = window.setTimeout(() => {
+          setToast((prev) =>
+            prev.msg === text ? { ...prev, muted: true } : prev,
+          );
+        }, 3500);
+      }
+    } catch {
+      // ignore
+    }
   };
 
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
@@ -630,6 +610,8 @@ export default function LogoConsultingInterview({ onLogout }) {
   };
 
   const handleGenerateCandidates = async (mode = "generate") => {
+    setAnalyzeError("");
+
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
@@ -652,6 +634,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setAnalyzeError("");
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
@@ -679,7 +662,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       };
 
       // ✅ 로고 생성
-      const res = await apiRequest(`/brands/${brandId}/logo`, {
+      const res = await apiRequestAI(`/brands/${brandId}/logo`, {
         method: "POST",
         data: payload,
       });
@@ -688,7 +671,7 @@ export default function LogoConsultingInterview({ onLogout }) {
 
       if (!nextCandidates.length) {
         alert(
-          "로고 후보를 받지 못했습니다. 백 응답 포맷(logo1~3 또는 candidates 배열)을 확인해주세요.",
+          "로고 시안을 받지 못했습니다. 백 응답 포맷(logo1~3 또는 candidates 배열)을 확인해주세요.",
         );
         setCandidates([]);
         setSelectedId(null);
@@ -699,7 +682,10 @@ export default function LogoConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      scrollToResult();
+      showToast(
+        "✅ 로고 시안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+      );
+      window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
       const msg = e?.response?.data?.message || e?.userMessage || e?.message;
@@ -794,7 +780,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       return;
     }
     if (!String(selectedLogoUrl).trim()) {
-      alert("선택된 로고 URL을 찾을 수 없습니다. 후보를 다시 선택해 주세요.");
+      alert("선택된 로고 URL을 찾을 수 없습니다. 시안을 다시 선택해 주세요.");
       return;
     }
 
@@ -1178,77 +1164,85 @@ export default function LogoConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
+              {toastMsg ? (
+                <div
+                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {toastMsg}
+                </div>
+              ) : null}
+
+              {analyzeError ? (
+                <div className="card aiError" style={{ marginTop: 14 }}>
+                  <div className="card__head">
+                    <h2>요청에 실패했어요</h2>
+                    <p>{analyzeError}</p>
+                  </div>
+                  <div
+                    className="bottomBar"
+                    style={{ justifyContent: "flex-start" }}
+                  >
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() =>
+                        handleGenerateCandidates(
+                          hasResult ? "regen" : "generate",
+                        )
+                      }
+                    >
+                      다시 시도
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
                     <h2>로고 방향 후보 생성 중</h2>
-                    <p>입력 내용을 바탕으로 후보 3안을 만들고 있어요.</p>
+                    <p>입력 내용을 바탕으로 시안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>로고 후보 3안</h2>
-                    <p>후보 1개를 선택하면 결과 히스토리로 이동할 수 있어요.</p>
+                    <h2>로고 시안 3가지</h2>
+                    <p>시안 1개를 선택하면 결과 히스토리로 이동할 수 있어요.</p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 10,
-                    }}
-                  >
+                  <div className="candidateList">
                     {candidates.map((c) => {
                       const isSelected = selectedId === c.id;
                       return (
                         <div
                           key={c.id}
-                          style={{
-                            borderRadius: 16,
-                            padding: 14,
-                            border: isSelected
-                              ? "1px solid rgba(99,102,241,0.45)"
-                              : "1px solid rgba(0,0,0,0.08)",
-                            boxShadow: isSelected
-                              ? "0 12px 30px rgba(99,102,241,0.10)"
-                              : "none",
-                            background: "rgba(255,255,255,0.6)",
+                          className={`candidateCard ${isSelected ? "selected" : ""}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            !isSelected && handleSelectCandidate(c.id)
+                          }
+                          onKeyDown={(e) => {
+                            if (isSelected) return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleSelectCandidate(c.id);
+                            }
                           }}
                         >
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              gap: 10,
-                            }}
-                          >
+                          <div className="candidateHead">
                             <div>
-                              <div style={{ fontWeight: 900, fontSize: 15 }}>
-                                {c.name}
-                              </div>
+                              <div className="candidateTitle">{c.name}</div>
                               <div style={{ marginTop: 6, opacity: 0.9 }}>
                                 {c.summary}
                               </div>
                             </div>
-                            <span
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 800,
-                                padding: "4px 10px",
-                                borderRadius: 999,
-                                background: isSelected
-                                  ? "rgba(99,102,241,0.12)"
-                                  : "rgba(0,0,0,0.04)",
-                                border: isSelected
-                                  ? "1px solid rgba(99,102,241,0.25)"
-                                  : "1px solid rgba(0,0,0,0.06)",
-                                color: "rgba(0,0,0,0.75)",
-                                height: "fit-content",
-                              }}
-                            >
-                              {isSelected ? "선택됨" : "후보"}
+                            <span className="candidateBadge">
+                              {isSelected ? "선택됨" : "시안"}
                             </span>
                           </div>
 
@@ -1305,16 +1299,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                             ) : null}
                           </div>
 
-                          <div
-                            style={{ marginTop: 12, display: "flex", gap: 8 }}
-                          >
+                          <div className="candidateActions">
                             <button
                               type="button"
                               className={`btn primary ${isSelected ? "disabled" : ""}`}
                               disabled={isSelected}
                               onClick={() => handleSelectCandidate(c.id)}
                             >
-                              {isSelected ? "선택 완료" : "이 로고 선택"}
+                              {isSelected ? "선택 완료" : "선택"}
                             </button>
                           </div>
                         </div>
@@ -1325,7 +1317,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canFinish
                       ? "✅ 사이드 카드에서 ‘완료(히스토리로)’ 버튼을 눌러주세요."
-                      : "* 후보 1개를 선택하면 사이드 카드에 완료 버튼이 표시됩니다."}
+                      : "* 시안 1개를 선택하면 사이드 카드에 완료 버튼이 표시됩니다."}
                   </div>
                 </div>
               ) : null}
@@ -1408,6 +1400,12 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 ) : null}
 
+                {analyzeError ? (
+                  <div className="aiInlineError" style={{ marginTop: 10 }}>
+                    {analyzeError}
+                  </div>
+                ) : null}
+
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">마무리</h4>
@@ -1423,7 +1421,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </button>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 후보 1개를 선택하면 완료 버튼이 표시됩니다.
+                    * 시안 1개를 선택하면 완료 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

@@ -28,6 +28,23 @@ function fmtDate(updatedAt) {
   return d.toLocaleString();
 }
 
+function prettySelectedLabel(serviceKey, rawLabel) {
+  const s = String(rawLabel ?? "").trim();
+  if (!s) return "";
+
+  // 레거시 표기(안 1/2/3, 후보 1/2/3, 로고 1/2/3)를 새 표기로 치환
+  const m = s.match(/^(안|후보|제안|로고|시안)\s*(\d+)$/);
+  if (m) {
+    const n = m[2];
+    return serviceKey === "logo" ? `시안 ${n}` : `컨설팅 제안 ${n}`;
+  }
+  return s;
+}
+
+function selectedLabelTitle(serviceKey) {
+  return serviceKey === "logo" ? "선택한 시안" : "선택한 컨설팅 제안";
+}
+
 function readStorageWithFallback(primaryKey, fallbackKey) {
   const raw =
     userGetItem(primaryKey) || (fallbackKey ? userGetItem(fallbackKey) : null);
@@ -250,8 +267,10 @@ export default function BrandAllResults({ onLogout }) {
 
                     {c.isDone && c.selectedTitle ? (
                       <div className="brandAll-metaRow">
-                        <span className="k">선택한 안</span>
-                        <span className="v">{c.selectedTitle}</span>
+                        <span className="k">{selectedLabelTitle(c.key)}</span>
+                        <span className="v">
+                          {prettySelectedLabel(c.key, c.selectedTitle)}
+                        </span>
                       </div>
                     ) : null}
                   </div>
