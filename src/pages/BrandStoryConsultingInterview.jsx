@@ -29,7 +29,7 @@ import {
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
-import { apiRequest } from "../api/client.js";
+import { apiRequest, apiRequestAI } from "../api/client.js";
 
 const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 const RESULT_KEY = "brandStoryConsultingInterviewResult_v1";
@@ -82,30 +82,47 @@ function isFilled(v) {
   return Boolean(String(v ?? "").trim());
 }
 
-/** ✅ multiple 선택용 칩 UI */
+/** ✅ multiple 선택용 칩 UI (value는 배열) */
 function MultiChips({ value, options, onChange, max = null }) {
   const current = Array.isArray(value) ? value : [];
 
-  const toggle = (opt) => {
-    const exists = current.includes(opt);
-    let next = exists ? current.filter((x) => x !== opt) : [...current, opt];
+  const normOpt = (opt) => {
+    if (typeof opt === "string") return { value: opt, label: opt };
+    return {
+      value: opt?.value,
+      label: opt?.label ?? opt?.text ?? String(opt?.value ?? ""),
+    };
+  };
+
+  const toggle = (optRaw) => {
+    const opt = normOpt(optRaw);
+    if (!opt.value) return;
+
+    const exists = current.includes(opt.value);
+    let next = exists
+      ? current.filter((x) => x !== opt.value)
+      : [...current, opt.value];
 
     if (typeof max === "number" && max > 0 && next.length > max) {
-      next = next.slice(0, max);
+      // ✅ 최대 선택 수를 넘으면 "마지막으로 누른 것"이 들어가도록 유지
+      const last = opt.value;
+      next = next.filter((x) => x !== last);
+      next = [...next.slice(0, Math.max(0, max - 1)), last];
     }
     onChange(next);
   };
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {options.map((opt) => {
-        const active = current.includes(opt);
+      {options.map((optRaw) => {
+        const opt = normOpt(optRaw);
+        const active = current.includes(opt.value);
         return (
           <button
-            key={opt}
+            key={opt.value}
             type="button"
             aria-pressed={active}
-            onClick={() => toggle(opt)}
+            onClick={() => toggle(optRaw)}
             style={{
               fontSize: 12,
               fontWeight: 800,
@@ -119,7 +136,7 @@ function MultiChips({ value, options, onChange, max = null }) {
               cursor: "pointer",
             }}
           >
-            {opt}
+            {opt.label}
           </button>
         );
       })}
@@ -127,8 +144,116 @@ function MultiChips({ value, options, onChange, max = null }) {
   );
 }
 
-const STORY_PLOT_OPTIONS = ["문제 해결형", "비전 제시형", "탄생 신화형"];
-const STORY_EMOTION_OPTIONS = ["안도감", "호기심"];
+const STORY_PLOT_OPTIONS = [
+  {
+    id: "plot_problem",
+    text: "문제 해결형",
+    value: "Problem-Solution",
+    description: "고객의 문제를 발견하고 해결책을 제시하는 구조",
+    example: "많은 사람들이 OO 때문에 고통받았다 → 우리가 XX로 해결했다",
+  },
+  {
+    id: "plot_vision",
+    text: "비전 제시형",
+    value: "Visionary",
+    description: "미래의 더 나은 세상을 제시하는 구조",
+    example: "우리는 OO한 세상을 꿈꾼다 → 함께 만들어가자",
+  },
+  {
+    id: "plot_hero",
+    text: "영웅의 여정형",
+    value: "Hero's Journey",
+    description: "도전과 성장의 과정을 담은 구조",
+    example: "작은 시작 → 시련 극복 → 변화 창출",
+  },
+  {
+    id: "plot_myth",
+    text: "탄생 신화형",
+    value: "Founding Myth",
+    description: "브랜드가 어떻게 탄생했는지 신화처럼 풀어내는 구조",
+    example: "한 사람의 작은 아이디어가 세상을 바꾸기 시작했다",
+  },
+  {
+    id: "plot_other",
+    text: "기타",
+    value: "Other",
+    has_text_input: true,
+    text_input_placeholder: "원하는 스토리 구조를 설명해주세요",
+  },
+];
+
+const STORY_EMOTION_OPTIONS = [
+  {
+    id: "emo_relief",
+    text: "안도감",
+    value: "Relief",
+    description: "이제 걱정 안 해도 된다는 느낌",
+  },
+  {
+    id: "emo_curiosity",
+    text: "호기심",
+    value: "Curiosity",
+    description: "더 알고 싶고 경험해보고 싶은 느낌",
+  },
+  {
+    id: "emo_excitement",
+    text: "설렘",
+    value: "Excitement",
+    description: "새로운 가능성에 대한 기대",
+  },
+  {
+    id: "emo_empowerment",
+    text: "자신감",
+    value: "Empowerment",
+    description: "나도 할 수 있다는 힘",
+  },
+  {
+    id: "emo_belonging",
+    text: "소속감",
+    value: "Belonging",
+    description: "우리는 연결되어 있다는 느낌",
+  },
+  {
+    id: "emo_nostalgia",
+    text: "향수",
+    value: "Nostalgia",
+    description: "따뜻한 과거를 떠올리는 감정",
+  },
+  {
+    id: "emo_other",
+    text: "기타",
+    value: "Other",
+    has_text_input: true,
+    text_input_placeholder: "자극하고 싶은 감정을 설명해주세요",
+  },
+];
+
+const PLOT_LABEL = Object.fromEntries(
+  STORY_PLOT_OPTIONS.map((o) => [o.value, o.text]),
+);
+const EMO_LABEL = Object.fromEntries(
+  STORY_EMOTION_OPTIONS.map((o) => [o.value, o.text]),
+);
+
+function plotLabelValue(plotValue, plotOther) {
+  if (plotValue === "Other") {
+    const t = safeText(plotOther, "");
+    return t ? `기타(${t})` : "기타";
+  }
+  return PLOT_LABEL[plotValue] || safeText(plotValue, "-");
+}
+
+function emotionLabels(values, otherText) {
+  const list = Array.isArray(values) ? values : [];
+  const mapped = list.map((v) =>
+    v === "Other"
+      ? safeText(otherText)
+        ? `기타(${safeText(otherText)})`
+        : "기타"
+      : EMO_LABEL[v] || v,
+  );
+  return mapped.filter(Boolean);
+}
 
 function generateStoryCandidates(form, seed = 0) {
   const companyName = safeText(form?.companyName, "우리");
@@ -139,12 +264,23 @@ function generateStoryCandidates(form, seed = 0) {
 
   const founding = safeText(form?.founding_story, "");
   const transformation = safeText(form?.customer_transformation, "");
+  const aha = safeText(form?.aha_moment, "");
   const mission = safeText(form?.brand_mission, "");
   const conflict = safeText(form?.customer_conflict, "");
   const ultimate = safeText(form?.ultimate_goal, "");
 
-  const plots = Array.isArray(form?.story_plot) ? form.story_plot : [];
-  const emotions = Array.isArray(form?.story_emotion) ? form.story_emotion : [];
+  const founderPersonality = safeText(form?.founder_personality, "");
+  const flagshipCase = safeText(form?.flagship_case, "");
+
+  const plotValue = safeText(form?.story_plot, "");
+  const plotOther = safeText(form?.story_plot_other, "");
+  const plotLabel = plotLabelValue(plotValue, plotOther);
+
+  const emoValues = Array.isArray(form?.story_emotion)
+    ? form.story_emotion
+    : [];
+  const emoOther = safeText(form?.story_emotion_other, "");
+  const emotions = emotionLabels(emoValues, emoOther);
 
   const pick = (arr, idx) => arr[(idx + seed) % arr.length];
 
@@ -167,136 +303,203 @@ function generateStoryCandidates(form, seed = 0) {
       : `“${ultimate || mission || "브랜드 스토리"}”`,
     meta: `${industry} · ${stage} · 타깃: ${target}`,
     emotions: emotions.length ? emotions : ["안도감"],
+    plot: plotLabel || "-",
   });
 
-  const buildStory = (plotType) => {
-    const hook = pick(hooks, 0);
-    const end = pick(endings, 1);
+  const block = (title, content, fallback) => {
+    const c = safeText(content, "");
+    return c ? `【${title}】\n${c}` : `【${title}】\n${fallback}`;
+  };
 
-    const pFounding = founding
-      ? `【창업 계기】\n${founding}`
-      : `【창업 계기】\n시작은 작은 질문에서 출발했습니다. “${hook}”`;
+  const buildStory = (plotTypeValue, variantSeed = 0) => {
+    const hook = pick(hooks, variantSeed);
+    const end = pick(endings, variantSeed);
 
-    const pConflict = conflict
-      ? `【고객의 결핍/방해물】\n${conflict}`
-      : `【고객의 결핍/방해물】\n${target}은(는) 중요한 순간에 ‘정보/시간/확신’의 결핍으로 흔들립니다.`;
+    const pFounding = block(
+      "창업 계기",
+      founding,
+      `시작은 작은 질문에서 출발했습니다. “${hook}”`,
+    );
+    const pConflict = block(
+      "고객의 결핍/방해물",
+      conflict,
+      `${target}은(는) 중요한 순간에 ‘정보/시간/확신’의 결핍으로 흔들립니다.`,
+    );
+    const pTransform = block(
+      "사용 전/후 변화",
+      transformation,
+      `사용 전에는 고민이 길어지고 실행이 끊기지만, 사용 후에는 선택이 빨라지고 실행이 이어집니다.`,
+    );
+    const pAha = block(
+      "감탄의 순간",
+      aha,
+      `고객이 “와, 이렇게 간단할 수가!”라고 느끼는 순간을 만들어냅니다.`,
+    );
+    const pMission = block(
+      "미션",
+      mission,
+      `우리는 수익을 넘어, 고객이 더 나은 결정을 내리고 지속적으로 성장하도록 돕고자 합니다.`,
+    );
+    const pUltimate = block(
+      "궁극적 목표",
+      ultimate,
+      `우리는 ‘더 쉽고 더 신뢰할 수 있는 선택’이 당연한 세상을 만들고자 합니다.`,
+    );
 
-    const pTransform = transformation
-      ? `【사용 전/후 변화】\n${transformation}`
-      : `【사용 전/후 변화】\n사용 전에는 고민이 길어지고 실행이 끊기지만, 사용 후에는 선택이 빨라지고 실행이 이어집니다.`;
+    const pFounder = founderPersonality
+      ? `【팀/창업자 성격】\n${founderPersonality}`
+      : "";
 
-    const pMission = mission
-      ? `【미션】\n${mission}`
-      : `【미션】\n우리는 수익을 넘어, 고객이 더 나은 결정을 내리고 지속적으로 성장하도록 돕고자 합니다.`;
+    const pCase = flagshipCase ? `【대표 고객 사례】\n${flagshipCase}` : "";
 
-    const pUltimate = ultimate
-      ? `【궁극적 목표】\n${ultimate}`
-      : `【궁극적 목표】\n우리는 ‘더 쉽고 더 신뢰할 수 있는 선택’이 당연한 세상을 만들고자 합니다.`;
+    const emoLine = `【자극하고 싶은 감정】 ${(emotions.length ? emotions : ["안도감"]).join(" · ")}`;
+    const plotLine = `【스토리 구조】 ${plotLabel || plotTypeValue || "-"}`;
 
-    const emoLine = `【자극하고 싶은 감정】 ${(emotions.length
-      ? emotions
-      : ["안도감"]
-    ).join(" · ")}`;
-
-    if (plotType === "문제 해결형") {
+    // ✅ 4가지 플롯 지원
+    if (plotTypeValue === "Problem-Solution") {
       return {
-        plot: plotType,
+        plot: plotLabel,
         story: [
           `【훅】 ${hook}`,
+          plotLine,
           pConflict,
           pFounding,
           pTransform,
+          pAha,
           pMission,
           pUltimate,
+          pFounder,
+          pCase,
           emoLine,
           `【마무리】 ${end}`,
-        ].join("\n\n"),
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         ending: end,
       };
     }
 
-    if (plotType === "비전 제시형") {
+    if (plotTypeValue === "Visionary") {
       return {
-        plot: plotType,
+        plot: plotLabel,
         story: [
           `【훅】 우리가 꿈꾸는 미래는 분명합니다.`,
+          plotLine,
           pUltimate,
           pMission,
           pConflict,
           pTransform,
+          pAha,
           pFounding,
+          pFounder,
+          pCase,
           emoLine,
           `【마무리】 ${end}`,
-        ].join("\n\n"),
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         ending: end,
       };
     }
 
+    if (plotTypeValue === "Hero's Journey") {
+      return {
+        plot: plotLabel,
+        story: [
+          `【훅】 이 이야기는 ‘도전 → 변화 → 새로운 일상’의 여정입니다.`,
+          plotLine,
+          `【부름(문제의 등장)】\n${safeText(conflict, `${target}은(는) 중요한 순간마다 방해물에 부딪힙니다.`)}`,
+          `【시련(해결의 탐색)】\n${safeText(founding, `우리는 그 불편을 외면하지 않고 끝까지 파고들었습니다.`)}`,
+          `【변화(전환점)】\n${safeText(transformation, `사용 전에는 망설임이 길었지만, 사용 후에는 확신이 생깁니다.`)}`,
+          `【감탄(결정적 순간)】\n${safeText(aha, `고객이 “이제 됐다”라고 느끼는 순간이 생깁니다.`)}`,
+          pMission,
+          pUltimate,
+          pFounder,
+          pCase,
+          emoLine,
+          `【마무리】 ${end}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        ending: end,
+      };
+    }
+
+    // Founding Myth / Other
     return {
-      plot: plotType,
+      plot: plotLabel,
       story: [
         `【훅】 이 이야기는 ‘왜 시작했는가’에서 시작합니다.`,
+        plotLine,
         pFounding,
         pMission,
         pConflict,
         pTransform,
+        pAha,
         pUltimate,
+        pFounder,
+        pCase,
         emoLine,
         `【마무리】 ${end}`,
-      ].join("\n\n"),
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       ending: end,
     };
   };
 
-  const plotPool = plots.length ? plots : STORY_PLOT_OPTIONS;
+  const base = baseMeta();
+  const plotToUse = plotValue || "Founding Myth";
 
-  const p1 = pick(plotPool, 0);
-  const p2 = pick(plotPool, 1);
-  const p3 = pick(plotPool, 2);
-
-  const mk = (id, name, plotType, variantSeed) => {
-    const { plot, story, ending } = buildStory(plotType);
-    const meta = baseMeta();
+  const mk = (id, name, variantSeed) => {
+    const { story, ending } = buildStory(plotToUse, variantSeed);
 
     const keywords = Array.from(
       new Set([
         industry,
         stage,
-        plot,
-        ...(meta.emotions || []),
+        base.plot,
+        ...(base.emotions || []),
         "스토리",
         "브랜드",
         companyName,
       ]),
     ).slice(0, 10);
 
-    const altHook = pick(hooks, variantSeed);
-    const altEnd = pick(endings, variantSeed);
-
-    const story2 =
-      variantSeed === 0
-        ? story
-        : story.replace(/【훅】.*\n?/m, (m) =>
-            m.replace(/【훅】.*/, `【훅】 ${altHook}`),
-          );
+    // oneLiner는 첫 문장(또는 훅) 기반으로
+    const firstLine =
+      story
+        .split("\n")
+        .find((ln) => ln.trim() && !ln.trim().startsWith("【")) // 첫 일반 문장 우선
+        ?.trim() ||
+      story
+        .split("\n")
+        .find((ln) => ln.trim())
+        ?.trim() ||
+      "";
 
     return {
       id,
       name,
-      oneLiner: meta.oneLiner,
-      meta: meta.meta,
-      plot,
-      emotions: meta.emotions,
-      story: story2,
-      ending: variantSeed === 0 ? ending : altEnd,
+      oneLiner:
+        firstLine.length > 60
+          ? `${firstLine.slice(0, 60)}…`
+          : base.oneLiner || firstLine,
+      meta: base.meta,
+      plot: base.plot,
+      emotions: base.emotions,
+      story,
+      ending,
       keywords,
+      raw: story,
     };
   };
 
+  // ✅ 3안은 같은 플롯에서 문장/구성만 다르게(변형 seed)
   return [
-    mk("story_1", "A · 문제 해결형", p1, 0),
-    mk("story_2", "B · 비전 제시형", p2, 1),
-    mk("story_3", "C · 탄생 신화형", p3, 2),
+    mk("story_1", `A · ${plotLabel || "스토리"} 1안`, 0),
+    mk("story_2", `B · ${plotLabel || "스토리"} 2안`, 1),
+    mk("story_3", `C · ${plotLabel || "스토리"} 3안`, 2),
   ];
 }
 
@@ -308,13 +511,23 @@ const INITIAL_FORM = {
   oneLine: "",
   targetCustomer: "",
 
+  // Step 4 fields
   founding_story: "",
   customer_transformation: "",
+  aha_moment: "",
   brand_mission: "",
-  story_plot: [],
+  story_plot: "", // single_choice value
+  story_plot_other: "",
+
   customer_conflict: "",
-  story_emotion: [],
+  story_emotion: [], // multiple_choice values (max 2)
+  story_emotion_other: "",
+
   ultimate_goal: "",
+
+  // optional
+  founder_personality: "",
+  flagship_case: "",
 
   notes: "",
 };
@@ -336,6 +549,19 @@ function normalizeStoryCandidates(raw, form = {}) {
     return "";
   };
 
+  const metaParts = [
+    safeText(form?.industry, ""),
+    stageLabel(form?.stage),
+    safeText(form?.targetCustomer, ""),
+  ].filter((v) => v && v !== "-");
+  const meta = metaParts.join(" · ");
+
+  const emotions = emotionLabels(
+    form?.story_emotion,
+    form?.story_emotion_other,
+  );
+  const plot = plotLabelValue(form?.story_plot, form?.story_plot_other) || "-";
+
   // ✅ 케이스 0) { story1, story2, story3 }
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const values = ["story1", "story2", "story3"]
@@ -343,18 +569,6 @@ function normalizeStoryCandidates(raw, form = {}) {
       .filter(Boolean);
 
     if (values.length) {
-      const metaParts = [
-        safeText(form?.industry, ""),
-        stageLabel(form?.stage),
-        safeText(form?.targetCustomer, ""),
-      ].filter((v) => v && v !== "-");
-
-      const meta = metaParts.join(" · ");
-      const emotions = Array.isArray(form?.story_emotion)
-        ? form.story_emotion
-        : [];
-      const plot = safeText(form?.story_plot, "") || "-";
-
       return values.slice(0, 3).map((story, idx) => {
         const firstLine =
           story
@@ -394,10 +608,10 @@ function normalizeStoryCandidates(raw, form = {}) {
       id: `story_${idx + 1}`,
       name: `컨설팅 제안 ${idx + 1}`,
       oneLiner: story.length > 60 ? `${story.slice(0, 60)}…` : story,
-      meta: "",
+      meta,
       story,
-      plot: "-",
-      emotions: [],
+      plot,
+      emotions,
       ending: "-",
       keywords: [],
       raw: story,
@@ -427,16 +641,17 @@ function normalizeStoryCandidates(raw, form = {}) {
       oneLiner:
         item?.oneLiner ||
         (firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine),
-      meta: item?.meta || "",
+      meta: item?.meta || meta,
       story,
-      plot: item?.plot || "-",
-      emotions: Array.isArray(item?.emotions) ? item.emotions : [],
+      plot: item?.plot || plot,
+      emotions: Array.isArray(item?.emotions) ? item.emotions : emotions,
       ending: item?.ending || "-",
       keywords: Array.isArray(item?.keywords) ? item.keywords : [],
       raw: story,
     };
   });
 }
+
 export default function BrandStoryConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -465,6 +680,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         location?.state?.report?.brandId ??
         p?.brandId ??
         null;
+
       startBrandFlow({ brandId });
       setBrandFlowCurrent("story");
     } catch {
@@ -473,7 +689,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Strict Flow 가드(스토리 단계) + 이탈/새로고침 처리
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
@@ -484,15 +699,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
+
   const [toast, setToast] = useState({
     msg: "",
     variant: "success",
     muted: false,
   });
   const toastTimerRef = useRef(null);
+
   const toastMsg = toast.msg;
   const toastMuted = toast.muted;
   const toastVariant = toast.variant;
+
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [expandedCandidates, setExpandedCandidates] = useState({});
@@ -503,6 +721,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     () => [
       "founding_story",
       "customer_transformation",
+      "aha_moment",
       "brand_mission",
       "story_plot",
       "customer_conflict",
@@ -584,6 +803,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         setForm((prev) => {
           const next = { ...prev, ...loaded };
 
+          // legacy 매핑(이전 필드명 호환)
           if (
             !String(next.founding_story || "").trim() &&
             String(loaded.originStory || "").trim()
@@ -747,8 +967,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const handleGenerateCandidates = async (mode = "generate") => {
     setAnalyzeError("");
 
-    // 🔌 BACKEND 연동: 스토리 생성
-    // - POST /brands/{brandId}/story
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
@@ -771,34 +989,35 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
     setAnalyzing(true);
     setAnalyzeError("");
+
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
-      const payload = {
-        ...form,
-        step: "story",
-        mode,
-        regenSeed: nextSeed,
-      };
+      const payload = { ...form, step: "story", mode, regenSeed: nextSeed };
 
-      const raw = await apiRequest(`/brands/${brandId}/story`, {
+      const raw = await apiRequestAI(`/brands/${brandId}/story`, {
         method: "POST",
         data: payload,
       });
 
       const nextCandidates = normalizeStoryCandidates(raw, form);
 
-      if (!nextCandidates.length) {
+      // 백이 비어주면 로컬 후보 생성(보험)
+      const fallbackCandidates = nextCandidates.length
+        ? nextCandidates
+        : generateStoryCandidates(form, nextSeed);
+
+      if (!fallbackCandidates.length) {
         alert("스토리 제안을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
         return;
       }
 
-      setCandidates(nextCandidates);
+      setCandidates(fallbackCandidates);
       setSelectedId(null);
-      persistResult(nextCandidates, null, nextSeed);
+      persistResult(fallbackCandidates, null, nextSeed);
       showToast(
-        "✅ 스토리 컨설팅 제안 3가지이 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
+        "✅ 스토리 컨설팅 제안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
       );
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
@@ -822,7 +1041,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         return;
       }
 
-      // ✅ 백이 '스토리 단계가 아닙니다'를 내려주는 경우가 많아 안내 강화
       if (String(msg).includes("스토리 단계")) {
         alert(
           `스토리 생성이 거절되었습니다: ${msg}
@@ -847,7 +1065,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const handleGoNext = async () => {
     if (!canGoNext) return;
 
-    // ✅ 선택한 스토리를 백에 저장(스토리 -> 로고 단계로 이동)
     const p = readPipeline();
     const brandId =
       p?.brandId ||
@@ -856,11 +1073,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       p?.diagnosis?.brandId ||
       null;
 
-    const selected =
-      candidates.find((c) => c.id === selectedId) ||
-      candidates.find((c) => c.id === (selectedId || "")) ||
-      null;
-
+    const selected = candidates.find((c) => c.id === selectedId) || null;
     const selectedStory = selected?.raw || selected?.story || "";
 
     if (!brandId) {
@@ -895,7 +1108,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         return;
       }
 
-      // 이미 단계가 넘어간 경우(예: 재진입)에는 다음으로 진행 허용
+      // 이미 단계가 넘어간 경우에는 다음 진행 허용
       if (!String(msg).includes("스토리 단계")) {
         alert(`스토리 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
         return;
@@ -903,7 +1116,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
 
     try {
-      // ✅ 다음 단계 진입과 동시에 currentStep을 앞으로 고정
       setBrandFlowCurrent("logo");
     } catch {
       // ignore
@@ -923,13 +1135,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       userRemoveItem(LEGACY_KEY);
     } catch {}
 
-    // ✅ pipeline에서도 현재 단계(스토리)부터 초기화
     try {
       clearStepsFrom("story");
       setBrandFlowCurrent("story");
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     const diag = (() => {
       try {
@@ -979,6 +1188,25 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setLastSaved("-");
   };
 
+  // ✅ plot 선택 핸들러 (Other일 때 입력 유지)
+  const selectPlot = (value) => {
+    setForm((prev) => {
+      const next = { ...prev, story_plot: value };
+      if (value !== "Other") next.story_plot_other = "";
+      return next;
+    });
+  };
+
+  // ✅ emotion 선택 핸들러 (max 2는 MultiChips가 보장)
+  const setEmotions = (next) => {
+    setForm((prev) => {
+      const hasOther = Array.isArray(next) && next.includes("Other");
+      const updated = { ...prev, story_emotion: next };
+      if (!hasOther) updated.story_emotion_other = "";
+      return updated;
+    });
+  };
+
   return (
     <div className="diagInterview consultingInterview brandStoryInterview">
       <PolicyModal
@@ -1007,8 +1235,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 브랜드 스토리 컨설팅 인터뷰
               </h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 브랜드
-                스토리(계기·갈등·전환·미션·플롯·감정·궁극 목표)를 입력합니다.
+                기업 진단에서 입력한 기본 정보는 자동 반영됩니다. 여기서는 Step
+                4 질문지 기준으로 “계기·변화·감탄·미션·플롯·갈등·감정·궁극
+                목표(선택: 팀 성격/사례)”를 입력합니다.
               </p>
             </div>
 
@@ -1093,31 +1322,73 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 2) MATERIAL */}
+              {/* 2) Brand Story (Step 4) - Required */}
               <div className="card">
                 <div className="card__head">
-                  <h2>2. 스토리 재료</h2>
+                  <h2>2. Brand Story 필수 질문</h2>
                   <p>
-                    스토리의 사실/재료를 먼저 채우면, 플롯에 맞게 문장이
-                    깔끔해져요.
+                    Step 4 질문지 기준(필수)입니다. 사실/재료가 구체적일수록
+                    결과가 좋아요.
                   </p>
                 </div>
 
                 <div className="field">
                   <label>
-                    창업 계기/사건 <span className="req">*</span>
+                    창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’{" "}
+                    <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.founding_story}
                     onChange={(e) => setValue("founding_story", e.target.value)}
-                    placeholder="어떤 사건/불편/계기로 시작했나요?"
+                    placeholder="개인적인 경험, 문제 인식, 영감을 받은 순간 등을 구체적으로 작성해주세요"
                     rows={5}
                   />
                 </div>
 
                 <div className="field">
                   <label>
-                    고객이 겪는 가장 큰 결핍/방해물{" "}
+                    우리 서비스를 이용하기 전/후 고객의 삶은 어떻게 달라지나요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.customer_transformation}
+                    onChange={(e) =>
+                      setValue("customer_transformation", e.target.value)
+                    }
+                    placeholder="구체적인 변화를 Before/After로 작성해주세요"
+                    rows={5}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    고객이 우리만의 서비스를 이용하면서 감탄하는 순간은
+                    언제인가요? <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.aha_moment}
+                    onChange={(e) => setValue("aha_moment", e.target.value)}
+                    placeholder="예: 첫 주문이 10분 만에 도착했을 때, 복잡한 작업이 클릭 한 번으로 해결되었을 때"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    수익 창출 외에, 우리가 세상에 기여하고자 하는 것은
+                    무엇인가요? <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.brand_mission}
+                    onChange={(e) => setValue("brand_mission", e.target.value)}
+                    placeholder="사회적 가치, 환경적 영향, 문화적 변화 등"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>
+                    고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <textarea
@@ -1125,112 +1396,213 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                     onChange={(e) =>
                       setValue("customer_conflict", e.target.value)
                     }
-                    placeholder="고객이 지금 막히는 지점은 무엇인가요?"
-                    rows={5}
+                    placeholder="시간 부족, 정보 과부하, 높은 비용, 복잡한 과정 등"
+                    rows={4}
                   />
                 </div>
 
                 <div className="field">
                   <label>
-                    사용 전/후 고객의 변화 <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.customer_transformation}
-                    onChange={(e) =>
-                      setValue("customer_transformation", e.target.value)
-                    }
-                    placeholder="사용 전에는 어떤 상태였고, 사용 후에는 무엇이 달라지나요?"
-                    rows={5}
-                  />
-                </div>
-              </div>
-
-              {/* 3) STYLE */}
-              <div className="card">
-                <div className="card__head">
-                  <h2>3. 원하는 플롯/감정</h2>
-                  <p>선택한 유형을 우선 반영해 후보를 만들어요.</p>
-                </div>
-
-                <div className="field">
-                  <label>
-                    원하는 스토리텔링 스타일 <span className="req">*</span>
-                  </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.story_plot}
-                      options={STORY_PLOT_OPTIONS}
-                      onChange={(next) => setValue("story_plot", next)}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>
-                    스토리로 자극하고 싶은 감정 <span className="req">*</span>
-                  </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능
-                  </div>
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.story_emotion}
-                      options={STORY_EMOTION_OPTIONS}
-                      onChange={(next) => setValue("story_emotion", next)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 4) VISION */}
-              <div className="card">
-                <div className="card__head">
-                  <h2>4. 미션/궁극적 목표</h2>
-                </div>
-
-                <div className="field">
-                  <label>
-                    수익 외에 세상에 기여하려는 바(미션){" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.brand_mission}
-                    onChange={(e) => setValue("brand_mission", e.target.value)}
-                    placeholder="예) 누구나 더 쉽게, 더 확신 있게 결정할 수 있도록 돕는다"
-                    rows={5}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    궁극적으로 만들고 싶은 세상의 모습{" "}
+                    브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.ultimate_goal}
                     onChange={(e) => setValue("ultimate_goal", e.target.value)}
-                    placeholder="예) 좋은 선택이 정보 격차에 의해 좌우되지 않는 세상"
-                    rows={5}
+                    placeholder="10년 후, 우리의 브랜드가 있는 세상은 어떻게 변해 있을까요?"
+                    rows={4}
                   />
                 </div>
               </div>
 
-              {/* 5) NOTES */}
+              {/* 3) story_plot (single choice) */}
               <div className="card">
                 <div className="card__head">
-                  <h2>5. 추가 요청 (선택)</h2>
+                  <h2>3. 스토리텔링 구조 선택</h2>
+                  <p>
+                    Step 4 질문지 기준: 하나만 선택해 주세요. (기타 선택 시 직접
+                    입력)
+                  </p>
                 </div>
 
                 <div className="field">
-                  <label>추가 메모</label>
+                  <label>
+                    어떤 스타일의 스토리텔링을 원하나요?{" "}
+                    <span className="req">*</span>
+                  </label>
+
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {STORY_PLOT_OPTIONS.map((opt) => {
+                      const selected = form.story_plot === opt.value;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className="btn"
+                          onClick={() => selectPlot(opt.value)}
+                          style={{
+                            textAlign: "left",
+                            padding: "12px 12px",
+                            borderRadius: 12,
+                            border: selected
+                              ? "1px solid rgba(99,102,241,0.40)"
+                              : "1px solid rgba(0,0,0,0.10)",
+                            background: selected
+                              ? "rgba(99,102,241,0.08)"
+                              : "rgba(255,255,255,0.9)",
+                            cursor: "pointer",
+                          }}
+                          aria-pressed={selected}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 14,
+                                height: 14,
+                                borderRadius: 999,
+                                border: "2px solid rgba(0,0,0,0.35)",
+                                background: selected
+                                  ? "rgba(99,102,241,0.9)"
+                                  : "transparent",
+                                boxShadow: selected
+                                  ? "0 0 0 3px rgba(99,102,241,0.15)"
+                                  : "none",
+                              }}
+                            />
+                            <div style={{ fontWeight: 900 }}>{opt.text}</div>
+                          </div>
+
+                          {opt.description ? (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                fontSize: 12,
+                                opacity: 0.8,
+                              }}
+                            >
+                              {opt.description}
+                            </div>
+                          ) : null}
+                          {opt.example ? (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                fontSize: 12,
+                                opacity: 0.75,
+                              }}
+                            >
+                              <span style={{ fontWeight: 800 }}>예:</span>{" "}
+                              {opt.example}
+                            </div>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {form.story_plot === "Other" ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>기타(직접 입력)</label>
+                      <input
+                        value={form.story_plot_other}
+                        onChange={(e) =>
+                          setValue("story_plot_other", e.target.value)
+                        }
+                        placeholder="원하는 스토리 구조를 설명해주세요"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 4) story_emotion (multiple choice max 2) */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>4. 스토리 감정 선택</h2>
+                  <p>
+                    Step 4 질문지 기준: 최대 2개 선택(기타 선택 시 직접 입력)
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    스토리를 통해 고객의 어떤 감정을 자극하고 싶나요? (최대 2개){" "}
+                    <span className="req">*</span>
+                  </label>
+
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    2개를 넘기면 마지막으로 선택한 항목이 유지돼요.
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <MultiChips
+                      value={form.story_emotion}
+                      options={STORY_EMOTION_OPTIONS.map((o) => ({
+                        value: o.value,
+                        label: o.text,
+                      }))}
+                      onChange={setEmotions}
+                      max={2}
+                    />
+                  </div>
+
+                  {Array.isArray(form.story_emotion) &&
+                  form.story_emotion.includes("Other") ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <label>기타(직접 입력)</label>
+                      <input
+                        value={form.story_emotion_other}
+                        onChange={(e) =>
+                          setValue("story_emotion_other", e.target.value)
+                        }
+                        placeholder="자극하고 싶은 감정을 설명해주세요"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 5) Optional */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>5. 선택 질문 & 추가 요청</h2>
+                </div>
+
+                <div className="field">
+                  <label>창업자(또는 팀)의 성격/스타일 (선택)</label>
+                  <textarea
+                    value={form.founder_personality}
+                    onChange={(e) =>
+                      setValue("founder_personality", e.target.value)
+                    }
+                    placeholder="예: 집요하게 파고드는 엔지니어, 사람 얘기를 잘 들어주는 팀장 등"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>기억에 남는 고객 사례 1개 (선택)</label>
+                  <textarea
+                    value={form.flagship_case}
+                    onChange={(e) => setValue("flagship_case", e.target.value)}
+                    placeholder="어떤 고객이었고, 어떤 문제가 있었으며, 우리 서비스를 통해 어떻게 달라졌는지"
+                    rows={4}
+                  />
+                </div>
+
+                <div className="field">
+                  <label>추가 메모 (선택)</label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 랜딩페이지용으로 6~8문장 버전 + 2문장 요약도 같이"
-                    rows={4}
+                    placeholder="예) 랜딩페이지용 6~8문장 버전 + 2문장 요약도 같이"
+                    rows={3}
                   />
                 </div>
               </div>
@@ -1322,6 +1694,24 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                               >
                                 {c.meta}
                               </div>
+                              {c.plot ? (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    opacity: 0.75,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  <b>플롯:</b> {c.plot}
+                                  {Array.isArray(c.emotions) &&
+                                  c.emotions.length ? (
+                                    <>
+                                      {" "}
+                                      · <b>감정:</b> {c.emotions.join(" · ")}
+                                    </>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "제안"}

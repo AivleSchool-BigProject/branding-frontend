@@ -33,7 +33,7 @@ import {
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
-import { apiRequest } from "../api/client.js";
+import { apiRequest, apiRequestAI } from "../api/client.js";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
@@ -662,7 +662,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       };
 
       // ✅ 로고 생성
-      const res = await apiRequest(`/brands/${brandId}/logo`, {
+      const res = await apiRequestAI(`/brands/${brandId}/logo`, {
         method: "POST",
         data: payload,
       });

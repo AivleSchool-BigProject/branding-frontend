@@ -9,7 +9,7 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 백 연동
-import { apiRequest } from "../api/client.js";
+import { apiRequestAI } from "../api/client.js";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem, userSetItem } from "../utils/userLocalStorage.js";
@@ -26,33 +26,268 @@ const HOME_SUMMARY_KEY = "diagnosisDraft";
 // ✅ 백 응답 저장 키(결과 페이지에서 읽음)
 const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
 
+const TARGET_PERSONA_OPTIONS = [
+  {
+    value: "2030 Early Adopter",
+    label: "새로운 것을 먼저 시도하는 2030 얼리어답터",
+    description: "트렌드에 민감하고 SNS 활동이 활발한 젊은 층",
+  },
+  {
+    value: "3040 Efficiency Seeker",
+    label: "효율을 중시하는 3040 직장인",
+    description: "시간이 부족하고 실용성을 중요시하는 워킹맘/워킹대디",
+  },
+  {
+    value: "Professional/Freelancer",
+    label: "전문성을 추구하는 프리랜서/전문직",
+    description: "개인 브랜드와 전문성이 중요한 독립적인 워커",
+  },
+  {
+    value: "Self-improving Student",
+    label: "자기계발에 진지한 대학생/취준생",
+    description: "미래를 준비하고 스펙을 쌓는 데 집중하는 청년층",
+  },
+  {
+    value: "Active Senior",
+    label: "새로운 도전을 시작하는 시니어",
+    description:
+      "은퇴 후 제2의 인생이나 취미 활동을 적극적으로 추구하는 중장년층",
+  },
+  {
+    value: "Other",
+    label: "기타",
+    description: "",
+    hasTextInput: true,
+    textInputPlaceholder: "구체적인 고객 페르소나를 설명해주세요",
+  },
+];
+
 const INDUSTRY_OPTIONS = [
-  { value: "saas_platform", label: "SaaS/플랫폼" },
-  { value: "commerce", label: "커머스" },
-  { value: "healthcare", label: "헬스케어" },
-  { value: "education", label: "교육" },
+  {
+    value: "SaaS/B2B Platform",
+    label: "SaaS/B2B 플랫폼",
+    description: "기업용 소프트웨어, 업무 도구",
+  },
+  {
+    value: "E-commerce/Retail",
+    label: "이커머스/리테일",
+    description: "온라인 쇼핑, 판매 플랫폼",
+  },
+  {
+    value: "Fintech/Finance",
+    label: "핀테크/금융",
+    description: "결제, 투자, 대출, 자산관리",
+  },
+  {
+    value: "Healthcare/Wellness",
+    label: "헬스케어/웰니스",
+    description: "건강, 의료, 피트니스",
+  },
+  {
+    value: "Edutech/Education",
+    label: "에듀테크/교육",
+    description: "온라인 교육, 학습 플랫폼",
+  },
+  {
+    value: "Contents/Media",
+    label: "콘텐츠/미디어",
+    description: "OTT, 음악, 웹툰, 뉴스",
+  },
+  {
+    value: "Social/Community",
+    label: "소셜/커뮤니티",
+    description: "SNS, 커뮤니케이션, 네트워킹",
+  },
+  {
+    value: "Mobility/Logistics",
+    label: "모빌리티/물류",
+    description: "배달, 운송, 차량 공유",
+  },
+  {
+    value: "Proptech/Real Estate",
+    label: "프롭테크/부동산",
+    description: "부동산 중개, 임대, 관리",
+  },
+  {
+    value: "Other",
+    label: "기타",
+    description: "",
+    hasTextInput: true,
+    textInputPlaceholder: "산업군을 직접 입력해주세요",
+  },
 ];
 
-const STAGE_OPTIONS = [
-  { value: "idea", label: "아이디어 단계" },
-  { value: "mvp", label: "MVP 개발 중" },
-  { value: "early_revenue", label: "초기 매출 발생" },
-  { value: "scaleup", label: "스케일업" },
+const REVENUE_MODEL_OPTIONS = [
+  { value: "Subscription", label: "구독", description: "정기적인 구독료" },
+  { value: "Advertising", label: "광고", description: "광고 수익" },
+  { value: "Commission", label: "수수료", description: "거래 수수료" },
+  { value: "Sales", label: "판매", description: "제품 판매" },
+  {
+    value: "Other",
+    label: "기타",
+    description: "",
+    hasTextInput: true,
+    textInputPlaceholder: "수익 모델을 직접 입력해주세요",
+  },
 ];
 
-const PERSONA_OPTIONS = [
-  { value: "trend_2030", label: "2030 트렌드 세터" },
-  { value: "worker_3040", label: "3040 직장인" },
-  { value: "startup_ceo", label: "초기 스타트업 대표" },
-  { value: "mid_team_lead", label: "중견기업 팀장" },
-  { value: "professional", label: "전문직" },
+const BRAND_PRIORITY_OPTIONS = [
+  {
+    value: "Brand Awareness",
+    label: "브랜드 인지도",
+    description: "더 많은 사람들이 우리 브랜드를 알게 하기",
+  },
+  {
+    value: "Customer Acquisition",
+    label: "고객 확보",
+    description: "신규 고객 수 증가",
+  },
+  {
+    value: "Conversion Rate Improvement",
+    label: "유료 전환율 상승",
+    description: "무료 사용자를 유료 고객으로 전환",
+  },
+  {
+    value: "Investment Attraction",
+    label: "투자 유치",
+    description: "외부 투자 유치 및 펀딩",
+  },
+  {
+    value: "Other",
+    label: "기타",
+    description: "",
+    hasTextInput: true,
+    textInputPlaceholder: "브랜드 목표를 직접 입력해주세요",
+  },
 ];
 
-const getLabel = (value, options) => {
-  const v = String(value || "").trim();
+function safeText(v, fallback = "") {
+  const s = String(v ?? "").trim();
+  return s ? s : fallback;
+}
+
+function hasText(v) {
+  return Boolean(String(v ?? "").trim());
+}
+
+function findOpt(options, value) {
+  const v = String(value ?? "").trim();
+  if (!v) return null;
+  return (options || []).find((o) => String(o.value) === v) || null;
+}
+
+function resolveSingleChoice(options, value, otherText) {
+  const v = String(value ?? "").trim();
   if (!v) return "";
-  return options.find((o) => o.value === v)?.label || v;
-};
+  if (v !== "Other") {
+    const opt = findOpt(options, v);
+    return opt?.label || v;
+  }
+  const t = safeText(otherText);
+  return t || "기타";
+}
+
+function resolveMultiChoice(options, values, otherText) {
+  const arr = Array.isArray(values) ? values : [];
+  return arr
+    .map((v) => {
+      const vv = String(v ?? "").trim();
+      if (!vv) return null;
+      if (vv !== "Other") {
+        const opt = findOpt(options, vv);
+        return opt?.label || vv;
+      }
+      const t = safeText(otherText);
+      return t || "기타";
+    })
+    .filter(Boolean);
+}
+
+function RadioCards({ name, value, options, onChange }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {options.map((opt) => {
+        const checked = value === opt.value;
+        return (
+          <label
+            key={opt.value}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.08)",
+              cursor: "pointer",
+              background: checked ? "rgba(0,0,0,0.03)" : "transparent",
+            }}
+          >
+            <input
+              type="radio"
+              name={name}
+              checked={checked}
+              onChange={() => onChange(opt.value)}
+              style={{ marginTop: 3 }}
+            />
+            <div>
+              <div style={{ fontWeight: 700 }}>{opt.label}</div>
+              {opt.description ? (
+                <div style={{ opacity: 0.75, marginTop: 2, fontSize: 13 }}>
+                  {opt.description}
+                </div>
+              ) : null}
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function CheckboxCards({ value, options, onToggle, disabledFn }) {
+  const current = Array.isArray(value) ? value : [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {options.map((opt) => {
+        const checked = current.includes(opt.value);
+        const disabled =
+          typeof disabledFn === "function" ? disabledFn(opt.value) : false;
+        return (
+          <label
+            key={opt.value}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(0,0,0,0.08)",
+              cursor: disabled ? "not-allowed" : "pointer",
+              opacity: disabled ? 0.55 : 1,
+              background: checked ? "rgba(0,0,0,0.03)" : "transparent",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={() => onToggle(opt.value)}
+              style={{ marginTop: 3 }}
+            />
+            <div>
+              <div style={{ fontWeight: 700 }}>{opt.label}</div>
+              {opt.description ? (
+                <div style={{ opacity: 0.75, marginTop: 2, fontSize: 13 }}>
+                  {opt.description}
+                </div>
+              ) : null}
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function DiagnosisInterview({ onLogout }) {
   const navigate = useNavigate();
@@ -64,16 +299,25 @@ export default function DiagnosisInterview({ onLogout }) {
 
   // ✅ 폼 상태
   const [form, setForm] = useState({
-    companyName: "", // ✅ 필수
-    website: "", // ✅ 선택
-
-    oneLine: "",
-    customerProblem: "",
-    targetPersona: "",
-    usp: "",
+    // (레거시 키들도 함께 보관: 기존 저장본/다른 페이지 호환)
+    companyName: "",
+    website: "",
     stage: "",
+
+    // ✅ Step 1: Identity & Foundation
+    oneLine: "", // service_definition
+    customerProblem: "", // pain_point
+    targetPersona: "",
+    targetPersonaOther: "",
+    currentAlternatives: "",
+    usp: "", // differentiation (optional)
     industry: "",
+    industryOther: "",
     visionHeadline: "",
+    revenueModel: "",
+    revenueModelOther: "",
+    brandPriority: [],
+    brandPriorityOther: "",
   });
 
   // ✅ 저장 상태 UI (자동저장만 사용)
@@ -86,47 +330,77 @@ export default function DiagnosisInterview({ onLogout }) {
   const submitOnceRef = useRef(false);
 
   // ✅ 섹션 스크롤용 ref
-  const refBasic = useRef(null);
-  const refOneLine = useRef(null);
-  const refCustomer = useRef(null);
+  const refDefinition = useRef(null);
+  const refPain = useRef(null);
+  const refPersona = useRef(null);
+  const refAlternatives = useRef(null);
   const refUsp = useRef(null);
-  const refStatus = useRef(null);
+  const refIndustry = useRef(null);
   const refVision = useRef(null);
+  const refRevenue = useRef(null);
+  const refPriority = useRef(null);
 
   const sections = useMemo(
     () => [
-      { id: "basic", label: "기본 정보", ref: refBasic },
-      { id: "oneLine", label: "한 문장 정의", ref: refOneLine },
-      { id: "customer", label: "문제/타겟", ref: refCustomer },
-      { id: "usp", label: "USP", ref: refUsp },
-      { id: "status", label: "단계/산업군", ref: refStatus },
-      { id: "vision", label: "헤드라인", ref: refVision },
-    ],
-    [],
-  );
-
-  // ✅ 필수 항목(website 제외)
-  const requiredKeys = useMemo(
-    () => [
-      "companyName",
-      "oneLine",
-      "customerProblem",
-      "targetPersona",
-      "usp",
-      "stage",
-      "industry",
-      "visionHeadline",
+      { id: "definition", label: "서비스 정의", ref: refDefinition },
+      { id: "pain", label: "Pain Point", ref: refPain },
+      { id: "persona", label: "타겟", ref: refPersona },
+      { id: "alt", label: "대안", ref: refAlternatives },
+      { id: "usp", label: "차별점", ref: refUsp },
+      { id: "industry", label: "산업군", ref: refIndustry },
+      { id: "vision", label: "비전", ref: refVision },
+      { id: "revenue", label: "수익모델", ref: refRevenue },
+      { id: "priority", label: "브랜드 목표", ref: refPriority },
     ],
     [],
   );
 
   const requiredStatus = useMemo(() => {
-    const status = {};
-    requiredKeys.forEach((k) => {
-      status[k] = Boolean(String(form[k] || "").trim());
-    });
-    return status;
-  }, [form, requiredKeys]);
+    const personaOk =
+      hasText(form.targetPersona) &&
+      (form.targetPersona !== "Other" || hasText(form.targetPersonaOther));
+
+    const industryOk =
+      hasText(form.industry) &&
+      (form.industry !== "Other" || hasText(form.industryOther));
+
+    const revenueOk =
+      hasText(form.revenueModel) &&
+      (form.revenueModel !== "Other" || hasText(form.revenueModelOther));
+
+    const priorities = Array.isArray(form.brandPriority)
+      ? form.brandPriority
+      : [];
+    const priorityOk =
+      priorities.length > 0 &&
+      priorities.length <= 2 &&
+      (!priorities.includes("Other") || hasText(form.brandPriorityOther));
+
+    return {
+      oneLine: hasText(form.oneLine),
+      customerProblem: hasText(form.customerProblem),
+      targetPersona: personaOk,
+      currentAlternatives: hasText(form.currentAlternatives),
+      industry: industryOk,
+      visionHeadline: hasText(form.visionHeadline),
+      revenueModel: revenueOk,
+      brandPriority: priorityOk,
+    };
+  }, [form]);
+
+  const requiredKeys = useMemo(
+    () => [
+      "oneLine",
+      "customerProblem",
+      "targetPersona",
+      "currentAlternatives",
+      "industry",
+      "visionHeadline",
+      "revenueModel",
+      "brandPriority",
+    ],
+    [],
+  );
 
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
@@ -141,19 +415,16 @@ export default function DiagnosisInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
 
   const currentSectionLabel = useMemo(() => {
-    if (!String(form.companyName || "").trim()) return "기본 정보";
-    if (!String(form.oneLine || "").trim()) return "한 문장 정의";
-    if (
-      !String(form.customerProblem || "").trim() ||
-      !String(form.targetPersona || "").trim()
-    )
-      return "문제/타겟";
-    if (!String(form.usp || "").trim()) return "USP";
-    if (!String(form.stage || "").trim() || !String(form.industry || "").trim())
-      return "단계/산업군";
-    if (!String(form.visionHeadline || "").trim()) return "헤드라인";
+    if (!requiredStatus.oneLine) return "서비스 정의";
+    if (!requiredStatus.customerProblem) return "Pain Point";
+    if (!requiredStatus.targetPersona) return "타겟";
+    if (!requiredStatus.currentAlternatives) return "대안";
+    if (!requiredStatus.industry) return "산업군";
+    if (!requiredStatus.visionHeadline) return "비전";
+    if (!requiredStatus.revenueModel) return "수익모델";
+    if (!requiredStatus.brandPriority) return "브랜드 목표";
     return "완료";
-  }, [form]);
+  }, [requiredStatus]);
 
   const scrollToSection = (ref) => {
     if (!ref?.current) return;
@@ -161,18 +432,15 @@ export default function DiagnosisInterview({ onLogout }) {
   };
 
   const getFirstIncompleteRef = () => {
-    if (!String(form.companyName || "").trim()) return refBasic;
-    if (!String(form.oneLine || "").trim()) return refOneLine;
-    if (
-      !String(form.customerProblem || "").trim() ||
-      !String(form.targetPersona || "").trim()
-    )
-      return refCustomer;
-    if (!String(form.usp || "").trim()) return refUsp;
-    if (!String(form.stage || "").trim() || !String(form.industry || "").trim())
-      return refStatus;
-    if (!String(form.visionHeadline || "").trim()) return refVision;
-    return refVision;
+    if (!requiredStatus.oneLine) return refDefinition;
+    if (!requiredStatus.customerProblem) return refPain;
+    if (!requiredStatus.targetPersona) return refPersona;
+    if (!requiredStatus.currentAlternatives) return refAlternatives;
+    if (!requiredStatus.industry) return refIndustry;
+    if (!requiredStatus.visionHeadline) return refVision;
+    if (!requiredStatus.revenueModel) return refRevenue;
+    if (!requiredStatus.brandPriority) return refPriority;
+    return refPriority;
   };
 
   const saveHomeSummary = (updatedAtTs) => {
@@ -256,28 +524,67 @@ export default function DiagnosisInterview({ onLogout }) {
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const togglePriority = (optValue) => {
+    const current = Array.isArray(form.brandPriority) ? form.brandPriority : [];
+    const exists = current.includes(optValue);
+
+    if (!exists && current.length >= 2) {
+      alert("최대 2개까지 선택할 수 있어요.");
+      return;
+    }
+
+    const next = exists
+      ? current.filter((x) => x !== optValue)
+      : [...current, optValue];
+    setValue("brandPriority", next);
+  };
+
+  const priorityDisabledFn = (optValue) => {
+    const current = Array.isArray(form.brandPriority) ? form.brandPriority : [];
+    if (current.includes(optValue)) return false;
+    return current.length >= 2;
+  };
+
   // ✅ 백이 원하는 "질문:key / 답변:value" JSON 만들기
   const buildQaMap = () => {
-    const personaLabel = getLabel(form.targetPersona, PERSONA_OPTIONS);
-    const stageLabel = getLabel(form.stage, STAGE_OPTIONS);
-    const industryLabel = getLabel(form.industry, INDUSTRY_OPTIONS);
+    const personaText = resolveSingleChoice(
+      TARGET_PERSONA_OPTIONS,
+      form.targetPersona,
+      form.targetPersonaOther,
+    );
+    const industryText = resolveSingleChoice(
+      INDUSTRY_OPTIONS,
+      form.industry,
+      form.industryOther,
+    );
+    const revenueText = resolveSingleChoice(
+      REVENUE_MODEL_OPTIONS,
+      form.revenueModel,
+      form.revenueModelOther,
+    );
+    const priorities = resolveMultiChoice(
+      BRAND_PRIORITY_OPTIONS,
+      form.brandPriority,
+      form.brandPriorityOther,
+    );
 
     return {
-      "회사/프로젝트명": String(form.companyName || "").trim(),
-      "웹사이트/소개 링크 (선택)": String(form.website || "").trim(),
-      "10살 조카에게 설명한다면 한 문장으로?": String(
-        form.oneLine || "",
-      ).trim(),
-      "서비스를 안 쓰면 겪는 가장 큰 문제는?": String(
-        form.customerProblem || "",
-      ).trim(),
-      "핵심 고객층(찐팬 페르소나 선택)":
-        personaLabel || String(form.targetPersona || "").trim(),
-      "경쟁사가 못 따라 할 우리만의 무기(USP)": String(form.usp || "").trim(),
-      "현재 비즈니스 완성도(단계 선택)":
-        stageLabel || String(form.stage || "").trim(),
-      "산업군 선택": industryLabel || String(form.industry || "").trim(),
-      "어떤 제목으로 기사에 나올까?": String(form.visionHeadline || "").trim(),
+      "우리 서비스를 전혀 모르는 10살 조카에게 설명한다고 가정하고, 한 문장으로 서비스를 정의해주세요.":
+        safeText(form.oneLine),
+      "고객이 우리 서비스를 쓰지 않을 때 겪는 가장 고통스러운 문제점은 무엇인가요?":
+        safeText(form.customerProblem),
+      "우리 서비스의 '찐팬'이 될 핵심 고객층은 누구인가요?": personaText,
+      "고객들이 현재 우리 서비스를 사용하지 않을 때 대신 사용하고 있는 대안(경쟁사, 다른 방법)은 무엇인가요?":
+        safeText(form.currentAlternatives),
+      "경쟁사가 절대 따라 할 수 없는 우리 서비스만의 '무기'는 무엇인가요?":
+        safeText(form.usp),
+      "비즈니스가 속한 산업군은 어디인가요?": industryText,
+      "5년 뒤, 우리 회사가 뉴스 헤드라인에 나온다면 어떤 제목일까요?": safeText(
+        form.visionHeadline,
+      ),
+      "주요 수익 모델은 무엇인가요?": revenueText,
+      "향후 6~12개월 동안 브랜드가 가장 집중해야 할 목표는 무엇인가요? (최대 2개 선택)":
+        priorities.length ? priorities.map((t) => `- ${t}`).join("\n") : "",
     };
   };
 
@@ -289,7 +596,7 @@ export default function DiagnosisInterview({ onLogout }) {
     if (!s) return null;
     // 숫자 문자열이면 number로 통일
     if (/^\d+$/.test(s)) return Number(s);
-    return s; // 혹시 UUID 같은 형태가 오면 그대로 보존
+    return s; // UUID 등 문자열이면 그대로
   };
 
   const pickBrandId = (data) => {
@@ -321,7 +628,6 @@ export default function DiagnosisInterview({ onLogout }) {
       const arr = v.map((x) => String(x ?? "").trim()).filter(Boolean);
       return arr.length ? arr.map((t) => `- ${t}`).join("\n") : "";
     }
-    // object면 보기 좋게 stringify
     try {
       return JSON.stringify(v, null, 2);
     } catch {
@@ -330,19 +636,82 @@ export default function DiagnosisInterview({ onLogout }) {
   };
 
   const buildRawQaFields = () => {
-    const personaLabel = getLabel(form.targetPersona, PERSONA_OPTIONS);
-    const stageLabel = getLabel(form.stage, STAGE_OPTIONS);
-    const industryLabel = getLabel(form.industry, INDUSTRY_OPTIONS);
+    const personaLabel = resolveSingleChoice(
+      TARGET_PERSONA_OPTIONS,
+      form.targetPersona,
+      form.targetPersonaOther,
+    );
+    const industryLabel = resolveSingleChoice(
+      INDUSTRY_OPTIONS,
+      form.industry,
+      form.industryOther,
+    );
+    const revenueLabel = resolveSingleChoice(
+      REVENUE_MODEL_OPTIONS,
+      form.revenueModel,
+      form.revenueModelOther,
+    );
+    const priorities = resolveMultiChoice(
+      BRAND_PRIORITY_OPTIONS,
+      form.brandPriority,
+      form.brandPriorityOther,
+    );
+
     return {
-      company_name: String(form.companyName || "").trim(),
-      website: String(form.website || "").trim(),
-      service_definition: String(form.oneLine || "").trim(),
-      pain_point: String(form.customerProblem || "").trim(),
-      target_persona: personaLabel || String(form.targetPersona || "").trim(),
-      usp: String(form.usp || "").trim(),
-      growth_stage: stageLabel || String(form.stage || "").trim(),
-      industry: industryLabel || String(form.industry || "").trim(),
-      vision_headline: String(form.visionHeadline || "").trim(),
+      // 레거시 필드(다른 페이지에서 사용 가능)
+      company_name: safeText(form.companyName),
+      website: safeText(form.website),
+      stage: safeText(form.stage),
+
+      // Step1 (context_key 기준)
+      service_definition: safeText(form.oneLine),
+      pain_point: safeText(form.customerProblem),
+      target_persona: personaLabel,
+      current_alternatives: safeText(form.currentAlternatives),
+      usp: safeText(form.usp),
+      industry: industryLabel,
+      vision_headline: safeText(form.visionHeadline),
+      revenue_model: revenueLabel,
+      brand_priority: priorities,
+    };
+  };
+
+  const buildNormalizedFieldsForBackend = () => {
+    const personaValue =
+      form.targetPersona === "Other"
+        ? safeText(form.targetPersonaOther)
+        : safeText(form.targetPersona);
+    const industryValue =
+      form.industry === "Other"
+        ? safeText(form.industryOther)
+        : safeText(form.industry);
+    const revenueValue =
+      form.revenueModel === "Other"
+        ? safeText(form.revenueModelOther)
+        : safeText(form.revenueModel);
+
+    const priorities = Array.isArray(form.brandPriority)
+      ? form.brandPriority
+      : [];
+    const prioritiesValue = priorities
+      .map((v) => {
+        const vv = String(v ?? "").trim();
+        if (!vv) return null;
+        if (vv !== "Other") return vv;
+        return safeText(form.brandPriorityOther) || "Other";
+      })
+      .filter(Boolean);
+
+    return {
+      service_definition: safeText(form.oneLine),
+      pain_point: safeText(form.customerProblem),
+      target_persona: personaValue,
+      current_alternatives: safeText(form.currentAlternatives),
+      usp: safeText(form.usp),
+      industry: industryValue,
+      vision_headline: safeText(form.visionHeadline),
+      revenue_model: revenueValue,
+      brand_priority: prioritiesValue,
     };
   };
 
@@ -355,7 +724,7 @@ export default function DiagnosisInterview({ onLogout }) {
     if (submitOnceRef.current) return;
     submitOnceRef.current = true;
 
-    // 홈 진행 요약 저장(기존 로직 유지)
+    // 홈 진행 요약 저장
     try {
       const payload = {
         progress,
@@ -372,15 +741,16 @@ export default function DiagnosisInterview({ onLogout }) {
     setIsSubmitting(true);
     try {
       const qa = buildQaMap();
-      const requestBody = { ...form, qa };
+      const normalized = buildNormalizedFieldsForBackend();
+      const requestBody = { ...form, ...normalized, qa };
 
       // ✅ 1) 백엔드 호출
-      const responseData = await apiRequest("/brands/interview", {
+      const responseData = await apiRequestAI("/brands/interview", {
         method: "POST",
         data: requestBody,
       });
 
-      // ✅ 2) brandId 추출 (하드코딩 금지)
+      // ✅ 2) brandId 추출
       const extractedBrandId = pickBrandId(responseData);
 
       // ✅ 3) 결과 가공(flat)
@@ -393,8 +763,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
       const resultPayload = {
         brandId: extractedBrandId,
-
-        // 응답 구조가 달라도 화면에서 최대한 그려지도록 평탄화
         summary: asMultilineText(
           responseData?.summary ?? legacyUserResult?.summary,
         ),
@@ -406,12 +774,8 @@ export default function DiagnosisInterview({ onLogout }) {
             legacyUserResult?.key_insights ??
             legacyUserResult?.keyInsights,
         ),
-
-        // Q&A(원문)
         raw_qa: qa,
-        // 입력 요약(필드형)
         raw_qa_fields: buildRawQaFields(),
-
         receivedAt: Date.now(),
         updatedAt: new Date().toISOString(),
         _source: "diagnosisInterview",
@@ -421,21 +785,33 @@ export default function DiagnosisInterview({ onLogout }) {
       userSetItem(DIAGNOSIS_RESULT_KEY, JSON.stringify(resultPayload));
 
       // ✅ 5) Pipeline 업데이트
-      // - 새 진단이 시작되면, 기존 네이밍/컨셉/스토리/로고 진행은 초기화(brandId 섞임 방지)
-      // - brandId가 없으면 다음 단계 진행이 불가하므로 diagnosisSummary도 비워 접근을 막음
       abortBrandFlow("new_diagnosis");
 
       if (extractedBrandId != null) {
-        const summaryStr = buildDiagnosisSummaryFromDraft(form);
+        const summaryObj = buildDiagnosisSummaryFromDraft(form);
         upsertPipeline({
           brandId: extractedBrandId,
-          diagnosisSummary: summaryStr,
+          diagnosisSummary: {
+            ...summaryObj,
+            persona: resolveSingleChoice(
+              TARGET_PERSONA_OPTIONS,
+              form.targetPersona,
+              form.targetPersonaOther,
+            ),
+            revenueModel: resolveSingleChoice(
+              REVENUE_MODEL_OPTIONS,
+              form.revenueModel,
+              form.revenueModelOther,
+            ),
+            priorities: resolveMultiChoice(
+              BRAND_PRIORITY_OPTIONS,
+              form.brandPriority,
+              form.brandPriorityOther,
+            ),
+          },
         });
       } else {
-        upsertPipeline({
-          brandId: null,
-          diagnosisSummary: null,
-        });
+        upsertPipeline({ brandId: null, diagnosisSummary: null });
         alert(
           "서버 응답에 brandId가 없어 다음 단계 진행이 불가능해요. (백엔드 응답 확인 필요)\n결과는 표시되지만, 브랜드 컨설팅은 시작할 수 없습니다.",
         );
@@ -464,6 +840,13 @@ export default function DiagnosisInterview({ onLogout }) {
     }
   };
 
+  const personaSelected = form.targetPersona;
+  const industrySelected = form.industry;
+  const revenueSelected = form.revenueModel;
+  const prioritySelected = Array.isArray(form.brandPriority)
+    ? form.brandPriority
+    : [];
+
   return (
     <div className="diagInterview">
       <PolicyModal
@@ -489,11 +872,10 @@ export default function DiagnosisInterview({ onLogout }) {
           <div className="diagInterview__titleRow">
             <div>
               <h1 className="diagInterview__title">
-                초기 진단 인터뷰 (Foundation)
+                기업진단 인터뷰 (Identity &amp; Foundation)
               </h1>
               <p className="diagInterview__sub">
-                필수 항목을 모두 입력하면 백엔드로 전송하고, 더미/AI 결과를
-                “진단 결과” 페이지에서 보여줘요.
+                브랜드의 본질과 기반을 정의합니다
               </p>
             </div>
 
@@ -510,179 +892,305 @@ export default function DiagnosisInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 0) BASIC */}
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>0. 기본 정보</h2>
-                  <p>회사/프로젝트명은 필수입니다. 링크는 있으면 좋아요.</p>
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>
-                      회사/프로젝트명 <span className="req">*</span>
-                    </label>
-                    <input
-                      value={form.companyName}
-                      onChange={(e) => setValue("companyName", e.target.value)}
-                      placeholder="예) BRANDPILOT"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크 (선택)</label>
-                    <input
-                      value={form.website}
-                      onChange={(e) => setValue("website", e.target.value)}
-                      placeholder="예) https://... 또는 노션/구글독 링크"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 1) ONE LINE */}
-              <div className="card" ref={refOneLine}>
+              {/* 1) service definition */}
+              <div className="card" ref={refDefinition}>
                 <div className="card__head">
                   <h2>1. 한 문장 정의</h2>
-                  <p>아주 쉬운 말로 한 문장만 딱 적어보세요.</p>
+                  <p>서비스를 아주 쉽게 설명해보세요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    10살 조카에게 설명한다면 한 문장으로?{" "}
+                    우리 서비스를 전혀 모르는 10살 조카에게 설명한다고 가정하고,
+                    한 문장으로 서비스를 정의해주세요.{" "}
                     <span className="req">*</span>
                   </label>
                   <input
                     value={form.oneLine}
                     onChange={(e) => setValue("oneLine", e.target.value)}
-                    placeholder="예) 누구를 위해 무엇을 도와주는 서비스인지 한 문장으로"
+                    placeholder="예: 바쁜 사람들이 5분 만에 건강한 식사를 주문할 수 있게 도와주는 앱이야"
                   />
                 </div>
               </div>
 
-              {/* 2~3) CUSTOMER / PERSONA */}
-              <div className="card" ref={refCustomer}>
+              {/* 2) pain point */}
+              <div className="card" ref={refPain}>
                 <div className="card__head">
-                  <h2>2. 문제 / 3. 타겟</h2>
-                  <p>문제와 타겟이 또렷할수록 분석 결과가 더 정확해져요.</p>
+                  <h2>2. 가장 고통스러운 문제</h2>
+                  <p>구체적인 상황과 감정을 포함하면 좋아요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    서비스를 안 쓰면 겪는 가장 큰 문제는?{" "}
-                    <span className="req">*</span>
+                    고객이 우리 서비스를 쓰지 않을 때 겪는 가장 고통스러운
+                    문제점은 무엇인가요? <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.customerProblem}
                     onChange={(e) =>
                       setValue("customerProblem", e.target.value)
                     }
-                    placeholder="예) 고객이 겪는 상황, 불편함, 손해(시간/돈/스트레스)를 구체적으로"
-                    rows={5}
+                    placeholder="구체적인 상황과 감정을 포함해서 작성해주세요"
+                    rows={6}
                   />
-                </div>
-
-                <div className="field">
-                  <label>
-                    핵심 고객층(찐팬 페르소나 선택){" "}
-                    <span className="req">*</span>
-                  </label>
-                  <select
-                    value={form.targetPersona}
-                    onChange={(e) => setValue("targetPersona", e.target.value)}
-                  >
-                    <option value="">선택</option>
-                    {PERSONA_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 
-              {/* 4) USP */}
-              <div className="card" ref={refUsp}>
+              {/* 3) target persona */}
+              <div className="card" ref={refPersona}>
                 <div className="card__head">
-                  <h2>4. USP</h2>
-                  <p>경쟁사가 못 따라 하는 ‘결정적 이유’를 적어보세요.</p>
+                  <h2>3. 핵심 고객층(찐팬 페르소나)</h2>
+                  <p>가장 강하게 반응할 1개의 고객층을 선택하세요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    경쟁사가 못 따라 할 우리만의 무기(USP){" "}
+                    우리 서비스의 '찐팬'이 될 핵심 고객층은 누구인가요?{" "}
                     <span className="req">*</span>
+                  </label>
+
+                  <RadioCards
+                    name="target_persona"
+                    value={personaSelected}
+                    options={TARGET_PERSONA_OPTIONS}
+                    onChange={(v) => setValue("targetPersona", v)}
+                  />
+
+                  {personaSelected === "Other" ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <input
+                        value={form.targetPersonaOther}
+                        onChange={(e) =>
+                          setValue("targetPersonaOther", e.target.value)
+                        }
+                        placeholder={
+                          findOpt(TARGET_PERSONA_OPTIONS, "Other")
+                            ?.textInputPlaceholder || "직접 입력"
+                        }
+                      />
+                      {!hasText(form.targetPersonaOther) ? (
+                        <p className="hint" style={{ marginTop: 6 }}>
+                          * 기타를 선택한 경우, 내용을 입력해야 완료로
+                          처리됩니다.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 4) alternatives */}
+              <div className="card" ref={refAlternatives}>
+                <div className="card__head">
+                  <h2>4. 현재 대안(경쟁/다른 방법)</h2>
+                  <p>
+                    현재 고객이 어떤 방식으로 문제를 해결하고 있는지 적어주세요.
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    고객들이 현재 우리 서비스를 사용하지 않을 때 대신 사용하고
+                    있는 대안(경쟁사, 다른 방법)은 무엇인가요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.currentAlternatives}
+                    onChange={(e) =>
+                      setValue("currentAlternatives", e.target.value)
+                    }
+                    placeholder="예: 수기로 엑셀 관리, 경쟁사 A 서비스, 아예 하지 않음 등"
+                    rows={6}
+                  />
+                </div>
+              </div>
+
+              {/* 5) differentiation / usp (optional) */}
+              <div className="card" ref={refUsp}>
+                <div className="card__head">
+                  <h2>5. 차별점/무기 (선택)</h2>
+                  <p>
+                    기술력, 데이터, 네트워크, 창업자 경험 등 구체적으로
+                    작성해주세요.
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    경쟁사가 절대 따라 할 수 없는 우리 서비스만의 '무기'는
+                    무엇인가요?
                   </label>
                   <textarea
                     value={form.usp}
                     onChange={(e) => setValue("usp", e.target.value)}
-                    placeholder="예) 데이터/네트워크/실행력/전문성/독점 자원 등"
-                    rows={4}
+                    placeholder="기술력, 데이터, 네트워크, 창업자 경험 등 구체적으로 작성해주세요"
+                    rows={5}
                   />
                 </div>
               </div>
 
-              {/* 5~6) STAGE / INDUSTRY */}
-              <div className="card" ref={refStatus}>
+              {/* 6) industry */}
+              <div className="card" ref={refIndustry}>
                 <div className="card__head">
-                  <h2>5. 단계 / 6. 산업군</h2>
-                  <p>현재 상태를 선택하면 분석 기준이 더 명확해져요.</p>
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>
-                      현재 비즈니스 완성도(단계 선택){" "}
-                      <span className="req">*</span>
-                    </label>
-                    <select
-                      value={form.stage}
-                      onChange={(e) => setValue("stage", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {STAGE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="field">
-                    <label>
-                      산업군 선택 <span className="req">*</span>
-                    </label>
-                    <select
-                      value={form.industry}
-                      onChange={(e) => setValue("industry", e.target.value)}
-                    >
-                      <option value="">선택</option>
-                      {INDUSTRY_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* 7) VISION HEADLINE */}
-              <div className="card" ref={refVision}>
-                <div className="card__head">
-                  <h2>7. 헤드라인</h2>
+                  <h2>6. 산업군</h2>
                 </div>
 
                 <div className="field">
                   <label>
-                    어떤 제목으로 기사에 나올까? <span className="req">*</span>
+                    비즈니스가 속한 산업군은 어디인가요?{" "}
+                    <span className="req">*</span>
                   </label>
-                  <textarea
+
+                  <RadioCards
+                    name="industry"
+                    value={industrySelected}
+                    options={INDUSTRY_OPTIONS}
+                    onChange={(v) => setValue("industry", v)}
+                  />
+
+                  {industrySelected === "Other" ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <input
+                        value={form.industryOther}
+                        onChange={(e) =>
+                          setValue("industryOther", e.target.value)
+                        }
+                        placeholder={
+                          findOpt(INDUSTRY_OPTIONS, "Other")
+                            ?.textInputPlaceholder || "직접 입력"
+                        }
+                      />
+                      {!hasText(form.industryOther) ? (
+                        <p className="hint" style={{ marginTop: 6 }}>
+                          * 기타를 선택한 경우, 내용을 입력해야 완료로
+                          처리됩니다.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 7) vision headline */}
+              <div className="card" ref={refVision}>
+                <div className="card__head">
+                  <h2>7. 비전(헤드라인)</h2>
+                </div>
+
+                <div className="field">
+                  <label>
+                    5년 뒤, 우리 회사가 뉴스 헤드라인에 나온다면 어떤
+                    제목일까요? <span className="req">*</span>
+                  </label>
+                  <input
                     value={form.visionHeadline}
                     onChange={(e) => setValue("visionHeadline", e.target.value)}
-                    placeholder='예) "OOO, 1만 기업의 브랜딩 실행을 자동화하다"'
-                    rows={4}
+                    placeholder="예: 'OO, 국내 1위 배달 플랫폼 등극', 'OO 서비스, 500만 사용자 돌파'"
                   />
+                </div>
+              </div>
+
+              {/* 8) revenue model */}
+              <div className="card" ref={refRevenue}>
+                <div className="card__head">
+                  <h2>8. 수익 모델</h2>
+                </div>
+
+                <div className="field">
+                  <label>
+                    주요 수익 모델은 무엇인가요? <span className="req">*</span>
+                  </label>
+
+                  <RadioCards
+                    name="revenue_model"
+                    value={revenueSelected}
+                    options={REVENUE_MODEL_OPTIONS}
+                    onChange={(v) => setValue("revenueModel", v)}
+                  />
+
+                  {revenueSelected === "Other" ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <input
+                        value={form.revenueModelOther}
+                        onChange={(e) =>
+                          setValue("revenueModelOther", e.target.value)
+                        }
+                        placeholder={
+                          findOpt(REVENUE_MODEL_OPTIONS, "Other")
+                            ?.textInputPlaceholder || "직접 입력"
+                        }
+                      />
+                      {!hasText(form.revenueModelOther) ? (
+                        <p className="hint" style={{ marginTop: 6 }}>
+                          * 기타를 선택한 경우, 내용을 입력해야 완료로
+                          처리됩니다.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 9) brand priority */}
+              <div className="card" ref={refPriority}>
+                <div className="card__head">
+                  <h2>9. 브랜드 목표</h2>
+                  <p>
+                    향후 6~12개월 동안 집중해야 할 목표를 최대 2개 선택하세요.
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    향후 6~12개월 동안 브랜드가 가장 집중해야 할 목표는
+                    무엇인가요? (최대 2개 선택) <span className="req">*</span>
+                  </label>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      margin: "6px 0 10px",
+                    }}
+                  >
+                    <span style={{ opacity: 0.8, fontSize: 13 }}>
+                      선택: {prioritySelected.length}/2
+                    </span>
+                    {prioritySelected.length >= 2 ? (
+                      <span style={{ opacity: 0.7, fontSize: 12 }}>
+                        * 최대 2개 선택됨
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <CheckboxCards
+                    value={prioritySelected}
+                    options={BRAND_PRIORITY_OPTIONS}
+                    onToggle={togglePriority}
+                    disabledFn={priorityDisabledFn}
+                  />
+
+                  {prioritySelected.includes("Other") ? (
+                    <div className="field" style={{ marginTop: 10 }}>
+                      <input
+                        value={form.brandPriorityOther}
+                        onChange={(e) =>
+                          setValue("brandPriorityOther", e.target.value)
+                        }
+                        placeholder={
+                          findOpt(BRAND_PRIORITY_OPTIONS, "Other")
+                            ?.textInputPlaceholder || "직접 입력"
+                        }
+                      />
+                      {!hasText(form.brandPriorityOther) ? (
+                        <p className="hint" style={{ marginTop: 6 }}>
+                          * 기타를 선택한 경우, 내용을 입력해야 완료로
+                          처리됩니다.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -730,27 +1238,31 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
                 <ul className="checkList">
-                  <li className={requiredStatus.companyName ? "ok" : ""}>
-                    회사/프로젝트명
-                  </li>
                   <li className={requiredStatus.oneLine ? "ok" : ""}>
                     1) 한 문장 정의
                   </li>
                   <li className={requiredStatus.customerProblem ? "ok" : ""}>
-                    2) 가장 큰 문제
+                    2) 문제점
                   </li>
                   <li className={requiredStatus.targetPersona ? "ok" : ""}>
                     3) 핵심 고객층
                   </li>
-                  <li className={requiredStatus.usp ? "ok" : ""}>4) USP</li>
-                  <li className={requiredStatus.stage ? "ok" : ""}>
-                    5) 비즈니스 단계
+                  <li
+                    className={requiredStatus.currentAlternatives ? "ok" : ""}
+                  >
+                    4) 현재 대안
                   </li>
                   <li className={requiredStatus.industry ? "ok" : ""}>
                     6) 산업군
                   </li>
                   <li className={requiredStatus.visionHeadline ? "ok" : ""}>
                     7) 헤드라인
+                  </li>
+                  <li className={requiredStatus.revenueModel ? "ok" : ""}>
+                    8) 수익 모델
+                  </li>
+                  <li className={requiredStatus.brandPriority ? "ok" : ""}>
+                    9) 브랜드 목표
                   </li>
                 </ul>
 
@@ -772,9 +1284,7 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${
-                    canAnalyze && !isSubmitting ? "" : "disabled"
-                  }`}
+                  className={`btn primary sideAnalyze ${canAnalyze && !isSubmitting ? "" : "disabled"}`}
                   onClick={handleViewResult}
                   disabled={!canAnalyze || isSubmitting}
                 >
