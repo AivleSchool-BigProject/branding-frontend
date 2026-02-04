@@ -183,9 +183,11 @@ export function buildDiagnosisSummaryFromDraft(form) {
 export function ensureStepAccess(stepKey) {
   const p = readPipeline();
 
-  const hasDiagnosis = Boolean(
-    p?.diagnosisSummary?.companyName || p?.diagnosisSummary?.oneLine,
-  );
+  // ✅ 진단 완료 판정 로직 수정
+  const hasDiagnosis =
+    Boolean(p?.brandId) &&
+    Boolean(String(p?.diagnosisSummary || "").trim());
+
   const hasNaming = Boolean(p?.naming?.selectedId || p?.naming?.selected);
   const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);
   const hasStory = Boolean(p?.story?.selectedId || p?.story?.selected);

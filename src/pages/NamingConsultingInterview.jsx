@@ -116,6 +116,33 @@ function isFilled(v) {
   return Boolean(String(v ?? "").trim());
 }
 
+function safeParse(raw) {
+  try {
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildDiagnosisSummaryFromResult(diagResult) {
+  if (!diagResult) return "";
+
+  // ✅ DiagnosisInterview에서 만들어 저장한 형태 기준
+  const fields = diagResult?.raw_qa_fields || {};
+  const oneLine = String(fields?.service_definition || "").trim();
+  const persona = String(fields?.target_persona || "").trim();
+  const industry = String(fields?.industry || "").trim();
+
+  const parts = [
+    oneLine ? `정의: ${oneLine}` : null,
+    persona ? `타겟: ${persona}` : null,
+    industry ? `산업: ${industry}` : null,
+  ].filter(Boolean);
+
+  // 없으면 최소한 summary라도
+  return parts.join(" | ") || String(diagResult?.summary || "").trim();
+}
+
 /** ======================
  *  백으로 보낼 payload 생성
  *  - 질문 문장 포함 qa 배열
@@ -461,9 +488,11 @@ export default function NamingConsultingInterview({ onLogout }) {
     try {
       const p = readPipeline();
       if (!p?.diagnosisSummary) {
-        const diag = readDiagnosisDraftForm();
-        if (diag) {
-          const summary = buildDiagnosisSummaryFromDraft(diag);
+        const diagRaw = userGetItem("diagnosisResult_v1");
+        const diagResult = safeParse(diagRaw);
+        
+        const summary = buildDiagnosisSummaryFromResult(diagResult);
+        if (summary) {
           upsertPipeline({ diagnosisSummary: summary });
         }
       }
@@ -471,8 +500,19 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
+    const p = readPipeline();
+    const diag = (() => {
+      try { return JSON.parse(userGetItem("diagnosisResult_v1") || "null"); }
+      catch { return null; }
+    })();
+    console.log("[DEBUG] pipeline =", p);
+    console.log("[DEBUG] diagnosisResult_v1 =", diag);
+
+
+
     // ✅ 네이밍 단계 접근 가능 여부 체크(Strict)
     const guard = ensureStrictStepAccess("naming");
+    console.log("[DEBUG] guard =", guard);
     if (!guard.ok) {
       const msg =
         guard?.reason === "no_back"
