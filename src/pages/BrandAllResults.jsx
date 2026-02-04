@@ -45,10 +45,21 @@ function selectedLabelTitle(serviceKey) {
   return serviceKey === "logo" ? "선택한 시안" : "선택한 컨설팅 제안";
 }
 
-function readStorageWithFallback(primaryKey, fallbackKey) {
-  const raw =
-    userGetItem(primaryKey) || (fallbackKey ? userGetItem(fallbackKey) : null);
-  return safeParse(raw);
+function readStorageWithFallback(primaryKey, fallbackKeys) {
+  const keys = [
+    primaryKey,
+    ...(Array.isArray(fallbackKeys)
+      ? fallbackKeys
+      : fallbackKeys
+        ? [fallbackKeys]
+        : []),
+  ].filter(Boolean);
+
+  for (const k of keys) {
+    const parsed = safeParse(userGetItem(k));
+    if (parsed) return parsed;
+  }
+  return null;
 }
 
 function pickFromHistory(report, serviceKey) {
@@ -111,7 +122,10 @@ export default function BrandAllResults({ onLogout }) {
         legacyKey: "brandInterview_concept_v1",
         legacyFallbackKey: "brandInterview_homepage_v1",
         draftKey: "conceptConsultingInterviewDraft_v1",
-        draftFallbackKey: "conceptInterviewDraft_homepage_v6",
+        draftFallbackKey: [
+          "conceptInterviewDraft_homepage_v7",
+          "conceptInterviewDraft_homepage_v6",
+        ],
         interviewRoute: "/brand/concept/interview",
         resultRoute: "/brand/result?service=homepage",
       },

@@ -21,6 +21,8 @@ const STEP_STORAGE_KEYS = {
     // 컨셉(구 홈페이지 컨설팅 키 포함)
     "conceptConsultingInterviewDraft_v1",
     "conceptConsultingInterviewResult_v1",
+    "conceptInterviewDraft_homepage_v7",
+    "conceptInterviewResult_homepage_v7",
     "conceptInterviewDraft_homepage_v6",
     "conceptInterviewResult_homepage_v6",
     "conceptInterviewDraft_homepage_v5",
@@ -185,8 +187,7 @@ export function ensureStepAccess(stepKey) {
 
   // ✅ 진단 완료 판정 로직 수정
   const hasDiagnosis =
-    Boolean(p?.brandId) &&
-    Boolean(String(p?.diagnosisSummary || "").trim());
+    Boolean(p?.brandId) && Boolean(String(p?.diagnosisSummary || "").trim());
 
   const hasNaming = Boolean(p?.naming?.selectedId || p?.naming?.selected);
   const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);
@@ -282,6 +283,7 @@ export function migrateLegacyToPipelineIfNeeded() {
     { step: "naming", key: "brandInterview_naming_v1" },
 
     // concept
+    { step: "concept", key: "conceptInterviewResult_homepage_v7" },
     { step: "concept", key: "conceptInterviewResult_homepage_v6" },
     { step: "concept", key: "conceptInterviewResult_homepage_v5" },
     { step: "concept", key: "conceptConsultingInterviewResult_v1" },
