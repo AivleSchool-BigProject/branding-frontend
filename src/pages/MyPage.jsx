@@ -196,6 +196,9 @@ export default function MyPage({ onLogout }) {
 
   const [brandLoading, setBrandLoading] = useState(false);
   const [brandError, setBrandError] = useState("");
+  const [brandReloadTick, setBrandReloadTick] = useState(0);
+  const reloadBrands = () => setBrandReloadTick((v) => v + 1);
+
   const [deletingId, setDeletingId] = useState(null);
 
   // ✅ 401/403 등 인증 이슈가 발생하면 즉시 로그아웃 처리
@@ -390,7 +393,7 @@ export default function MyPage({ onLogout }) {
         if (!alive) return;
         setBrandReports(mapped.filter((r) => !hiddenSet.has(String(r.id))));
       } catch (e) {
-        const status = e?.status;
+        const status = e?.response?.status ?? e?.status;
         if (status === 401 || status === 403) {
           forceRelogin(
             "로그인이 만료되었거나 권한이 없습니다(401/403). 다시 로그인해주세요.",
@@ -413,7 +416,7 @@ export default function MyPage({ onLogout }) {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ✅ 탭 변경으로 재호출하지 않음
+  }, [brandReloadTick]); // ✅ 필요 시(에러/재시도) 재호출
 
   const activeReports = tab === "brand" ? brandReports : promoReports;
 
@@ -637,17 +640,36 @@ export default function MyPage({ onLogout }) {
 
           {filtered.length === 0 ? (
             <div className="myhub-empty">
+              <div className="myhub-empty-illust" aria-hidden="true" />
               <div>
                 <h4 className="myhub-empty-title">
-                  아직 저장된 리포트가 없습니다
+                  {tab === "brand" && brandLoading
+                    ? "불러오는 중..."
+                    : tab === "brand" && brandError
+                      ? "리포트를 불러오지 못했어요"
+                      : "아직 저장된 리포트가 없습니다"}
                 </h4>
                 <p className="myhub-empty-sub">
-                  컨설팅을 완료하면 카드가 자동으로 쌓입니다.
+                  {tab === "brand" && brandLoading
+                    ? "잠시만 기다려주세요."
+                    : tab === "brand" && brandError
+                      ? brandError
+                      : "컨설팅을 완료하면 카드가 자동으로 쌓입니다."}
                 </p>
               </div>
-              <button type="button" className="btn primary" onClick={goStart}>
-                지금 시작하기
-              </button>
+              {tab === "brand" && brandError ? (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={reloadBrands}
+                >
+                  다시 불러오기
+                </button>
+              ) : (
+                <button type="button" className="btn primary" onClick={goStart}>
+                  지금 시작하기
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -655,7 +677,17 @@ export default function MyPage({ onLogout }) {
                 <div className="myhub-hint">불러오는 중...</div>
               ) : null}
               {tab === "brand" && brandError ? (
-                <div className="myhub-hint danger">{brandError}</div>
+                <div className="myhub-hint danger">
+                  {brandError}{" "}
+                  <button
+                    type="button"
+                    className="btn ghost sm"
+                    onClick={reloadBrands}
+                    style={{ marginLeft: 8 }}
+                  >
+                    다시 시도
+                  </button>
+                </div>
               ) : null}
 
               <div className="reportStack">
