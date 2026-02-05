@@ -40,8 +40,7 @@ const RESULT_KEY = "namingConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_naming_v1";
 
 /** ======================
- *  ✅ Step 2. Naming Strategy (질문지 교체)
- *  - 너가 준 step_2 JSON 기준으로 구성
+ *  ✅ Step 2. Naming Strategy (질문지)
  *  ====================== */
 const NAMING_QUESTIONS = [
   {
@@ -100,28 +99,13 @@ function safeText(v, fallback = "") {
   return s ? s : fallback;
 }
 
-function stageLabel(v) {
-  const s = String(v || "")
-    .trim()
-    .toLowerCase();
-  if (!s) return "-";
-  if (s === "idea") return "아이디어";
-  if (s === "mvp") return "MVP";
-  if (s === "pmf") return "PMF";
-  if (s === "revenue" || s === "early_revenue") return "매출";
-  if (s === "invest") return "투자";
-  if (s === "scaleup" || s === "scaling") return "스케일업";
-  if (s === "rebrand") return "리브랜딩";
-  return String(v);
-}
-
 function isFilled(v) {
   if (Array.isArray(v)) return v.length > 0;
   return Boolean(String(v ?? "").trim());
 }
 
 /** ======================
- *  ✅ Step2 옵션(질문지 교체)
+ *  ✅ Step2 옵션
  *  ====================== */
 const NAMING_STYLE_OPTIONS = [
   { value: "Descriptive", label: "직관적/설명적" },
@@ -166,19 +150,10 @@ const DOMAIN_OPTIONS = [
 ];
 
 /** ======================
- *  ✅ Step2 폼(질문지 교체)
+ *  ✅ Step2 폼
+ *  - (요청) 상단 기업진단 자동입력 UI 제거 → 관련 필드도 제거
  *  ====================== */
 const INITIAL_FORM = {
-  // ✅ 기업 진단에서 자동 반영(편집 X)
-  companyName: "",
-  industry: "",
-  stage: "",
-  website: "",
-  oneLine: "",
-  brandDesc: "",
-  targetCustomer: "",
-
-  // ✅ 네이밍 전략(편집 O)
   namingStyles: [], // single_choice (배열 1개만 유지)
   namingStyleOther: "",
 
@@ -199,9 +174,20 @@ const INITIAL_FORM = {
   currentName: "", // optional
 };
 
+const ALLOWED_FORM_KEYS = Object.keys(INITIAL_FORM);
+
+function sanitizeForm(raw) {
+  const obj = raw && typeof raw === "object" ? raw : {};
+  const next = { ...INITIAL_FORM };
+  ALLOWED_FORM_KEYS.forEach((k) => {
+    if (k in obj) next[k] = obj[k];
+  });
+  return next;
+}
+
 /** ======================
- *  ✅ 백으로 보낼 payload 생성 (질문지 교체에 따른 answers/qa만 변경)
- *  - 정책/흐름/엔드포인트는 그대로
+ *  ✅ 백으로 보낼 payload 생성
+ *  - 기업진단 내용은 UI에서 안 보여도, 내부적으로 diagnosisSummary로 전달됨
  *  ====================== */
 function buildNamingPayload(
   form,
@@ -243,7 +229,6 @@ function buildNamingPayload(
   };
 
   // ✅ v2(백 전달용): context_key 기준(스네이크 케이스)
-  //    - brand_vibe는 백 호환 위해 문자열도 같이 제공
   const answersV2 = {
     naming_style: namingStyle,
     naming_style_other: answersLegacy.namingStyleOther,
@@ -295,11 +280,10 @@ function buildNamingPayload(
     regenSeed,
     brandId: brandId || null,
 
-    // ✅ 질문/답변
     answers,
     qa,
 
-    // ✅ 이전 단계 요약(네이밍은 기업진단 요약 기반)
+    // ✅ 기업진단 요약(내부 전달용)
     diagnosisSummary: diagnosisSummary || null,
 
     questionnaire: {
@@ -312,12 +296,11 @@ function buildNamingPayload(
 
 /** ======================
  *  백 응답 후보 normalize
- *  - 백이 어떤 포맷을 주더라도 UI에서 쓰기 쉽게 3안 형태로 맞춤
  *  ====================== */
 function normalizeNamingCandidates(raw) {
   const payload = raw?.data ?? raw?.result ?? raw;
 
-  // ✅ 케이스 0) 백이 { name1, name2, name3 } 형태로 주는 경우
+  // ✅ { name1, name2, name3 } 형태
   if (payload && typeof payload === "object" && !Array.isArray(payload)) {
     const keys = ["name1", "name2", "name3"];
     const values = keys
@@ -347,7 +330,7 @@ function normalizeNamingCandidates(raw) {
 
   if (!Array.isArray(list)) return [];
 
-  // 케이스 A: ["name1","name2","name3"] 문자열 배열
+  // ✅ ["name1","name2","name3"]
   if (list.length && typeof list[0] === "string") {
     return list.slice(0, 3).map((name, idx) => ({
       id: `name_${idx + 1}`,
@@ -362,7 +345,7 @@ function normalizeNamingCandidates(raw) {
     }));
   }
 
-  // 케이스 B: [{id, title, names, reason ...}] 객체 배열
+  // ✅ 객체 배열
   return list.slice(0, 3).map((item, idx) => {
     const id = item.id || item.candidateId || `name_${idx + 1}`;
     const title =
@@ -437,10 +420,9 @@ export default function NamingConsultingInterview({ onLogout }) {
   const refResult = useRef(null);
 
   // 섹션 ref
-  const refBasic = useRef(null);
   const refInterview = useRef(null);
 
-  // ✅ 필수 항목 (질문지 교체)
+  // ✅ 필수 항목
   const requiredKeys = useMemo(
     () => [
       "namingStyles",
@@ -514,7 +496,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   /** ======================
-   *  (중요) Strict Flow 가드 + brandId/진단요약 pipeline 준비 (그대로)
+   *  Strict Flow 가드 + pipeline 준비
    *  ====================== */
   useEffect(() => {
     try {
@@ -548,73 +530,24 @@ export default function NamingConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ draft 로드
+  // ✅ draft 로드(폼 키 sanitize)
   useEffect(() => {
     try {
       const raw = userGetItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed?.form && typeof parsed.form === "object") {
-        setForm((prev) => ({ ...prev, ...parsed.form }));
-      }
+
+      const loaded =
+        parsed?.form && typeof parsed.form === "object"
+          ? sanitizeForm(parsed.form)
+          : null;
+
+      if (loaded) setForm(loaded);
+
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
         if (!Number.isNaN(d.getTime())) setLastSaved(d.toLocaleString());
       }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // ✅ 기업 진단 값 자동 반영
-  useEffect(() => {
-    try {
-      const diag = readDiagnosisDraftForm();
-      if (!diag) return;
-
-      const next = {
-        companyName: safeText(
-          diag.companyName || diag.brandName || diag.projectName,
-          "",
-        ),
-        industry: safeText(diag.industry || diag.category || diag.field, ""),
-        stage: safeText(diag.stage, ""),
-        website: safeText(diag.website || diag.homepage || diag.siteUrl, ""),
-        oneLine: safeText(
-          diag.oneLine ||
-            diag.companyIntro ||
-            diag.intro ||
-            diag.serviceIntro ||
-            diag.shortIntro,
-          "",
-        ),
-        brandDesc: safeText(
-          diag.brandDesc ||
-            diag.companyDesc ||
-            diag.detailIntro ||
-            diag.serviceDesc,
-          "",
-        ),
-        targetCustomer: safeText(
-          diag.targetPersona ||
-            diag.targetCustomer ||
-            diag.target ||
-            diag.customerTarget ||
-            diag.primaryCustomer,
-          "",
-        ),
-      };
-
-      setForm((prev) => ({
-        ...prev,
-        companyName: next.companyName || prev.companyName,
-        industry: next.industry || prev.industry,
-        stage: next.stage || prev.stage,
-        website: next.website || prev.website,
-        oneLine: next.oneLine || prev.oneLine,
-        brandDesc: next.brandDesc || prev.brandDesc,
-        targetCustomer: next.targetCustomer || prev.targetCustomer,
-      }));
     } catch {
       // ignore
     }
@@ -654,7 +587,6 @@ export default function NamingConsultingInterview({ onLogout }) {
   const persistResult = (nextCandidates, nextSelectedId, nextSeed) => {
     const updatedAt = Date.now();
 
-    // ✅ 이 페이지 전용 결과 저장
     try {
       userSetItem(
         RESULT_KEY,
@@ -669,7 +601,6 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ 레거시 저장(기존 BrandAllResults 호환)
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
@@ -688,7 +619,6 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ (핵심) pipeline 저장: 다음 단계에서 그대로 사용
     try {
       const selected =
         nextCandidates.find((c) => c.id === nextSelectedId) || null;
@@ -698,6 +628,7 @@ export default function NamingConsultingInterview({ onLogout }) {
         selected,
         regenSeed: nextSeed,
       });
+
       // ✅ 네이밍이 바뀌면 이후 단계(컨셉/스토리/로고)는 무효 → 잠금 처리
       clearStepsFrom("concept");
     } catch {
@@ -706,7 +637,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   /** ======================
-   *  ✅ 백 연동: 네이밍 생성 (그대로)
+   *  ✅ 네이밍 생성
    *   - POST /brands/{brandId}/naming
    *  ====================== */
   const handleGenerateCandidates = async (mode = "generate") => {
@@ -724,8 +655,9 @@ export default function NamingConsultingInterview({ onLogout }) {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
-      // pipeline에서 brandId / diagnosisSummary 확보
       const p = readPipeline();
+
+      // ✅ 기업진단 요약(내부 전달용)
       const diagnosisSummary =
         p?.diagnosisSummary ||
         (() => {
@@ -754,13 +686,11 @@ export default function NamingConsultingInterview({ onLogout }) {
         diagnosisSummary,
       });
 
-      // 1) 네이밍 생성
       const namingRes = await apiRequestAI(`/brands/${brandId}/naming`, {
         method: "POST",
         data: payload,
       });
 
-      // 후보 normalize
       const nextCandidates = normalizeNamingCandidates(namingRes);
       if (!nextCandidates.length) {
         alert(
@@ -780,15 +710,12 @@ export default function NamingConsultingInterview({ onLogout }) {
       const status = error?.response?.status;
       console.error("Naming generate failed:", error);
 
-      // ✅ 401/403: 인증/권한 문제
       if (status === 401 || status === 403) {
         alert(
           status === 401
             ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
             : "권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
         );
-
-        // 혹시 pipeline에 잘못된 brandId가 남아있을 수 있어 초기화(안전)
         try {
           upsertPipeline({ brandId: null });
         } catch {
@@ -867,7 +794,6 @@ export default function NamingConsultingInterview({ onLogout }) {
         return;
       }
 
-      // 이미 단계가 넘어간 경우(예: 재진입)에는 다음으로 진행 허용
       if (!String(msg).includes("네이밍 단계")) {
         alert(`네이밍 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
         return;
@@ -898,63 +824,13 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ pipeline에서도 naming부터 초기화 + 이후 단계 잠금
     try {
       clearStepsFrom("naming");
     } catch {
       // ignore
     }
 
-    // 진단 값은 다시 자동 반영되도록
-    const diag = (() => {
-      try {
-        return readDiagnosisDraftForm();
-      } catch {
-        return null;
-      }
-    })();
-
-    const base = { ...INITIAL_FORM };
-    if (diag) {
-      base.companyName = safeText(
-        diag.companyName || diag.brandName || diag.projectName,
-        "",
-      );
-      base.industry = safeText(
-        diag.industry || diag.category || diag.field,
-        "",
-      );
-      base.stage = safeText(diag.stage, "");
-      base.website = safeText(
-        diag.website || diag.homepage || diag.siteUrl,
-        "",
-      );
-      base.oneLine = safeText(
-        diag.oneLine ||
-          diag.companyIntro ||
-          diag.intro ||
-          diag.serviceIntro ||
-          diag.shortIntro,
-        "",
-      );
-      base.brandDesc = safeText(
-        diag.brandDesc ||
-          diag.companyDesc ||
-          diag.detailIntro ||
-          diag.serviceDesc,
-        "",
-      );
-      base.targetCustomer = safeText(
-        diag.targetPersona ||
-          diag.targetCustomer ||
-          diag.target ||
-          diag.customerTarget ||
-          diag.primaryCustomer,
-        "",
-      );
-    }
-
-    setForm(base);
+    setForm({ ...INITIAL_FORM });
     setCandidates([]);
     setSelectedId(null);
     setRegenSeed(0);
@@ -988,8 +864,8 @@ export default function NamingConsultingInterview({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">네이밍 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                기업 진단 요약을 기반으로 네이밍 3안을 제안합니다. 선택한 1안이
-                다음 단계(컨셉) 생성에 사용됩니다.
+                아래 Step 2 질문에 답하면 네이밍 제안 3안을 생성합니다. 선택한
+                1안은 다음 단계(컨셉) 생성에 사용됩니다.
               </p>
             </div>
 
@@ -1008,86 +884,12 @@ export default function NamingConsultingInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 1) BASIC (자동 반영) */}
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>1. 기본 정보 (자동 반영)</h2>
-                  <p>
-                    기업 진단에서 입력한 정보를 자동으로 불러옵니다. (이
-                    페이지에서 수정하지 않아요)
-                  </p>
-                </div>
+              {/* (요청 반영) 상단 기업진단 자동입력 카드 제거 */}
 
-                <div className="formGrid">
-                  <div className="field">
-                    <label>회사/프로젝트명</label>
-                    <input
-                      value={form.companyName}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>산업/분야</label>
-                    <input
-                      value={form.industry}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>성장 단계</label>
-                    <input
-                      value={stageLabel(form.stage)}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크</label>
-                    <input
-                      value={form.website}
-                      disabled
-                      placeholder="(선택) 진단에 입력했다면 자동 반영"
-                    />
-                  </div>
-                </div>
-
-                {String(form.targetCustomer || "").trim() ? (
-                  <div className="field">
-                    <label>타깃(진단 기준)</label>
-                    <input value={form.targetCustomer} disabled />
-                  </div>
-                ) : null}
-
-                <div className="field">
-                  <label>회사/서비스 소개</label>
-                  <textarea
-                    value={form.oneLine}
-                    disabled
-                    placeholder="기업 진단에서 자동 반영"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>상세 설명</label>
-                  <textarea
-                    value={form.brandDesc}
-                    disabled
-                    placeholder="(선택) 진단 인터뷰에 입력한 값이 없다면 비어 있을 수 있어요"
-                    rows={5}
-                  />
-                </div>
-              </div>
-
-              {/* 2) INTERVIEW (질문지 교체) */}
+              {/* INTERVIEW */}
               <div className="card" ref={refInterview}>
                 <div className="card__head">
-                  <h2>2. Step 2. Naming Strategy</h2>
+                  <h2>Naming Consulting</h2>
                   <p>
                     아래 항목을 입력하면 네이밍 컨설팅 제안 3가지를 생성할 수
                     있어요.
@@ -1295,7 +1097,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                                   next = [...cur, opt.value];
                                 }
 
-                                // 기타 해제 시 입력값도 비움(선택사항)
                                 const nextOther = next.includes("Other")
                                   ? prev.brandVibeOther
                                   : "";
@@ -1648,10 +1449,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                   <div className="sideMeta__row">
                     <span className="k">마지막 저장</span>
                     <span className="v">{lastSaved}</span>
-                  </div>
-                  <div className="sideMeta__row">
-                    <span className="k">단계</span>
-                    <span className="v">{stageLabel(form.stage)}</span>
                   </div>
                 </div>
 
