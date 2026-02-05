@@ -167,82 +167,7 @@ export default function LoginApp() {
       <EasyLoginModal open={easyOpen} onClose={() => setEasyOpen(false)} />
 
       <div className="login-shell split">
-        {/* Left: 소개 영역 */}
-        <section className="login-hero navy-panel">
-          <div className="hero-top">
-            <span className="hero-title-line">여러분의 새로운 시작</span>
-            <span className="hero-title-line">BRANDPILOT이 함께 합니다.</span>
-          </div>
-
-          <div className="feature-marquee" aria-label="서비스 핵심 기능">
-            <div className="marquee-track">
-              <div className="marquee-card">
-                <img src={namingLogoImg} alt="네이밍 로고 추천" />
-                <strong>네이밍·로고 추천</strong>
-                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
-              </div>
-
-              <div className="marquee-card">
-                <img src={analyzeCompany} alt="기업 진단 분석" />
-                <strong>기업 진단분석</strong>
-                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
-              </div>
-
-              <div className="marquee-card">
-                <img src={analyzeReport} alt="분석기반 리포트" />
-                <strong>분석 리포트 제공</strong>
-                <p>분석 내용 기반 리포트를 제공합니다.</p>
-              </div>
-
-              <div className="marquee-card">
-                <img src={makeset} alt="문서초안자동생성" />
-                <strong>문서 초안 자동 생성</strong>
-                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
-              </div>
-
-              <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
-                <strong>스타트업 스토리텔링</strong>
-                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
-              </div>
-            </div>
-          </div>
-
-          <footer className="hero-footer">
-            <div className="hero-footer-links">
-              <button
-                type="button"
-                className="hero-footer-link"
-                onClick={() => setOpenType("privacy")}
-              >
-                개인정보 처리방침
-              </button>
-              <span className="hero-footer-sep">|</span>
-              <button
-                type="button"
-                className="hero-footer-link"
-                onClick={() => setOpenType("terms")}
-              >
-                이용약관
-              </button>
-            </div>
-
-            <div className="hero-footer-text">
-              <div>
-                <strong>BRANDPILOT</strong>
-              </div>
-              <div>
-                BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
-              </div>
-              <div>KT AIVLE 7반 15조</div>
-              <div className="hero-footer-copy">
-                © 2026 Team15 Corp. All rights reserved.
-              </div>
-            </div>
-          </footer>
-        </section>
-
-        {/* Right: 로그인 폼 */}
+        {/* Left: 로그인 폼 */}
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
 
@@ -336,6 +261,80 @@ export default function LoginApp() {
               </button>
             </div>
           </form>
+        </section>
+        {/* Right: 소개 영역 */}
+        <section className="login-hero navy-panel">
+          <div className="hero-top">
+            <span className="hero-title-line">여러분의 새로운 시작</span>
+            <span className="hero-title-line">BRANDPILOT이 함께 합니다.</span>
+          </div>
+
+          <div className="feature-marquee" aria-label="서비스 핵심 기능">
+            <div className="marquee-track">
+              <div className="marquee-card">
+                <img src={namingLogoImg} alt="네이밍 로고 추천" />
+                <strong>네이밍·로고 추천</strong>
+                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={analyzeCompany} alt="기업 진단 분석" />
+                <strong>기업 진단분석</strong>
+                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={analyzeReport} alt="분석기반 리포트" />
+                <strong>분석 리포트 제공</strong>
+                <p>분석 내용 기반 리포트를 제공합니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={makeset} alt="문서초안자동생성" />
+                <strong>문서 초안 자동 생성</strong>
+                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
+              </div>
+
+              <div className="marquee-card">
+                <img src={story} alt="스토리텔링" />
+                <strong>스타트업 스토리텔링</strong>
+                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
+              </div>
+            </div>
+          </div>
+
+          <footer className="hero-footer">
+            <div className="hero-footer-links">
+              <button
+                type="button"
+                className="hero-footer-link"
+                onClick={() => setOpenType("privacy")}
+              >
+                개인정보 처리방침
+              </button>
+              <span className="hero-footer-sep">|</span>
+              <button
+                type="button"
+                className="hero-footer-link"
+                onClick={() => setOpenType("terms")}
+              >
+                이용약관
+              </button>
+            </div>
+
+            <div className="hero-footer-text">
+              <div>
+                <strong>BRANDPILOT</strong>
+              </div>
+              <div>
+                BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
+              </div>
+              <div>KT AIVLE 7반 15조</div>
+              <div className="hero-footer-copy">
+                © 2026 Team15 Corp. All rights reserved.
+              </div>
+            </div>
+          </footer>
         </section>
       </div>
     </div>

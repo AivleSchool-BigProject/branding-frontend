@@ -1,4 +1,4 @@
-/* src/styles/FindPassword.css */
+/* src/styles/Signup.css */
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap");
 
 :root {
@@ -10,59 +10,71 @@
   --panel: #ffffff;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: "Manrope", "Noto Sans KR", sans-serif;
-  color: var(--text);
-  background: #f5f6fb;
-}
-
 .signup-page {
   min-height: 100vh;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  align-items: start;
+  display: block;
+  background: #ffffff;
 }
 
-.signup-card {
-  width: min(520px, 92vw);
-  margin: 48px auto 32px;
+.signup-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.signup-hero {
+  min-height: 100vh;
+}
+
+.signup-panel {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #ffffff;
+}
+
+.signup-panel .signup-card {
+  width: min(560px, 92%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--panel);
   border: 1px solid #eef1f6;
-  border-radius: 18px;
-  padding: 36px 32px 28px;
-  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.08);
+  border-radius: 24px;
+  padding: 32px 28px 24px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.1);
 }
 
-.signup-title {
+.signup-page .signup-title {
   text-align: center;
-  margin: 0 0 24px;
-  font-size: 22px;
-  font-weight: bold;
+  margin: 0 0 22px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1b2030;
 }
 
-.signup-form {
+.signup-page .signup-form {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
-.field {
+.signup-page .field {
   display: grid;
-  font-weight: bold;
   gap: 8px;
 }
 
-label {
+.signup-page label {
   font-size: 13px;
   color: #5c6476;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-input {
+.signup-page input {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px 14px;
@@ -72,97 +84,93 @@ input {
   width: 100%;
 }
 
-input:focus {
+.signup-page input:focus {
   outline: none;
   border-color: #9ec2ff;
   box-shadow: 0 0 0 3px rgba(23, 102, 229, 0.12);
 }
 
-.hint {
+.signup-page .hint {
   font-size: 11px;
   color: #9aa1b2;
 }
 
-.terms {
+.signup-page .checkline {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: #6a7180;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.check {
+.signup-page .pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.link-button {
-  border: none;
-  background: transparent;
-  color: #6a7180;
-  cursor: pointer;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #e1e6f2;
+  background: #f7f9ff;
+  color: #6f7890;
   font-size: 12px;
+  font-weight: 600;
 }
 
-.primary {
-  border: none;
-  border-radius: 10px;
+.signup-page .pill.ok {
+  border-color: rgba(23, 102, 229, 0.25);
+  background: rgba(23, 102, 229, 0.1);
+  color: #1766e5;
+}
+
+.signup-page .primary,
+.signup-page .secondary {
+  border-radius: 12px;
   padding: 12px 0;
-  background: var(--blue);
-  color: #fff;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;
 }
 
-.secondary {
+.signup-page .primary {
+  border: none;
+  background: var(--blue);
+  color: #fff;
+}
+
+.signup-page .secondary {
   border: 1px solid #d9deea;
-  border-radius: 10px;
-  padding: 12px 0;
   background: #fff;
   color: #4f5665;
-  font-weight: 600;
+}
+
+.signup-page .button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.signup-page .button-row button {
+  flex: 1;
+}
+
+.signup-page .error {
+  margin: 0;
   font-size: 13px;
-  cursor: pointer;
+  color: #d62839;
+  font-weight: 600;
 }
 
-.signup-footer {
-  background: var(--navy);
-  color: #e7ecf7;
-  padding: 18px 24px 22px;
-  font-size: 12px;
-}
-
-.footer-inner {
-  max-width: 980px;
-  margin: 0 auto;
-  display: grid;
-  gap: 6px;
-}
-
-@media (max-width: 600px) {
-  .signup-card {
-    margin: 32px auto 24px;
-    padding: 28px 22px 24px;
-  }
-}
-
-.date-input {
+.signup-page .date-input {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.date-input input {
+.signup-page .date-input input {
   width: 100%;
-  padding-right: 44px; /* 아이콘 공간 */
+  padding-right: 44px;
   cursor: pointer;
 }
 
-.calendar-icon {
+.signup-page .calendar-icon {
   position: absolute;
   right: 14px;
   font-size: 18px;
@@ -170,20 +178,340 @@ input:focus {
   pointer-events: none;
 }
 
-/* react-datepicker 팝업이 카드 위로 나오게 */
 .react-datepicker {
   font-family: inherit;
   border-radius: 12px;
 }
 
-/* 버튼 2개를 좌우로 */
-.button-row {
-  display: flex;
-  gap: 12px; /* 버튼 사이 간격 */
-  margin-top: 12px;
+/* 동의 모달 */
+.consent-like-shot {
+  display: grid;
+  gap: 14px;
+  padding-top: 2px;
 }
 
-/* 버튼이 반반 차지 */
-.button-row button {
-  flex: 1; /* ⭐ 핵심 */
+.consent-guide {
+  margin: 0;
+  font-size: 13px;
+  color: #4f5665;
+  line-height: 1.5;
+  background: #f6f8fd;
+  border: 1px solid #e2e8f4;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.consent-sheet {
+  border: 1px solid #d4d9e2;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px 14px 10px;
+}
+
+.consent-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  color: #161b26;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.consent-check + .consent-check {
+  margin-top: 6px;
+}
+
+.consent-check.is-locked .consent-label {
+  color: #666f82;
+}
+
+.consent-check--all {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.consent-label {
+  line-height: 1.3;
+}
+
+.consent-box {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 3px solid #aeb5c2;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  flex: 0 0 42px;
+  margin: 0;
+}
+
+.consent-box:disabled {
+  background: #f5f6fa;
+  border-color: #c5ccda;
+  cursor: not-allowed;
+}
+
+.consent-box::after {
+  content: "";
+  width: 11px;
+  height: 20px;
+  border-right: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.12s ease-in-out;
+}
+
+.consent-box:checked {
+  background: #1766e5;
+  border-color: #1766e5;
+}
+
+.consent-box:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.consent-box:focus-visible {
+  outline: 3px solid rgba(23, 102, 229, 0.25);
+  outline-offset: 2px;
+}
+
+.consent-divider {
+  border-top: 2px solid #e2e6ee;
+  margin: 10px 0 12px;
+}
+
+/* 상태 뱃지 */
+.consent-status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 미열람: 글자 표시 */
+.consent-status.pending {
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 40px;
+  width: auto;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: #955f00;
+  background: #fff7e6;
+  border: 1px solid #ffd99b;
+  gap: 8px;
+}
+
+.consent-status.pending::before {
+  content: "⏳";
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* 열람 완료: 아이콘만 표시 */
+.consent-status.done {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  background: #eafaf2;
+  border: 1px solid #b9e8cb;
+  font-size: 0;
+  line-height: 0;
+}
+
+.consent-status.done::before {
+  content: "✅";
+  font-size: 19px;
+  line-height: 1;
+}
+
+.consent-view {
+  border: 1px solid #1766e5;
+  background: #eef4ff;
+  color: #124fb8;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 8px 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+  min-width: 68px;
+  text-align: center;
+  box-shadow: 0 3px 10px rgba(23, 102, 229, 0.14);
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.consent-view:hover {
+  background: #1766e5;
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(23, 102, 229, 0.2);
+  transform: translateY(-1px);
+}
+
+.consent-view:active {
+  transform: translateY(0);
+}
+
+.consent-view:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.consent-error {
+  margin-top: -2px;
+}
+
+.consent-actions {
+  margin-top: 2px;
+}
+
+/* 약관 전문 읽기 모달 */
+.policy-read-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.policy-read-guide {
+  margin: 0;
+  font-size: 13px;
+  color: #4f5665;
+  line-height: 1.5;
+  background: #f6f8fd;
+  border: 1px solid #e2e8f4;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.policy-scroll-box {
+  border: 1px solid #e2e8f4;
+  border-radius: 10px;
+  background: #fff;
+  height: min(48vh, 420px);
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.policy-read-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.policy-read-actions button {
+  flex: 1;
+}
+
+@media (max-width: 980px) {
+  .signup-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-hero {
+    min-height: 560px;
+  }
+
+  .signup-panel {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .signup-panel .signup-card {
+    width: min(700px, 96%);
+    max-height: none;
+    overflow: visible;
+    margin-bottom: 24px;
+  }
+
+  .consent-check {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .signup-page .signup-title {
+    font-size: 24px;
+  }
+
+  .signup-panel .signup-card {
+    padding: 26px 20px 20px;
+    border-radius: 18px;
+  }
+
+  .signup-page .button-row,
+  .policy-read-actions {
+    flex-direction: column;
+  }
+
+  .consent-sheet {
+    padding: 12px 10px 10px;
+  }
+
+  .consent-check {
+    gap: 10px;
+    font-size: 15px;
+    flex-wrap: wrap;
+  }
+
+  .consent-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    flex-basis: 34px;
+  }
+
+  .consent-check--all {
+    font-size: 15px;
+  }
+
+  .consent-status {
+    order: 3;
+    margin-left: 46px;
+  }
+
+  .consent-status.pending {
+    font-size: 14px;
+    padding: 7px 12px;
+    min-height: 36px;
+  }
+
+  .consent-status.pending::before {
+    font-size: 16px;
+  }
+
+  .consent-status.done {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .consent-status.done::before {
+    font-size: 17px;
+  }
+
+  .consent-view {
+    margin-left: auto;
+    padding: 7px 12px;
+    min-width: 62px;
+  }
+
+  .policy-scroll-box {
+    height: min(52vh, 420px);
+  }
 }
