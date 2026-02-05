@@ -72,8 +72,19 @@ export default function SignupApp() {
     timersRef.current.push(timerId);
   };
 
+  const warmLoginPage = () => {
+    import("./Login.jsx").catch(() => {});
+  };
+
+  useEffect(() => {
+    const t = window.setTimeout(warmLoginPage, 200);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const goLoginWithFlip = (holdMs = 0) => {
     if (isRoutingToLogin) return;
+
+    warmLoginPage();
 
     if (shouldReduceMotion()) {
       navigate("/login");
@@ -82,10 +93,14 @@ export default function SignupApp() {
 
     setIsRoutingToLogin(true);
 
-    if (holdMs > 0) {
-      queueTimer(() => setIsFlippingToLogin(true), holdMs);
-    } else {
+    const startFlip = () => {
       setIsFlippingToLogin(true);
+    };
+
+    if (holdMs > 0) {
+      queueTimer(startFlip, holdMs);
+    } else {
+      startFlip();
     }
 
     queueTimer(() => navigate("/login"), holdMs + FLIP_MS);
@@ -459,6 +474,62 @@ export default function SignupApp() {
           isFlippingToLogin ? "is-flipping-to-login" : ""
         }`}
       >
+        <div className="left-page-flip-sheet" aria-hidden="true" />
+
+        <div
+          className={`login-peek-layer ${isFlippingToLogin ? "is-visible" : ""}`}
+          aria-hidden="true"
+        >
+          <section className="peek-login-pane">
+            <div className="peek-login-card">
+              <h3>LOGIN</h3>
+
+              <div className="peek-login-form">
+                <div className="peek-field-group">
+                  <span className="peek-label" />
+                  <span className="peek-input" />
+                </div>
+                <div className="peek-field-group">
+                  <span className="peek-label" />
+                  <span className="peek-input has-icon">
+                    <span className="peek-input-icon" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="peek-login-links">
+                <span className="peek-link" />
+                <span className="dot" />
+                <span className="peek-link" />
+              </div>
+
+              <div className="peek-login-actions">
+                <span className="peek-btn primary" />
+                <span className="peek-btn secondary" />
+              </div>
+
+              <div className="peek-login-divider" />
+
+              <div className="peek-login-signup-row">
+                <span className="peek-signup-text" />
+                <span className="peek-signup-btn" />
+              </div>
+            </div>
+          </section>
+
+          <section className="peek-login-hero">
+            <div className="peek-hero-top">
+              <span className="peek-hero-title" />
+              <span className="peek-hero-title short" />
+            </div>
+            <div className="peek-hero-cards">
+              <span className="peek-hero-card" />
+              <span className="peek-hero-card" />
+              <span className="peek-hero-card" />
+            </div>
+          </section>
+        </div>
+
         {/* Left: 소개 패널 */}
         <section className="signup-hero navy-panel">
           <div className="hero-top">
@@ -666,6 +737,8 @@ export default function SignupApp() {
                   type="button"
                   className="secondary"
                   onClick={() => goLoginWithFlip()}
+                  onMouseEnter={warmLoginPage}
+                  onFocus={warmLoginPage}
                   disabled={disabled}
                 >
                   돌아가기

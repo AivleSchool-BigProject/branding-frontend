@@ -27,6 +27,28 @@
   perspective: 1800px;
   transform-style: preserve-3d;
   will-change: transform;
+  isolation: isolate;
+  contain: layout paint style;
+  transform: translateZ(0);
+  --flip-duration: 0.85s;
+  --flip-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.signup-shell,
+.signup-hero,
+.signup-panel,
+.login-peek-layer,
+.left-page-flip-sheet {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.signup-hero,
+.signup-panel,
+.left-page-flip-sheet,
+.login-peek-layer {
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 /* ✅ 회원가입 -> 로그인 역방향 책장 넘김 */
@@ -34,16 +56,279 @@
   background: linear-gradient(90deg, #ffffff 0 50%, var(--navy) 50% 100%);
 }
 
+/* 다음 페이지(로그인) 미리보기는 플립 초반부터 보이기 */
+.signup-shell.is-flipping-to-login .login-peek-layer {
+  animation: loginPeekReveal85 var(--flip-duration) linear forwards;
+}
+
 .signup-shell.is-flipping-to-login .signup-panel {
-  opacity: 0;
-  transition: opacity 0.18s ease;
+  animation: signupPanelFadeOut85 var(--flip-duration) linear forwards;
 }
 
 .signup-shell.is-flipping-to-login .signup-hero {
-  animation: signupLeftPageFlipBack 0.85s cubic-bezier(0.22, 0.61, 0.36, 1)
-    forwards;
+  opacity: 0;
+  transition: opacity 0.08s linear;
+}
+
+.login-peek-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  z-index: 3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+.login-peek-layer.is-visible {
+  opacity: 1;
+}
+
+.peek-login-pane {
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  padding: 30px 20px;
+}
+
+.peek-login-card {
+  width: min(520px, 92%);
+  background: #ffffff;
+  border: 1px solid #eef1f6;
+  border-radius: 18px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.08);
+  display: grid;
+  gap: 14px;
+}
+
+.peek-login-card h3 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #1b2030;
+  text-align: center;
+}
+
+.peek-login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.peek-field-group {
+  display: grid;
+  gap: 8px;
+}
+
+.peek-label,
+.peek-input,
+.peek-link,
+.peek-btn,
+.peek-signup-text,
+.peek-signup-btn,
+.peek-hero-title,
+.peek-hero-card {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f2f5fa 20%, #ffffff 48%, #f2f5fa 78%);
+  background-size: 230% 100%;
+  animation: flipSkeletonShimmer 1.08s linear infinite;
+}
+
+.peek-label {
+  width: 88px;
+  height: 12px;
+}
+
+.peek-input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d9deea;
+  position: relative;
+}
+
+.peek-input.has-icon {
+  padding-right: 36px;
+}
+
+.peek-input-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  border: 2px solid #c8d2e6;
+}
+
+.peek-login-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: -2px;
+}
+
+.peek-login-links .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #bcc6da;
+}
+
+.peek-link {
+  width: 74px;
+  height: 11px;
+}
+
+.peek-login-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.peek-btn {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.peek-btn.primary {
+  background: linear-gradient(90deg, #0b2f8f 0%, #1e5be0 100%);
+  animation: none;
+}
+
+.peek-btn.secondary {
+  background: linear-gradient(90deg, #1e67ea 0%, #2f78ff 100%);
+  animation: none;
+}
+
+.peek-login-divider {
+  height: 1px;
+  background: #e7ebf3;
+}
+
+.peek-login-signup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.peek-signup-text {
+  height: 26px;
+  flex: 1;
+}
+
+.peek-signup-btn {
+  width: 74px;
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0c2b82 0%, #0f3da8 100%);
+  animation: none;
+}
+
+.peek-login-hero {
+  background: linear-gradient(160deg, var(--navy), var(--navy-dark));
+  padding: 52px 56px;
+  display: grid;
+  align-content: space-between;
+  gap: 20px;
+}
+
+.peek-hero-top {
+  display: grid;
+  gap: 8px;
+}
+
+.peek-hero-title {
+  display: block;
+  width: min(360px, 78%);
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.26),
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.26)
+  );
+  animation: flipSkeletonShimmer 1.2s linear infinite;
+}
+
+.peek-hero-title.short {
+  width: min(290px, 62%);
+}
+
+.peek-hero-cards {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.peek-hero-card {
+  flex: 1;
+  min-height: 126px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.06)
+  );
+}
+
+.left-page-flip-sheet {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 50%;
+  pointer-events: none;
+  z-index: 9;
+  opacity: 0;
   transform-origin: right center;
-  z-index: 5;
+  transform-style: preserve-3d;
+  background: linear-gradient(225deg, #001f66 0%, #0a2f88 56%, #2563eb 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.left-page-flip-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      270deg,
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(255, 255, 255, 0.02) 14%,
+      rgba(0, 0, 0, 0.14) 86%,
+      rgba(0, 0, 0, 0.24) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(0, 0, 0, 0.12) 100%
+    );
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.left-page-flip-sheet::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(225deg, #001a56 0%, #08286f 100%);
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.signup-shell.is-flipping-to-login .left-page-flip-sheet {
+  opacity: 1;
+  animation: leftPageTurnRight var(--flip-duration) var(--flip-ease) both;
 }
 
 .signup-shell.is-flipping-to-login .marquee-track {
@@ -654,6 +939,10 @@
     animation: none;
   }
 
+  .login-peek-layer {
+    display: none;
+  }
+
   .consent-check {
     font-size: 16px;
   }
@@ -730,5 +1019,61 @@
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
     animation: none;
+  }
+
+  .signup-shell.is-flipping-to-login .signup-hero,
+  .signup-shell.is-flipping-to-login .marquee-track,
+  .signup-shell.is-flipping-to-login .left-page-flip-sheet {
+    animation: none !important;
+  }
+
+  .login-peek-layer {
+    animation: none !important;
+    transition-duration: 0.12s;
+  }
+}
+
+@keyframes signupPanelFadeOut85 {
+  0%,
+  26% {
+    opacity: 1;
+  }
+  42%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes loginPeekReveal85 {
+  0%,
+  2% {
+    opacity: 0;
+  }
+  6%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes flipSkeletonShimmer {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes leftPageTurnRight {
+  0% {
+    transform: rotateY(0deg) translateZ(0);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  35% {
+    box-shadow: 20px 0 36px rgba(0, 0, 0, 0.28);
+  }
+  100% {
+    transform: rotateY(179.9deg) translateZ(0);
+    box-shadow: 8px 0 14px rgba(0, 0, 0, 0.2);
   }
 }

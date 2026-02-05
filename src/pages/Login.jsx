@@ -115,11 +115,41 @@ export default function LoginApp() {
   // ✅ 로그인 -> 회원가입 페이지 넘김
   const [isFlippingToSignup, setIsFlippingToSignup] = useState(false);
   const timersRef = useRef([]);
+  const signupWarmupStartedRef = useRef(false);
 
   useEffect(() => {
     return () => {
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current = [];
+    };
+  }, []);
+
+  // ✅ 회원가입 화면 사전 로딩(플립 중 다음 장이 즉시 보이도록 청크 미리 준비)
+  const warmSignupPage = () => {
+    if (signupWarmupStartedRef.current) return;
+    signupWarmupStartedRef.current = true;
+    import("./Signup.jsx").catch(() => {});
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let idleId = null;
+    let timeoutId = null;
+
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(warmSignupPage, { timeout: 1000 });
+    } else {
+      timeoutId = window.setTimeout(warmSignupPage, 80);
+    }
+
+    return () => {
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, []);
 
@@ -136,6 +166,7 @@ export default function LoginApp() {
       return;
     }
 
+    warmSignupPage();
     setIsFlippingToSignup(true);
     queueTimer(() => navigate("/signup"), FLIP_MS);
   };
@@ -207,7 +238,88 @@ export default function LoginApp() {
           isFlippingToSignup ? "is-flipping-to-signup" : ""
         }`}
       >
+        {/* 플립 중 미리 보이는 다음 페이지(회원가입) 레이어 */}
+        <div className="flip-next-preview" aria-hidden={!isFlippingToSignup}>
+          <section className="flip-next-hero">
+            <div className="flip-next-hero-top" aria-hidden="true">
+              <span className="flip-next-hero-line" />
+              <span className="flip-next-hero-line short" />
+            </div>
+
+            <div className="flip-next-hero-cards" aria-hidden="true">
+              <div className="flip-next-hero-card" />
+              <div className="flip-next-hero-card" />
+              <div className="flip-next-hero-card" />
+            </div>
+          </section>
+
+          <section className="flip-next-form-pane">
+            <div className="flip-signup-card" aria-hidden="true">
+              <h3>회원가입</h3>
+
+              <div className="flip-signup-form">
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input has-icon">
+                    <span className="flip-input-icon" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="flip-pill-row">
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+              </div>
+
+              <div className="flip-consent-preview">
+                <div className="flip-consent-row">
+                  <span className="flip-consent-dot" />
+                  <span className="flip-consent-text" />
+                  <span className="flip-consent-view">보기</span>
+                </div>
+                <div className="flip-consent-row">
+                  <span className="flip-consent-dot" />
+                  <span className="flip-consent-text" />
+                  <span className="flip-consent-view">보기</span>
+                </div>
+              </div>
+
+              <div className="flip-actions">
+                <span className="flip-btn primary" />
+                <span className="flip-btn secondary" />
+              </div>
+            </div>
+          </section>
+        </div>
+
         {/* Left: 로그인 폼 */}
+
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
 
@@ -295,6 +407,8 @@ export default function LoginApp() {
                 type="button"
                 className="signup-cta"
                 onClick={goSignupWithFlip}
+                onMouseEnter={warmSignupPage}
+                onFocus={warmSignupPage}
                 disabled={isLoading || isFlippingToSignup}
               >
                 회원가입

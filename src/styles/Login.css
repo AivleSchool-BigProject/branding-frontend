@@ -55,15 +55,20 @@ body {
   background: linear-gradient(90deg, var(--navy) 0 50%, #ffffff 50% 100%);
 }
 
+/* 로그인 카드는 플립 중반부터 자연스럽게 사라짐 */
 .login-shell.is-flipping-to-signup .login-panel {
-  opacity: 0;
-  transition: opacity 0.18s ease;
+  animation: loginPanelFadeOut85 0.85s linear forwards;
+}
+
+/* 다음 페이지(회원가입) 미리보기는 플립 초반부터 보이기 시작 */
+.login-shell.is-flipping-to-signup .flip-next-preview {
+  animation: nextPreviewReveal85 0.85s linear forwards;
 }
 
 .login-shell.is-flipping-to-signup .login-hero {
   animation: loginRightPageFlip 0.85s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
   transform-origin: left center;
-  z-index: 5;
+  z-index: 6;
 }
 
 .login-shell.is-flipping-to-signup .marquee-track {
@@ -77,6 +82,7 @@ body {
   gap: 18px;
 
   position: relative;
+  z-index: 3;
   transform-style: preserve-3d;
   backface-visibility: hidden;
   will-change: transform;
@@ -96,6 +102,218 @@ body {
 .login-hero > * {
   position: relative;
   z-index: 1;
+}
+
+/* 플립 중 보이는 회원가입 페이지 미리보기 */
+.flip-next-preview {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  transform: translateZ(0);
+  will-change: opacity;
+}
+
+.flip-next-hero {
+  background: linear-gradient(160deg, var(--navy), var(--navy-dark));
+  padding: 52px 56px;
+  display: grid;
+  align-content: space-between;
+  gap: 20px;
+}
+
+.flip-next-hero-top {
+  display: grid;
+  gap: 6px;
+}
+
+.flip-next-title {
+  display: block;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 6px 18px rgba(4, 8, 22, 0.55);
+}
+
+.flip-next-hero-cards {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.flip-next-hero-card {
+  flex: 1;
+  min-height: 128px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.06)
+  );
+  backdrop-filter: blur(4px);
+}
+
+.flip-next-form-pane {
+  background: #fff;
+  display: grid;
+  place-items: center;
+  padding: 28px 20px;
+}
+
+.flip-signup-card {
+  width: min(520px, 92%);
+  max-height: 92vh;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #eef1f6;
+  border-radius: 18px;
+  padding: 28px 24px 24px;
+  box-shadow: 0 16px 40px rgba(17, 24, 39, 0.08);
+  display: grid;
+  gap: 14px;
+}
+
+.flip-signup-card h3 {
+  margin: 0 0 2px;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #1b2030;
+  text-align: center;
+}
+
+.flip-signup-form {
+  display: grid;
+  gap: 11px;
+}
+
+.flip-field-group {
+  display: grid;
+  gap: 7px;
+}
+
+.flip-label,
+.flip-input,
+.flip-pill,
+.flip-consent-text {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f2f5fa 20%, #ffffff 48%, #f2f5fa 78%);
+  background-size: 230% 100%;
+  animation: flipSkeletonShimmer 1.08s linear infinite;
+}
+
+.flip-label {
+  width: 88px;
+  height: 12px;
+}
+
+.flip-label-short {
+  width: 70px;
+}
+
+.flip-input {
+  display: block;
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid #d9deea;
+  position: relative;
+}
+
+.flip-input.has-icon {
+  padding-right: 36px;
+}
+
+.flip-input-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  border: 2px solid #c8d2e6;
+}
+
+.flip-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -2px;
+}
+
+.flip-pill {
+  width: 68px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid #dce3f0;
+}
+
+.flip-consent-preview {
+  border: 1px solid #dce3ee;
+  border-radius: 12px;
+  background: #fafcff;
+  padding: 10px 10px 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.flip-consent-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.flip-consent-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #c7d3e9;
+  display: inline-block;
+}
+
+.flip-consent-text {
+  height: 12px;
+  width: 90%;
+}
+
+.flip-consent-view {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4e5f8c;
+  border: 1px solid #cfdbef;
+  background: #f3f7ff;
+  border-radius: 8px;
+  padding: 3px 8px;
+  line-height: 1.15;
+}
+
+.flip-actions {
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+}
+
+.flip-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.flip-btn.primary {
+  background: #1766e5;
+}
+
+.flip-btn.secondary {
+  border: 1px solid #d9deea;
+  background: #fff;
 }
 
 .navy-panel {
@@ -146,6 +364,9 @@ body {
   box-shadow: 0 24px 60px rgba(17, 24, 39, 0.12);
   border: 1px solid #eef1f6;
 
+  position: relative;
+  z-index: 2;
+  contain: paint;
   will-change: opacity;
 }
 
@@ -344,6 +565,10 @@ input:focus {
     padding: 44px 36px 24px;
   }
 
+  .flip-next-preview {
+    display: none;
+  }
+
   .login-shell.is-flipping-to-signup .login-hero {
     animation: none;
   }
@@ -454,7 +679,14 @@ input:focus {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track {
+  .marquee-track,
+  .flip-label,
+  .flip-input,
+  .flip-pill,
+  .flip-consent-text,
+  .login-shell.is-flipping-to-signup .login-hero,
+  .login-shell.is-flipping-to-signup .flip-next-preview,
+  .login-shell.is-flipping-to-signup .login-panel {
     animation: none;
   }
 }
@@ -505,6 +737,37 @@ input:focus {
 .hero-footer-copy {
   margin-top: 6px;
   color: rgba(255, 255, 255, 0.45);
+}
+
+@keyframes loginPanelFadeOut85 {
+  0%,
+  12% {
+    opacity: 1;
+  }
+  24%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes nextPreviewReveal85 {
+  0%,
+  2% {
+    opacity: 0;
+  }
+  6%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes flipSkeletonShimmer {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes loginRightPageFlip {
