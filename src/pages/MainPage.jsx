@@ -60,7 +60,9 @@ export default function MainPage({ onLogout }) {
     const p = readPipeline() || {};
 
     const hasDiagnosis = Boolean(
-      p?.diagnosisSummary?.companyName || p?.diagnosisSummary?.oneLine,
+      (typeof p?.diagnosisSummary === "string" && p.diagnosisSummary.trim()) ||
+      p?.diagnosisSummary?.companyName ||
+      p?.diagnosisSummary?.oneLine
     );
     const hasNaming = Boolean(p?.naming?.selectedId || p?.naming?.selected);
     const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);

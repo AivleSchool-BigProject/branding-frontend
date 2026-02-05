@@ -106,7 +106,7 @@ const STEP_1 = {
     },
     {
       id: "s1_differentiation",
-      category: "USP",
+      category: "Key Strengths",
       question_text:
         "경쟁사가 절대 따라 할 수 없는 우리 서비스만의 '무기'는 무엇인가요?",
       question_type: "long_answer",
@@ -282,6 +282,18 @@ const STEP_1 = {
       max_select: 2,
     },
   ],
+};
+
+const SECTION_DESCRIPTIONS = {
+  Identity: "우리 서비스가 무엇인지 가장 쉽게 설명합니다.",
+  "Problem Solving": "고객이 실제로 겪는 문제와 불편함을 정의합니다.",
+  Target: "우리 서비스를 가장 좋아할 핵심 고객을 정리합니다.",
+  Competition: "고객이 우리 대신 선택하는 대안을 살펴봅니다.",
+  Differentiation: "우리 서비스만의 결정적인 강점을 정리합니다.",
+  Market: "우리가 경쟁하는 시장과 산업을 정의합니다.",
+  Vision: "브랜드가 앞으로 나아갈 방향을 그려봅니다.",
+  "Revenue Model": "비즈니스가 수익을 만드는 구조를 정리합니다.",
+  "Brand Goal": "향후 브랜드가 집중해야 할 목표를 설정합니다.",
 };
 
 const getLabelByValue = (value, options) => {
@@ -1049,8 +1061,8 @@ export default function DiagnosisInterview({ onLogout }) {
                   <div className="card__head">
                     <h2>
                       {idx + 1}. {cat}
-                    </h2>
-                    <p>{STEP_1.description}</p>
+                      </h2>
+                      <p>{SECTION_DESCRIPTIONS[cat]}</p>
                   </div>
 
                   {(questionsByCategory[cat] || []).map((q) => (

@@ -13,6 +13,7 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import {
+  getActiveUserId,
   userGetItem,
   userSetItem,
   userRemoveItem,
@@ -387,6 +388,10 @@ function normalizeNamingCandidates(raw) {
 }
 
 export default function NamingConsultingInterview({ onLogout }) {
+  // 2026-02-05
+  // 네이밍 페이지에서 자동 저장이 안되서 수정
+  const uidRef = useRef(getActiveUserId());
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -571,7 +576,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   // ✅ draft 로드(폼 키 sanitize)
   useEffect(() => {
     try {
-      const raw = userGetItem(STORAGE_KEY);
+      const raw = userGetItem(STORAGE_KEY, uidRef.current);
       if (!raw) return;
       const parsed = JSON.parse(raw);
 
@@ -594,7 +599,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   // ✅ 결과 로드(후보/선택)
   useEffect(() => {
     try {
-      const raw = userGetItem(RESULT_KEY);
+      const raw = userGetItem(RESULT_KEY, uidRef.current);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
@@ -611,7 +616,15 @@ export default function NamingConsultingInterview({ onLogout }) {
     const t = setTimeout(() => {
       try {
         const payload = { form, updatedAt: Date.now() };
-        userSetItem(STORAGE_KEY, JSON.stringify(payload));
+        userSetItem(STORAGE_KEY, JSON.stringify(payload), uidRef.current);
+
+        // 메인 "이어하기"용 레거시 키도 같이 저장 (네이밍만 누락되어 있었음)
+        userSetItem(
+          LEGACY_KEY,
+          JSON.stringify({ form, updatedAt: payload.updatedAt }),
+          uidRef.current
+        );
+
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
       } catch {
@@ -634,6 +647,7 @@ export default function NamingConsultingInterview({ onLogout }) {
           regenSeed: nextSeed,
           updatedAt,
         }),
+        uidRef.current,
       );
     } catch {
       // ignore
@@ -652,6 +666,7 @@ export default function NamingConsultingInterview({ onLogout }) {
           regenSeed: nextSeed,
           updatedAt,
         }),
+        uidRef.current,
       );
     } catch {
       // ignore
@@ -855,9 +870,9 @@ export default function NamingConsultingInterview({ onLogout }) {
     if (!ok) return;
 
     try {
-      userRemoveItem(STORAGE_KEY);
-      userRemoveItem(RESULT_KEY);
-      userRemoveItem(LEGACY_KEY);
+      userRemoveItem(STORAGE_KEY, uidRef.current);
+      userRemoveItem(RESULT_KEY, uidRef.current);
+      userRemoveItem(LEGACY_KEY, uidRef.current);
     } catch {
       // ignore
     }
