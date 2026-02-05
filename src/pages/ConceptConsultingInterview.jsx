@@ -26,6 +26,9 @@ import {
   clearStepsFrom,
   readPipeline,
   startBrandFlow,
+  // ✅ (기본정보 UI 제거했지만) AI payload 품질 위해 진단 요약만 내부 전달
+  readDiagnosisDraftForm,
+  buildDiagnosisSummaryFromDraft,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -36,35 +39,12 @@ const RESULT_KEY = "conceptInterviewResult_homepage_v7";
 const LEGACY_KEY = "brandInterview_homepage_v1";
 const NEXT_PATH = "/brand/story";
 
-const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
-
 function safeText(v, fallback = "") {
   const s = String(v ?? "").trim();
   return s ? s : fallback;
 }
 function hasText(v) {
   return Boolean(String(v ?? "").trim());
-}
-function stageLabel(v) {
-  const s = String(v || "")
-    .trim()
-    .toLowerCase();
-  if (!s) return "-";
-  if (s === "idea") return "아이디어";
-  if (s === "mvp") return "MVP";
-  if (s === "pmf") return "PMF";
-  if (s === "revenue" || s === "early_revenue") return "매출";
-  if (s === "invest") return "투자";
-  if (s === "scaleup" || s === "scaling") return "스케일업";
-  if (s === "rebrand") return "리브랜딩";
-  return String(v);
-}
-function safeParse(raw) {
-  try {
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
 }
 
 /** ======================
@@ -164,18 +144,7 @@ function normalizeConceptCandidates(raw) {
   });
 }
 
-function readDiagnosisForm() {
-  for (const k of DIAG_KEYS) {
-    const parsed = safeParse(userGetItem(k));
-    if (!parsed) continue;
-    const form =
-      parsed?.form && typeof parsed.form === "object" ? parsed.form : parsed;
-    if (form && typeof form === "object") return form;
-  }
-  return null;
-}
-
-/** ✅ 칩 UI (중요 수정: CSS 없어도 선택 색이 무조건 보이도록 inline style 적용) */
+/** ✅ 칩 UI (CSS 없어도 선택 색이 무조건 보이도록 inline style 적용) */
 function MultiChips({ value, options, onChange, max = null }) {
   const current = Array.isArray(value) ? value : [];
 
@@ -216,7 +185,6 @@ function MultiChips({ value, options, onChange, max = null }) {
       {normalized.map((opt) => {
         const active = current.includes(opt.value);
 
-        // ✅ CSS가 없어도 눈에 띄게 표시되도록 inline style 고정
         const baseStyle = {
           display: "inline-flex",
           alignItems: "center",
@@ -238,7 +206,7 @@ function MultiChips({ value, options, onChange, max = null }) {
 
         const activeStyle = active
           ? {
-              background: "rgba(34,197,94,0.18)", // ✅ 선택 표시(연한 초록)
+              background: "rgba(34,197,94,0.18)",
               border: "1px solid rgba(34,197,94,0.55)",
               color: "rgba(0,0,0,0.9)",
               boxShadow: "0 0 0 3px rgba(34,197,94,0.14)",
@@ -298,33 +266,50 @@ const POSITIONING_AXES_OPTIONS = [
   { value: "Other", label: "기타" },
 ];
 
+/** ======================
+ *  ✅ (요청 반영) 기업 기본 정보 필드/UI 제거
+ *  - 컨셉 질문(필수 입력)만 유지
+ * ====================== */
 const INITIAL_FORM = {
-  // ✅ 자동 반영
-  brandName: "",
-  category: "",
-  stage: "",
-  oneLine: "",
-  targetCustomer: "",
-  referenceLink: "",
-
-  // ✅ Step 3
   core_values: [],
   core_values_other: "",
+
   brand_voice: [],
   brand_voice_other: "",
+
   brand_promise: "",
   key_message: "",
   concept_vibe: "",
+
   positioning_axes: [],
   positioning_axes_other: "",
 
-  // (UI에서 제거했지만, 호환/저장 구조 유지용으로 필드는 유지)
+  // (호환/저장 구조 유지용)
   notes: "",
 };
+
+const ALLOWED_FORM_KEYS = Object.keys(INITIAL_FORM);
+function sanitizeForm(raw) {
+  const obj = raw && typeof raw === "object" ? raw : {};
+  const next = { ...INITIAL_FORM };
+  ALLOWED_FORM_KEYS.forEach((k) => {
+    if (k in obj) next[k] = obj[k];
+  });
+  return next;
+}
 
 export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const REQUIRED_FIELD_ID = {
+    core_values: "concept-q-core_values",
+    brand_voice: "concept-q-brand_voice",
+    brand_promise: "concept-q-brand_promise",
+    key_message: "concept-q-key_message",
+    concept_vibe: "concept-q-concept_vibe",
+    positioning_axes: "concept-q-positioning_axes",
+  };
 
   useEffect(() => {
     try {
@@ -389,7 +374,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const refResult = useRef(null);
 
   // 섹션 ref
-  const refBasic = useRef(null);
   const refConcept = useRef(null);
 
   const requiredKeys = useMemo(
@@ -433,6 +417,33 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
 
+  const requiredLabelMap = {
+    core_values: "핵심 가치",
+    brand_voice: "브랜드 톤/보이스",
+    brand_promise: "브랜드 약속",
+    key_message: "핵심 메시지",
+    concept_vibe: "컨셉 무드",
+    positioning_axes: "포지셔닝 축",
+  };
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -460,15 +471,20 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   };
 
-  // ✅ draft 로드
+  // ✅ draft 로드 (키 sanitize)
   useEffect(() => {
     try {
       const raw = userGetItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      if (parsed?.form && typeof parsed.form === "object") {
-        setForm((prev) => ({ ...prev, ...parsed.form }));
-      }
+
+      const loaded =
+        parsed?.form && typeof parsed.form === "object"
+          ? sanitizeForm(parsed.form)
+          : null;
+
+      if (loaded) setForm(loaded);
+
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
         if (!Number.isNaN(d.getTime())) setLastSaved(d.toLocaleString());
@@ -478,55 +494,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // ✅ 진단 값 자동 반영
-  useEffect(() => {
-    try {
-      const diag = readDiagnosisForm();
-      if (!diag) return;
-
-      const next = {
-        brandName: safeText(
-          diag.companyName || diag.brandName || diag.projectName,
-          "",
-        ),
-        category: safeText(diag.industry || diag.category || diag.field, ""),
-        stage: safeText(diag.stage, ""),
-        oneLine: safeText(
-          diag.oneLine ||
-            diag.companyIntro ||
-            diag.intro ||
-            diag.serviceIntro ||
-            diag.shortIntro,
-          "",
-        ),
-        targetCustomer: safeText(
-          diag.targetCustomer ||
-            diag.target ||
-            diag.customerTarget ||
-            diag.primaryCustomer,
-          "",
-        ),
-        referenceLink: safeText(
-          diag.website || diag.homepage || diag.siteUrl,
-          "",
-        ),
-      };
-
-      setForm((prev) => ({
-        ...prev,
-        brandName: next.brandName || prev.brandName,
-        category: next.category || prev.category,
-        stage: next.stage || prev.stage,
-        oneLine: next.oneLine || prev.oneLine,
-        targetCustomer: next.targetCustomer || prev.targetCustomer,
-        referenceLink: next.referenceLink || prev.referenceLink,
-      }));
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // ✅ 결과 로드드
+  // ✅ 결과 로드
   useEffect(() => {
     try {
       const raw = userGetItem(RESULT_KEY);
@@ -619,6 +587,15 @@ export default function ConceptConsultingInterview({ onLogout }) {
       ? [...form.positioning_axes]
       : [];
 
+    // ✅ (보이지 않게) 진단 요약만 내부 전달해서 AI 품질 유지
+    const p = readPipeline();
+    const diagnosisSummary =
+      p?.diagnosisSummary ||
+      (() => {
+        const diag = readDiagnosisDraftForm();
+        return diag ? buildDiagnosisSummaryFromDraft(diag) : null;
+      })();
+
     return {
       ...form,
       core_values: coreValues,
@@ -626,6 +603,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       positioning_axes: positioning,
       mode,
       regenSeed: nextSeed,
+      diagnosisSummary: diagnosisSummary || null,
       questionnaire: {
         step: "concept",
         version: "concept_v1",
@@ -805,47 +783,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    const diag = (() => {
-      try {
-        return readDiagnosisForm();
-      } catch {
-        return null;
-      }
-    })();
-
-    const base = { ...INITIAL_FORM };
-    if (diag) {
-      base.brandName = safeText(
-        diag.companyName || diag.brandName || diag.projectName,
-        "",
-      );
-      base.category = safeText(
-        diag.industry || diag.category || diag.field,
-        "",
-      );
-      base.stage = safeText(diag.stage, "");
-      base.oneLine = safeText(
-        diag.oneLine ||
-          diag.companyIntro ||
-          diag.intro ||
-          diag.serviceIntro ||
-          diag.shortIntro,
-        "",
-      );
-      base.targetCustomer = safeText(
-        diag.targetCustomer ||
-          diag.target ||
-          diag.customerTarget ||
-          diag.primaryCustomer,
-        "",
-      );
-      base.referenceLink = safeText(
-        diag.website || diag.homepage || diag.siteUrl,
-        "",
-      );
-    }
-
-    setForm(base);
+    setForm({ ...INITIAL_FORM });
     setCandidates([]);
     setSelectedId(null);
     setRegenSeed(0);
@@ -883,8 +821,8 @@ export default function ConceptConsultingInterview({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 브랜드
-                컨셉(가치·말투·약속·키메시지·분위기·포지셔닝)을 입력합니다.
+                아래 질문에 답하면 컨셉 제안 3안을 생성합니다. 선택한 1안은 다음
+                단계(스토리) 생성에 사용됩니다.
               </p>
             </div>
 
@@ -903,80 +841,16 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 1) BASIC */}
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>1. 기본 정보 (자동 반영)</h2>
-                  <p>
-                    기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이
-                    페이지에서 수정하지 않아요)
-                  </p>
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>회사/프로젝트명</label>
-                    <input
-                      value={form.brandName}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>산업/분야</label>
-                    <input
-                      value={form.category}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>성장 단계</label>
-                    <input
-                      value={stageLabel(form.stage)}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크</label>
-                    <input
-                      value={form.referenceLink}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-                </div>
-
-                {hasText(form.targetCustomer) ? (
-                  <div className="field">
-                    <label>타깃(진단 기준)</label>
-                    <input value={form.targetCustomer} disabled />
-                  </div>
-                ) : null}
-
-                <div className="field">
-                  <label>회사/서비스 한 줄 소개</label>
-                  <textarea
-                    value={form.oneLine}
-                    disabled
-                    placeholder="기업 진단에서 자동 반영"
-                    rows={3}
-                  />
-                </div>
-              </div>
+              {/* ✅ (요청 반영) 1) BASIC 기본정보 카드 제거 */}
 
               {/* 2) Step 3 */}
               <div className="card" ref={refConcept}>
                 <div className="card__head">
-                  <h2>2. 브랜드 컨셉 (Brand Concept)</h2>
+                  <h2>Brand Concept Consulting</h2>
                   <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
                     (2-3개 선택) <span className="req">*</span>
@@ -1013,7 +887,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   ) : null}
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
                     <span className="req">*</span>
@@ -1044,7 +918,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   ) : null}
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1056,7 +930,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1068,7 +942,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1080,7 +954,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
                     가깝나요? (최대 2개) <span className="req">*</span>
@@ -1369,13 +1243,61 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     <span className="k">마지막 저장</span>
                     <span className="v">{lastSaved}</span>
                   </div>
-                  <div className="sideMeta__row">
-                    <span className="k">단계</span>
-                    <span className="v">{stageLabel(form.stage)}</span>
-                  </div>
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 

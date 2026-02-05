@@ -586,7 +586,7 @@ function normalizeLogoCandidates(raw) {
 }
 
 const INITIAL_FORM = {
-  // ✅ 기업 진단에서 자동 반영(편집 X)
+  // ✅ 기업 진단에서 자동 반영(화면 노출 X)
   companyName: "",
   industry: "",
   stage: "",
@@ -626,6 +626,18 @@ function joinUsageLabels(values) {
 export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const REQUIRED_FIELD_ID = {
+    logo_structure: "logo-q-logo_structure",
+    visual_motif: "logo-q-visual_motif",
+    brand_color: "logo-q-brand_color",
+    design_style: "logo-q-design_style",
+    design_reference: "logo-q-design_reference",
+    logo_flexibility: "logo-q-logo_flexibility",
+    visual_text_ratio: "logo-q-visual_text_ratio",
+    main_usage_channels: "logo-q-main_usage_channels",
+    typography_style: "logo-q-typography_style",
+  };
 
   // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
@@ -687,8 +699,7 @@ export default function LogoConsultingInterview({ onLogout }) {
   const [regenSeed, setRegenSeed] = useState(0);
   const refResult = useRef(null);
 
-  // 섹션 ref
-  const refBasic = useRef(null);
+  // 섹션 ref (현재는 스크롤/확장용으로만 유지)
   const refLogo = useRef(null);
   const refMotif = useRef(null);
   const refColor = useRef(null);
@@ -698,22 +709,6 @@ export default function LogoConsultingInterview({ onLogout }) {
   const refRatio = useRef(null);
   const refUsage = useRef(null);
   const refType = useRef(null);
-
-  const sections = useMemo(
-    () => [
-      { id: "basic", label: "기본 정보", ref: refBasic },
-      { id: "logo", label: "로고 형태", ref: refLogo },
-      { id: "motif", label: "비주얼 모티프", ref: refMotif },
-      { id: "color", label: "대표 색상", ref: refColor },
-      { id: "style", label: "디자인 스타일", ref: refStyle },
-      { id: "ref", label: "레퍼런스", ref: refRef },
-      { id: "flex", label: "확장성", ref: refFlex },
-      { id: "ratio", label: "비율", ref: refRatio },
-      { id: "usage", label: "사용 채널", ref: refUsage },
-      { id: "type", label: "타이포", ref: refType },
-    ],
-    [],
-  );
 
   // ✅ 필수 항목(step_5 기준)
   const requiredKeys = useMemo(
@@ -753,8 +748,38 @@ export default function LogoConsultingInterview({ onLogout }) {
   const hasResult = candidates.length > 0;
   const canFinish = Boolean(hasResult && selectedId);
 
+  const requiredLabelMap = {
+    logo_structure: "로고 형태",
+    visual_motif: "비주얼 모티프",
+    brand_color: "대표 색상",
+    design_style: "디자인 스타일",
+    design_reference: "로고 레퍼런스",
+    logo_flexibility: "확장/유연성",
+    visual_text_ratio: "이미지/텍스트 비율",
+    main_usage_channels: "주요 사용 채널",
+    typography_style: "타이포그래피 스타일",
+  };
+
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const scrollToResult = () => {
     if (!refResult?.current) return;
@@ -864,7 +889,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // ✅ 기업 진단&인터뷰 값 자동 반영(중복 질문 제거)
+  // ✅ 기업 진단&인터뷰 값 자동 반영(화면에는 노출하지 않지만 payload 품질 유지용)
   useEffect(() => {
     try {
       const diag = readDiagnosisForm();
@@ -1347,8 +1372,7 @@ export default function LogoConsultingInterview({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">로고 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 Step 5
-                질문지 기준으로 로고
+                Step 5 질문지 기준으로 로고
                 형태·모티프·색·스타일·레퍼런스·확장성·비율·사용
                 채널·타이포그래피를
                 <b> 선택 중심</b>으로 입력합니다. (기타/추가 입력란 없음)
@@ -1370,80 +1394,16 @@ export default function LogoConsultingInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 1) BASIC (자동 반영) */}
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>1. 기본 정보 (자동 반영)</h2>
-                  <p>
-                    기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이
-                    페이지에서 수정하지 않아요)
-                  </p>
-                </div>
+              {/* ✅ 기본 정보(자동반영) 섹션 삭제 */}
 
-                <div className="formGrid">
-                  <div className="field">
-                    <label>회사/프로젝트명</label>
-                    <input
-                      value={form.companyName}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>산업/분야</label>
-                    <input
-                      value={form.industry}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>성장 단계</label>
-                    <input
-                      value={stageLabel(form.stage)}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크</label>
-                    <input
-                      value={form.website}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-                </div>
-
-                {String(form.targetCustomer || "").trim() ? (
-                  <div className="field">
-                    <label>타깃(진단 기준)</label>
-                    <input value={form.targetCustomer} disabled />
-                  </div>
-                ) : null}
-
-                <div className="field">
-                  <label>회사/서비스 소개</label>
-                  <textarea
-                    value={form.oneLine}
-                    disabled
-                    placeholder="기업 진단에서 자동 반영"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {/* 2) 로고 형태 */}
+              {/* 1) 로고 형태 */}
               <div className="card" ref={refLogo}>
                 <div className="card__head">
-                  <h2>2. 로고 형태</h2>
+                  <h2>1. 로고 형태</h2>
                   <p>어떤 형태의 로고를 원하시나요? (Step 5)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-logo_structure">
                   <label>
                     로고 형태 선택 <span className="req">*</span>
                   </label>
@@ -1465,14 +1425,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 3) 비주얼 모티프 */}
+              {/* 2) 비주얼 모티프 */}
               <div className="card" ref={refMotif}>
                 <div className="card__head">
-                  <h2>3. 비주얼 모티프</h2>
+                  <h2>2. 비주얼 모티프</h2>
                   <p>로고에 담고 싶은 이미지는 무엇인가요? (선택형)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-visual_motif">
                   <label>
                     비주얼 모티프 선택 <span className="req">*</span>
                   </label>
@@ -1494,14 +1454,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 4) 대표 색상 */}
+              {/* 3) 대표 색상 */}
               <div className="card" ref={refColor}>
                 <div className="card__head">
-                  <h2>4. 대표 색상</h2>
+                  <h2>3. 대표 색상</h2>
                   <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-brand_color">
                   <label>
                     색상 선택(최대 2개) <span className="req">*</span>
                   </label>
@@ -1524,14 +1484,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 5) 디자인 스타일 */}
+              {/* 4) 디자인 스타일 */}
               <div className="card" ref={refStyle}>
                 <div className="card__head">
-                  <h2>5. 디자인 스타일</h2>
+                  <h2>4. 디자인 스타일</h2>
                   <p>선호하는 디자인 스타일은 무엇인가요? (Step 5)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-design_style">
                   <label>
                     스타일 선택 <span className="req">*</span>
                   </label>
@@ -1556,17 +1516,17 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 6) 레퍼런스(필수) */}
+              {/* 5) 레퍼런스(필수) */}
               <div className="card" ref={refRef}>
                 <div className="card__head">
-                  <h2>6. 로고 레퍼런스</h2>
+                  <h2>5. 로고 레퍼런스</h2>
                   <p>
                     평소에 “로고가 참 좋다”고 생각한 브랜드와 그 이유는
                     무엇인가요? (2~3개)
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-design_reference">
                   <label>
                     레퍼런스(필수) <span className="req">*</span>
                   </label>
@@ -1583,16 +1543,16 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 7) 유연성/확장성 */}
+              {/* 6) 유연성/확장성 */}
               <div className="card" ref={refFlex}>
                 <div className="card__head">
-                  <h2>7. 로고 확장/유연성</h2>
+                  <h2>6. 로고 확장/유연성</h2>
                   <p>
                     다양한 상황에서 가장 중요한 특성은 무엇인가요? (최대 2개)
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-logo_flexibility">
                   <label>
                     중요 특성(최대 2개) <span className="req">*</span>
                   </label>
@@ -1615,14 +1575,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 8) 비율 */}
+              {/* 7) 비율 */}
               <div className="card" ref={refRatio}>
                 <div className="card__head">
-                  <h2>8. 이미지/텍스트 비율</h2>
+                  <h2>7. 이미지/텍스트 비율</h2>
                   <p>이미지와 텍스트 중 무엇이 더 중요한가요?</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-visual_text_ratio">
                   <label>
                     비율 선택 <span className="req">*</span>
                   </label>
@@ -1644,16 +1604,16 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 9) 사용 채널 */}
+              {/* 8) 사용 채널 */}
               <div className="card" ref={refUsage}>
                 <div className="card__head">
-                  <h2>9. 주요 사용 채널</h2>
+                  <h2>8. 주요 사용 채널</h2>
                   <p>
                     로고와 브랜드가 가장 많이 사용될 곳은 어디인가요? (최대 2개)
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-main_usage_channels">
                   <label>
                     사용 채널(최대 2개) <span className="req">*</span>
                   </label>
@@ -1682,14 +1642,14 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 10) 타이포그래피(필수) */}
+              {/* 9) 타이포그래피(필수) */}
               <div className="card" ref={refType}>
                 <div className="card__head">
-                  <h2>10. 타이포그래피 스타일</h2>
+                  <h2>9. 타이포그래피 스타일</h2>
                   <p>브랜드 로고에 어울리는 폰트 스타일은 무엇인가요?</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-typography_style">
                   <label>
                     폰트 스타일 선택 <span className="req">*</span>
                   </label>
@@ -1914,6 +1874,58 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 
