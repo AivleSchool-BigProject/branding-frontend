@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
@@ -15,6 +15,13 @@ import EasyLoginModal from "../components/EasyLoginModal.jsx";
 // ✅ 팀 코드의 백 연동 방식으로 통일
 import { apiRequest, setAccessToken } from "../api/client.js";
 import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
+
+const FLIP_MS = 850;
+
+function shouldReduceMotion() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 function EyeIcon(props) {
   return (
@@ -88,6 +95,7 @@ export default function LoginApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location?.state?.redirectTo;
+
   // ✅ 약관/개인정보 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -103,6 +111,65 @@ export default function LoginApp() {
   // ✅ UX
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ 로그인 -> 회원가입 페이지 넘김
+  const [isFlippingToSignup, setIsFlippingToSignup] = useState(false);
+  const timersRef = useRef([]);
+  const signupWarmupStartedRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current = [];
+    };
+  }, []);
+
+  // ✅ 회원가입 화면 사전 로딩(플립 중 다음 장이 즉시 보이도록 청크 미리 준비)
+  const warmSignupPage = () => {
+    if (signupWarmupStartedRef.current) return;
+    signupWarmupStartedRef.current = true;
+    import("./Signup.jsx").catch(() => {});
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    let idleId = null;
+    let timeoutId = null;
+
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(warmSignupPage, { timeout: 1000 });
+    } else {
+      timeoutId = window.setTimeout(warmSignupPage, 80);
+    }
+
+    return () => {
+      if (idleId !== null && "cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
+
+  const queueTimer = (callback, ms) => {
+    const timerId = window.setTimeout(callback, ms);
+    timersRef.current.push(timerId);
+  };
+
+  const goSignupWithFlip = () => {
+    if (isLoading || isFlippingToSignup) return;
+
+    if (shouldReduceMotion()) {
+      navigate("/signup");
+      return;
+    }
+
+    warmSignupPage();
+    setIsFlippingToSignup(true);
+    queueTimer(() => navigate("/signup"), FLIP_MS);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -166,8 +233,191 @@ export default function LoginApp() {
 
       <EasyLoginModal open={easyOpen} onClose={() => setEasyOpen(false)} />
 
-      <div className="login-shell split">
-        {/* Left: 소개 영역 */}
+      <div
+        className={`login-shell split ${
+          isFlippingToSignup ? "is-flipping-to-signup" : ""
+        }`}
+      >
+        {/* 플립 중 미리 보이는 다음 페이지(회원가입) 레이어 */}
+        <div className="flip-next-preview" aria-hidden={!isFlippingToSignup}>
+          <section className="flip-next-hero">
+            <div className="flip-next-hero-top" aria-hidden="true">
+              <span className="flip-next-hero-line" />
+              <span className="flip-next-hero-line short" />
+            </div>
+
+            <div className="flip-next-hero-cards" aria-hidden="true">
+              <div className="flip-next-hero-card" />
+              <div className="flip-next-hero-card" />
+              <div className="flip-next-hero-card" />
+            </div>
+          </section>
+
+          <section className="flip-next-form-pane">
+            <div className="flip-signup-card" aria-hidden="true">
+              <h3>회원가입</h3>
+
+              <div className="flip-signup-form">
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input" />
+                </div>
+                <div className="flip-field-group">
+                  <span className="flip-label flip-label-short" />
+                  <span className="flip-input has-icon">
+                    <span className="flip-input-icon" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="flip-pill-row">
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+                <span className="flip-pill" />
+              </div>
+
+              <div className="flip-consent-preview">
+                <div className="flip-consent-row">
+                  <span className="flip-consent-dot" />
+                  <span className="flip-consent-text" />
+                  <span className="flip-consent-view">보기</span>
+                </div>
+                <div className="flip-consent-row">
+                  <span className="flip-consent-dot" />
+                  <span className="flip-consent-text" />
+                  <span className="flip-consent-view">보기</span>
+                </div>
+              </div>
+
+              <div className="flip-actions">
+                <span className="flip-btn primary" />
+                <span className="flip-btn secondary" />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Left: 로그인 폼 */}
+
+        <section className="login-panel light-panel">
+          <h2>LOGIN</h2>
+
+          <form className="login-form" onSubmit={handleSubmit}>
+            <div className="field">
+              <label htmlFor="login-id">아이디</label>
+              <input
+                id="login-id"
+                type="text"
+                placeholder="아이디 입력"
+                autoComplete="username"
+                value={id}
+                onChange={(e) => setId(e.target.value)}
+                disabled={isLoading || isFlippingToSignup}
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="login-password">비밀번호</label>
+
+              <div className="pw-input-wrap">
+                <input
+                  id="login-password"
+                  className="pw-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="비밀번호 입력"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading || isFlippingToSignup}
+                />
+
+                <button
+                  type="button"
+                  className="pw-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={
+                    showPassword ? "비밀번호 숨기기" : "비밀번호 보기"
+                  }
+                  aria-pressed={showPassword}
+                  disabled={isLoading || isFlippingToSignup}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </div>
+
+            <div className="login-links">
+              <button type="button" onClick={() => navigate("/findid")}>
+                아이디 찾기
+              </button>
+              <span className="dot" aria-hidden="true" />
+              <button type="button" onClick={() => navigate("/findpw")}>
+                비밀번호 찾기
+              </button>
+            </div>
+
+            {errorMsg ? <p className="error">{errorMsg}</p> : null}
+
+            <button
+              type="submit"
+              className="login-primary"
+              disabled={isLoading || isFlippingToSignup}
+            >
+              {isLoading ? "로그인 중..." : "로그인"}
+            </button>
+
+            <button
+              type="button"
+              className="login-easy"
+              onClick={() => setEasyOpen(true)}
+              disabled={isLoading || isFlippingToSignup}
+            >
+              간편로그인
+            </button>
+
+            <div className="login-divider" />
+
+            <div className="signup-row">
+              <div className="signup-copy">
+                회원가입하고 <strong>BrandPliot</strong>의<br />
+                <strong>더 많은 컨설팅</strong>를 받아보세요!
+              </div>
+              <button
+                type="button"
+                className="signup-cta"
+                onClick={goSignupWithFlip}
+                onMouseEnter={warmSignupPage}
+                onFocus={warmSignupPage}
+                disabled={isLoading || isFlippingToSignup}
+              >
+                회원가입
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Right: 소개 영역 */}
         <section className="login-hero navy-panel">
           <div className="hero-top">
             <span className="hero-title-line">여러분의 새로운 시작</span>
@@ -240,102 +490,6 @@ export default function LoginApp() {
               </div>
             </div>
           </footer>
-        </section>
-
-        {/* Right: 로그인 폼 */}
-        <section className="login-panel light-panel">
-          <h2>LOGIN</h2>
-
-          <form className="login-form" onSubmit={handleSubmit}>
-            <div className="field">
-              <label htmlFor="login-id">아이디</label>
-              <input
-                id="login-id"
-                type="text"
-                placeholder="아이디 입력"
-                autoComplete="username"
-                value={id}
-                onChange={(e) => setId(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="login-password">비밀번호</label>
-
-              <div className="pw-input-wrap">
-                <input
-                  id="login-password"
-                  className="pw-input"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="비밀번호 입력"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
-                />
-
-                <button
-                  type="button"
-                  className="pw-toggle"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={
-                    showPassword ? "비밀번호 숨기기" : "비밀번호 보기"
-                  }
-                  aria-pressed={showPassword}
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-            </div>
-
-            <div className="login-links">
-              <button type="button" onClick={() => navigate("/findid")}>
-                아이디 찾기
-              </button>
-              <span className="dot" aria-hidden="true" />
-              <button type="button" onClick={() => navigate("/findpw")}>
-                비밀번호 찾기
-              </button>
-            </div>
-
-            {errorMsg ? <p className="error">{errorMsg}</p> : null}
-
-            <button
-              type="submit"
-              className="login-primary"
-              disabled={isLoading}
-            >
-              {isLoading ? "로그인 중..." : "로그인"}
-            </button>
-
-            <button
-              type="button"
-              className="login-easy"
-              onClick={() => setEasyOpen(true)}
-              disabled={isLoading}
-            >
-              간편로그인
-            </button>
-
-            <div className="login-divider" />
-
-            <div className="signup-row">
-              <div className="signup-copy">
-                회원가입하고 <strong>BrandPliot</strong>의<br />
-                <strong>더 많은 컨설팅</strong>를 받아보세요!
-              </div>
-              <button
-                type="button"
-                className="signup-cta"
-                onClick={() => navigate("/signup")}
-                disabled={isLoading}
-              >
-                회원가입
-              </button>
-            </div>
-          </form>
         </section>
       </div>
     </div>

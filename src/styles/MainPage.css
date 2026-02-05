@@ -10,6 +10,21 @@
   flex-direction: column;
 }
 
+.main-page--entry-from-login .main-content {
+  animation: mainPageSoftOpen 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes mainPageSoftOpen {
+  0% {
+    opacity: 0.96;
+    transform: scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .main-content {
   width: 100%;
   max-width: 1100px;
