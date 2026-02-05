@@ -725,6 +725,16 @@ function normalizeStoryCandidates(raw, form = {}, diagCtx = null) {
 export default function BrandStoryConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const REQUIRED_FIELD_ID = {
+    founding_story: "story-q-founding_story",
+    customer_transformation: "story-q-customer_problem",
+    aha_moment: "story-q-solution_essence",
+    brand_mission: "story-q-emotional_hook",
+    story_plot: "story-q-brand_persona",
+    customer_conflict: "story-q-credibility_basis",
+    story_emotion: "story-q-story_emotion",
+    ultimate_goal: "story-q-ultimate_goal",
+  };
 
   // ✅ 기본정보(UI 제거됐지만) 내부 컨텍스트로만 보관
   const [diagCtx, setDiagCtx] = useState(null);
@@ -851,6 +861,34 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
+  const requiredLabelMap = {
+    founding_story: "창업 계기",
+    customer_transformation: "고객 변화",
+    aha_moment: "핵심 전환점",
+    brand_mission: "브랜드 미션",
+    story_plot: "스토리 플롯",
+    customer_conflict: "고객 갈등",
+    story_emotion: "스토리 감정 톤",
+    ultimate_goal: "궁극적 목표",
+  };
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -1326,7 +1364,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-founding_story">
                   <label>
                     <QTag n="1" />
                     창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’은
@@ -1340,7 +1378,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-customer_problem">
                   <label>
                     <QTag n="2" />
                     우리 서비스를 이용하기 전과 후, 고객의 삶은 어떻게
@@ -1356,7 +1394,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-solution_essence">
                   <label>
                     <QTag n="3" />
                     고객이 우리만의 서비스를 이용하면서 감탄하는 순간은
@@ -1370,7 +1408,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-emotional_hook">
                   <label>
                     <QTag n="4" />
                     수익 창출 외에, 우리가 세상에 기여하고자 하는 것은
@@ -1392,7 +1430,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <p>질문지(step_4) 기준: 1개 선택 (기타 선택 시 직접 입력)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-brand_persona">
                   <label>
                     <QTag n="5" />
                     어떤 스타일의 스토리텔링을 원하나요?{" "}
@@ -1505,7 +1543,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-credibility_basis">
                   <label>
                     <QTag n="6" />
                     고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
@@ -1531,7 +1569,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-story_emotion">
                   <label>
                     <QTag n="7" />
                     스토리를 통해 고객의 어떤 감정을 자극하고 싶나요? (최대 2개){" "}
@@ -1584,7 +1622,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <p>브랜드가 도달하고 싶은 “세상”을 그려주세요.</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-ultimate_goal">
                   <label>
                     <QTag n="8" />
                     브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
@@ -1835,6 +1873,58 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 

@@ -390,6 +390,16 @@ export default function NamingConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const REQUIRED_FIELD_ID = {
+    namingStyles: "naming-q-namingStyles",
+    nameLength: "naming-q-nameLength",
+    languagePrefs: "naming-q-languagePrefs",
+    brandVibe: "naming-q-brandVibe",
+    avoidStyle: "naming-q-avoidStyle",
+    domainConstraint: "naming-q-domainConstraint",
+    targetEmotion: "naming-q-targetEmotion",
+  };
+
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -458,8 +468,36 @@ export default function NamingConsultingInterview({ onLogout }) {
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
 
+  const requiredLabelMap = {
+    namingStyles: "원하는 네이밍 스타일",
+    nameLength: "이름 길이",
+    languagePrefs: "한글/영문 선호",
+    brandVibe: "브랜드 분위기",
+    avoidStyle: "피하고 싶은 느낌",
+    domainConstraint: "도메인 제약사항",
+    targetEmotion: "고객이 느끼길 바라는 감정",
+  };
+
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // ✅ 단일 선택(배열 1개만 유지)
   const setSingleArrayValue = (key, value) => {
@@ -897,7 +935,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 1) naming style */}
-                <div className="field">
+                <div className="field" id="naming-q-namingStyles">
                   <label>
                     1. 어떤 스타일의 이름을 선호하시나요?{" "}
                     <span className="req">*</span>
@@ -948,7 +986,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 2) name length */}
-                <div className="field">
+                <div className="field" id="naming-q-nameLength">
                   <label>
                     2. 이름의 길이는 어느 정도가 적당한가요?{" "}
                     <span className="req">*</span>
@@ -994,7 +1032,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 3) language */}
-                <div className="field">
+                <div className="field" id="naming-q-languagePrefs">
                   <label>
                     3. 어떤 언어 기반이어야 하나요?{" "}
                     <span className="req">*</span>
@@ -1045,7 +1083,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 4) vibe max 2 */}
-                <div className="field">
+                <div className="field" id="naming-q-brandVibe">
                   <label>
                     4. 이름에서 느껴져야 할 첫인상은 무엇인가요? (최대 2개 선택){" "}
                     <span className="req">*</span>
@@ -1129,7 +1167,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 5) avoid required */}
-                <div className="field">
+                <div className="field" id="naming-q-avoidStyle">
                   <label>
                     5. "이런 느낌만은 피해주세요" 하는 것이 있나요?{" "}
                     <span className="req">*</span>
@@ -1142,7 +1180,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 6) domain importance */}
-                <div className="field">
+                <div className="field" id="naming-q-domainConstraint">
                   <label>
                     6. .com 도메인 확보가 얼마나 중요한가요?{" "}
                     <span className="req">*</span>
@@ -1185,7 +1223,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
 
                 {/* 7) target emotion */}
-                <div className="field">
+                <div className="field" id="naming-q-targetEmotion">
                   <label>
                     7. 고객이 이름을 듣자마자 느꼈으면 하는 딱 하나의 감정은
                     무엇인가요? <span className="req">*</span>
@@ -1457,28 +1495,53 @@ export default function NamingConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList">
-                  <li className={requiredStatus.namingStyles ? "ok" : ""}>
-                    1) 네이밍 스타일
-                  </li>
-                  <li className={requiredStatus.nameLength ? "ok" : ""}>
-                    2) 이름 길이
-                  </li>
-                  <li className={requiredStatus.languagePrefs ? "ok" : ""}>
-                    3) 언어 기반
-                  </li>
-                  <li className={requiredStatus.brandVibe ? "ok" : ""}>
-                    4) 첫인상(최대 2)
-                  </li>
-                  <li className={requiredStatus.avoidStyle ? "ok" : ""}>
-                    5) 피해야 할 요소
-                  </li>
-                  <li className={requiredStatus.domainConstraint ? "ok" : ""}>
-                    6) .com 중요도
-                  </li>
-                  <li className={requiredStatus.targetEmotion ? "ok" : ""}>
-                    7) 타깃 감정
-                  </li>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <div className="divider" />

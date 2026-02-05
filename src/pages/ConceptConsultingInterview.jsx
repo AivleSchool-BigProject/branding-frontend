@@ -302,6 +302,15 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const REQUIRED_FIELD_ID = {
+    core_values: "concept-q-core_values",
+    brand_voice: "concept-q-brand_voice",
+    brand_promise: "concept-q-brand_promise",
+    key_message: "concept-q-key_message",
+    concept_vibe: "concept-q-concept_vibe",
+    positioning_axes: "concept-q-positioning_axes",
+  };
+
   useEffect(() => {
     try {
       migrateLegacyToPipelineIfNeeded();
@@ -407,6 +416,33 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
+
+  const requiredLabelMap = {
+    core_values: "핵심 가치",
+    brand_voice: "브랜드 톤/보이스",
+    brand_promise: "브랜드 약속",
+    key_message: "핵심 메시지",
+    concept_vibe: "컨셉 무드",
+    positioning_axes: "포지셔닝 축",
+  };
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -814,7 +850,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
                     (2-3개 선택) <span className="req">*</span>
@@ -851,7 +887,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   ) : null}
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
                     <span className="req">*</span>
@@ -882,7 +918,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   ) : null}
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -894,7 +930,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -906,7 +942,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -918,7 +954,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
                     가깝나요? (최대 2개) <span className="req">*</span>
@@ -1210,6 +1246,58 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 

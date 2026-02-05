@@ -627,6 +627,18 @@ export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const REQUIRED_FIELD_ID = {
+    logo_structure: "logo-q-logo_structure",
+    visual_motif: "logo-q-visual_motif",
+    brand_color: "logo-q-brand_color",
+    design_style: "logo-q-design_style",
+    design_reference: "logo-q-design_reference",
+    logo_flexibility: "logo-q-logo_flexibility",
+    visual_text_ratio: "logo-q-visual_text_ratio",
+    main_usage_channels: "logo-q-main_usage_channels",
+    typography_style: "logo-q-typography_style",
+  };
+
   // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
     try {
@@ -736,8 +748,38 @@ export default function LogoConsultingInterview({ onLogout }) {
   const hasResult = candidates.length > 0;
   const canFinish = Boolean(hasResult && selectedId);
 
+  const requiredLabelMap = {
+    logo_structure: "로고 형태",
+    visual_motif: "비주얼 모티프",
+    brand_color: "대표 색상",
+    design_style: "디자인 스타일",
+    design_reference: "로고 레퍼런스",
+    logo_flexibility: "확장/유연성",
+    visual_text_ratio: "이미지/텍스트 비율",
+    main_usage_channels: "주요 사용 채널",
+    typography_style: "타이포그래피 스타일",
+  };
+
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const scrollToResult = () => {
     if (!refResult?.current) return;
@@ -1361,7 +1403,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>어떤 형태의 로고를 원하시나요? (Step 5)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-logo_structure">
                   <label>
                     로고 형태 선택 <span className="req">*</span>
                   </label>
@@ -1390,7 +1432,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>로고에 담고 싶은 이미지는 무엇인가요? (선택형)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-visual_motif">
                   <label>
                     비주얼 모티프 선택 <span className="req">*</span>
                   </label>
@@ -1419,7 +1461,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-brand_color">
                   <label>
                     색상 선택(최대 2개) <span className="req">*</span>
                   </label>
@@ -1449,7 +1491,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>선호하는 디자인 스타일은 무엇인가요? (Step 5)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-design_style">
                   <label>
                     스타일 선택 <span className="req">*</span>
                   </label>
@@ -1484,7 +1526,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-design_reference">
                   <label>
                     레퍼런스(필수) <span className="req">*</span>
                   </label>
@@ -1510,7 +1552,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-logo_flexibility">
                   <label>
                     중요 특성(최대 2개) <span className="req">*</span>
                   </label>
@@ -1540,7 +1582,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>이미지와 텍스트 중 무엇이 더 중요한가요?</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-visual_text_ratio">
                   <label>
                     비율 선택 <span className="req">*</span>
                   </label>
@@ -1571,7 +1613,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-main_usage_channels">
                   <label>
                     사용 채널(최대 2개) <span className="req">*</span>
                   </label>
@@ -1607,7 +1649,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>브랜드 로고에 어울리는 폰트 스타일은 무엇인가요?</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="logo-q-typography_style">
                   <label>
                     폰트 스타일 선택 <span className="req">*</span>
                   </label>
@@ -1832,6 +1874,58 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 
