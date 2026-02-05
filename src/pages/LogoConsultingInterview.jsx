@@ -23,7 +23,6 @@ import {
   ensureStrictStepAccess,
   migrateLegacyToPipelineIfNeeded,
   readPipeline,
-  upsertPipeline,
   setStepResult,
   clearStepsFrom,
   getSelected,
@@ -38,6 +37,7 @@ import { apiRequest, apiRequestAI } from "../api/client.js";
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
+
 // ✅ 마이페이지 로고 표시 fallback용(백 저장이 지연/누락될 때)
 const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 
@@ -100,7 +100,7 @@ function parseJwtPayload(token) {
 function isJwtExpired(token, skewSeconds = 30) {
   const payload = parseJwtPayload(token);
   const exp = payload?.exp;
-  if (!exp) return false; // exp가 없으면 판단 불가 -> 만료로 보지 않음
+  if (!exp) return false;
   const nowSec = Math.floor(Date.now() / 1000);
   return nowSec >= Number(exp) - Number(skewSeconds || 0);
 }
@@ -140,31 +140,47 @@ function isFilled(v) {
   return Boolean(String(v ?? "").trim());
 }
 
-/** ✅ multiple 선택용 칩 UI */
+function normalizeOpt(opt) {
+  if (typeof opt === "string") return { value: opt, label: opt };
+  return {
+    value: opt?.value,
+    label: opt?.label ?? opt?.text ?? String(opt?.value ?? ""),
+  };
+}
+
+/** ✅ multiple 선택용 칩 UI (max 지원, options: string | {value,label/text}) */
 function MultiChips({ value, options, onChange, max = null }) {
   const current = Array.isArray(value) ? value : [];
 
-  const toggle = (opt) => {
-    const exists = current.includes(opt);
-    let next = exists ? current.filter((x) => x !== opt) : [...current, opt];
+  const toggle = (optRaw) => {
+    const opt = normalizeOpt(optRaw);
+    if (!opt.value) return;
+
+    const exists = current.includes(opt.value);
+    let next = exists
+      ? current.filter((x) => x !== opt.value)
+      : [...current, opt.value];
 
     if (typeof max === "number" && max > 0 && next.length > max) {
-      // 마지막 선택 기준으로 1개만 유지
-      next = [opt];
+      // 마지막으로 누른 값이 남도록 유지
+      const last = opt.value;
+      next = next.filter((x) => x !== last);
+      next = [...next.slice(0, Math.max(0, max - 1)), last];
     }
     onChange(next);
   };
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {options.map((opt) => {
-        const active = current.includes(opt);
+      {options.map((optRaw) => {
+        const opt = normalizeOpt(optRaw);
+        const active = current.includes(opt.value);
         return (
           <button
-            key={opt}
+            key={opt.value}
             type="button"
             aria-pressed={active}
-            onClick={() => toggle(opt)}
+            onClick={() => toggle(optRaw)}
             style={{
               fontSize: 12,
               fontWeight: 800,
@@ -178,7 +194,7 @@ function MultiChips({ value, options, onChange, max = null }) {
               cursor: "pointer",
             }}
           >
-            {opt}
+            {opt.label}
           </button>
         );
       })}
@@ -186,18 +202,335 @@ function MultiChips({ value, options, onChange, max = null }) {
   );
 }
 
-const LOGO_STRUCTURE_OPTIONS = ["심볼형", "워드마크형", "콤비네이션"];
-const BRAND_COLOR_OPTIONS = ["블루/네이비", "블랙/화이트"];
-const DESIGN_STYLE_OPTIONS = ["플랫/미니멀", "3D/그라디언트"];
-const VISUAL_TEXT_RATIO_OPTIONS = ["이미지 중심", "텍스트 중심", "균형"];
+function ChoiceCard({ selected, title, desc, extra, onClick }) {
+  return (
+    <button
+      type="button"
+      className="btn"
+      onClick={onClick}
+      aria-pressed={selected}
+      style={{
+        textAlign: "left",
+        padding: "12px 12px",
+        borderRadius: 12,
+        border: selected
+          ? "1px solid rgba(99,102,241,0.40)"
+          : "1px solid rgba(0,0,0,0.10)",
+        background: selected
+          ? "rgba(99,102,241,0.08)"
+          : "rgba(255,255,255,0.9)",
+        cursor: "pointer",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 999,
+            border: "2px solid rgba(0,0,0,0.35)",
+            background: selected ? "rgba(99,102,241,0.9)" : "transparent",
+            boxShadow: selected ? "0 0 0 3px rgba(99,102,241,0.15)" : "none",
+          }}
+        />
+        <div style={{ fontWeight: 900 }}>{title}</div>
+      </div>
+
+      {desc ? (
+        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.82 }}>{desc}</div>
+      ) : null}
+
+      {extra ? (
+        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>{extra}</div>
+      ) : null}
+    </button>
+  );
+}
 
 /** ======================
- *  ✅ 백 응답 후보 normalize (로고 3안 형태로 통일)
- *  - 예상 응답 예:
- *    1) { logo1: "url", logo2: "url", logo3: "url" }
- *    2) { candidates: [ { id, url }, ... ] }
- *    3) ["url1","url2","url3"]
- *  ====================== */
+ * ✅ “선택 사항 입력란 제거” 정책:
+ * - 기타(Other) 옵션 삭제
+ * - 조건부 입력(input_prompt) 삭제
+ * - 선택(옵션) 텍스트 입력(추가 요청/피하고 싶은 방향) 제거
+ * ====================== */
+
+const LOGO_STRUCTURE_OPTIONS = [
+  {
+    id: "shape_symbol",
+    text: "심볼형 (Symbol Only)",
+    value: "Symbol Only",
+    description: "이미지/아이콘만으로 구성",
+    examples: "예: 애플, 나이키, 트위터",
+  },
+  {
+    id: "shape_wordmark",
+    text: "워드마크형 (Wordmark)",
+    value: "Wordmark",
+    description: "텍스트(브랜드명)만으로 구성",
+    examples: "예: 구글, 코카콜라, 페덱스",
+  },
+  {
+    id: "shape_combination",
+    text: "콤비네이션 (Combination)",
+    value: "Combination",
+    description: "심볼 + 텍스트 결합",
+    examples: "예: 스타벅스, 아디다스, 버거킹",
+  },
+  {
+    id: "shape_emblem",
+    text: "엠블럼형 (Emblem)",
+    value: "Emblem",
+    description: "텍스트가 심볼 안에 들어간 형태",
+    examples: "예: 할리데이비슨, BMW, 스타벅스(초기)",
+  },
+];
+
+const VISUAL_MOTIF_OPTIONS = [
+  {
+    id: "motif_object",
+    text: "구체적인 사물",
+    value: "Concrete Object",
+    description: "동물, 식물, 도구 등 알아볼 수 있는 것",
+  },
+  {
+    id: "motif_abstract",
+    text: "추상적 개념",
+    value: "Abstract Concept",
+    description: "성장, 연결, 속도 등을 상징하는 이미지",
+  },
+  {
+    id: "motif_geometric",
+    text: "기하학적 도형",
+    value: "Geometric Shape",
+    description: "원, 삼각형, 선 등 단순한 도형",
+  },
+  {
+    id: "motif_letter",
+    text: "문자 조합",
+    value: "Letter Based",
+    description: "이니셜이나 글자를 활용한 디자인",
+  },
+  {
+    id: "motif_none",
+    text: "특정 이미지 없음 (AI 추천)",
+    value: "None",
+    description: "브랜드에 가장 잘 맞는 모티프를 AI가 제안",
+  },
+];
+
+const BRAND_COLOR_OPTIONS = [
+  {
+    id: "col_blue",
+    text: "블루/네이비",
+    value: "Blue/Navy",
+    description: "신뢰, 안정, 전문성",
+  },
+  {
+    id: "col_red",
+    text: "레드/오렌지",
+    value: "Red/Orange",
+    description: "열정, 에너지, 행동",
+  },
+  {
+    id: "col_green",
+    text: "그린",
+    value: "Green",
+    description: "자연, 성장, 안정",
+  },
+  {
+    id: "col_purple",
+    text: "퍼플/바이올렛",
+    value: "Purple/Violet",
+    description: "창의성, 혁신, 고급",
+  },
+  {
+    id: "col_yellow",
+    text: "옐로우",
+    value: "Yellow",
+    description: "활기, 긍정, 친근함",
+  },
+  {
+    id: "col_bw",
+    text: "블랙/화이트/그레이",
+    value: "Black/White/Gray",
+    description: "미니멀, 세련, 타임리스",
+  },
+  {
+    id: "col_gold",
+    text: "골드/브라운",
+    value: "Gold/Brown",
+    description: "프리미엄, 전통, 신뢰",
+  },
+];
+
+const DESIGN_STYLE_OPTIONS = [
+  {
+    id: "style_minimal",
+    text: "플랫/미니멀",
+    value: "Flat/Minimalist",
+    description: "단순하고 깔끔한",
+    visual_note: "2D, 단색, 여백",
+  },
+  {
+    id: "style_3d",
+    text: "3D/그라디언트",
+    value: "3D/Gradient",
+    description: "입체감과 깊이감",
+    visual_note: "그림자, 그라데이션",
+  },
+  {
+    id: "style_hand",
+    text: "핸드메이드/일러스트",
+    value: "Handmade/Illustrated",
+    description: "따뜻하고 인간적인 손맛",
+    visual_note: "손그림, 스케치",
+  },
+  {
+    id: "style_geometric",
+    text: "기하학적/테크",
+    value: "Geometric/Tech",
+    description: "정확하고 현대적인",
+    visual_note: "선명 라인, 각진 형태",
+  },
+  {
+    id: "style_vintage",
+    text: "빈티지/레트로",
+    value: "Vintage/Retro",
+    description: "향수를 불러일으키는 클래식",
+    visual_note: "텍스처, 레트로 폰트",
+  },
+  {
+    id: "style_playful",
+    text: "플레이풀/위트",
+    value: "Playful/Witty",
+    description: "재미있고 독특한",
+    visual_note: "유니크, 장난스러움",
+  },
+];
+
+const LOGO_FLEXIBILITY_OPTIONS = [
+  {
+    id: "flex_scalable",
+    text: "축소 가능성",
+    value: "Scalability",
+    description: "작게 축소해도 알아볼 수 있어야 함",
+  },
+  {
+    id: "flex_versatile",
+    text: "배경 적응성",
+    value: "Versatility",
+    description: "다양한 배경색에서도 사용 가능",
+  },
+  {
+    id: "flex_animated",
+    text: "애니메이션 확장성",
+    value: "Animation Potential",
+    description: "움직이는 로고로 확장 가능",
+  },
+  {
+    id: "flex_monochrome",
+    text: "흑백 전환",
+    value: "Monochrome Adaptability",
+    description: "흑백에서도 효과적",
+  },
+  {
+    id: "flex_memorable",
+    text: "기억 용이성",
+    value: "Memorability",
+    description: "한번 보면 기억에 남음",
+  },
+];
+
+const VISUAL_TEXT_RATIO_OPTIONS = [
+  {
+    id: "ratio_img",
+    text: "이미지 중심 (70:30)",
+    value: "Image Driven",
+    description: "심볼이 강조되고 텍스트는 보조적",
+  },
+  {
+    id: "ratio_bal",
+    text: "균형 (50:50)",
+    value: "Balanced",
+    description: "이미지와 텍스트가 동등",
+  },
+  {
+    id: "ratio_txt",
+    text: "텍스트 중심 (70:30)",
+    value: "Text Driven",
+    description: "브랜드명이 강조되고 이미지는 보조적",
+  },
+];
+
+const MAIN_USAGE_CHANNELS_OPTIONS = [
+  {
+    id: "channel_app_icon",
+    text: "모바일 앱 아이콘",
+    value: "Mobile App Icon",
+    description: "작고 단순한 형태 중요",
+  },
+  {
+    id: "channel_web_screen",
+    text: "웹사이트·SaaS 화면",
+    value: "Web/SaaS Screen",
+    description: "헤더/사이드바/버튼 등 다양한 크기",
+  },
+  {
+    id: "channel_offline_signage",
+    text: "오프라인 간판·인쇄물",
+    value: "Offline Signage/Print",
+    description: "대형 간판/명함/포스터 등",
+  },
+  {
+    id: "channel_product_packaging",
+    text: "제품 패키지(포장)",
+    value: "Product Packaging",
+    description: "박스/라벨/용기 등",
+  },
+  {
+    id: "channel_social_media",
+    text: "SNS·콘텐츠(피드, 썸네일)",
+    value: "Social Media/Content",
+    description: "인스타/유튜브/썸네일 등",
+  },
+  {
+    id: "channel_presentation_ir",
+    text: "프레젠테이션·IR 자료",
+    value: "Presentation/IR Materials",
+    description: "피치덱/회사 소개 자료 등",
+  },
+];
+
+const TYPOGRAPHY_STYLE_OPTIONS = [
+  {
+    id: "opt_modern_sans",
+    text: "모던한 산세리프",
+    value: "Modern Sans Serif",
+    description: "깔끔, 현대적",
+  },
+  {
+    id: "opt_classic_serif",
+    text: "클래식한 세리프",
+    value: "Classic Serif",
+    description: "전통, 신뢰",
+  },
+  {
+    id: "opt_handwriting",
+    text: "손글씨/캘리그라피",
+    value: "Handwriting/Calligraphy",
+    description: "따뜻함, 인간적",
+  },
+  {
+    id: "opt_geometric_tech",
+    text: "기하학적/테크",
+    value: "Geometric/Tech",
+    description: "정확, 미래지향",
+  },
+];
+
+/** ======================
+ * ✅ 백 응답 후보 normalize (로고 3안 형태로 통일)
+ * ====================== */
 function normalizeLogoCandidates(raw) {
   const payload = raw?.data ?? raw?.result ?? raw;
 
@@ -217,15 +550,12 @@ function normalizeLogoCandidates(raw) {
     return "";
   };
 
-  // 1) 배열로 직접 온 경우
   let list = Array.isArray(payload) ? payload : null;
 
-  // 2) candidates 키로 온 경우
   if (!list && payload && typeof payload === "object") {
     list = payload?.candidates || payload?.logos || payload?.data?.candidates;
   }
 
-  // 3) object에 logo1/2/3 형태로 담긴 경우
   if (!list && payload && typeof payload === "object") {
     const keys = ["logo1", "logo2", "logo3"];
     const picked = [];
@@ -238,7 +568,6 @@ function normalizeLogoCandidates(raw) {
 
   if (!Array.isArray(list)) return [];
 
-  // 최종 후보(최대 3개) 통일
   const urls = list
     .map((x) => readUrl(x))
     .filter((x) => typeof x === "string" && x.length > 0)
@@ -265,18 +594,34 @@ const INITIAL_FORM = {
   oneLine: "",
   targetCustomer: "",
 
-  // ✅ Step 5. 로고 방향 (Visual)
-  logo_structure: [], // multiple
-  visual_motif: "", // short optional
-  brand_color: [], // multiple
-  design_style: [], // multiple
-  design_reference: "", // long optional
-  primary_usage: "", // short
-  visual_text_ratio: [], // multiple(실제로는 1개 선택)
+  // ✅ step_5 질문지(입력란 최소화: 선택 중심, 기타/조건부 입력 제거)
+  logo_structure: "", // single_choice
+  visual_motif: "", // single_choice
+  brand_color: [], // multiple_choice max 2
+  design_style: "", // single_choice
+  design_reference: "", // long_answer (required)
+  logo_flexibility: [], // multiple_choice max 2
+  visual_text_ratio: "", // single_choice
+  main_usage_channels: [], // multiple_choice max 2
+  typography_style: "", // single_choice required
 
-  // 선택 메모
-  notes: "",
+  // ✅ 기존 키(호환/보험용) 유지
+  primary_usage: "",
 };
+
+function optByValue(options, value) {
+  return (
+    (options || []).find((o) => String(o?.value) === String(value)) || null
+  );
+}
+
+function joinUsageLabels(values) {
+  const arr = Array.isArray(values) ? values : [];
+  const labels = arr.map(
+    (v) => optByValue(MAIN_USAGE_CHANNELS_OPTIONS, v)?.text || v,
+  );
+  return labels.filter(Boolean).join(", ");
+}
 
 export default function LogoConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
@@ -314,12 +659,6 @@ export default function LogoConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ URL 쿼리의 brandId 처리(새로고침/딥링크 대비)
-  // ⚠️ 기존 로직은 URL의 brandId가 pipeline의 brandId를 덮어써서
-  //    마지막 단계(로고 선택 저장)에서 다른 brandId로 요청되는 문제가 있었습니다.
-  // 규칙:
-  // 1) pipeline에 brandId가 없을 때만 URL brandId를 채웁니다.
-  // 2) pipeline brandId가 이미 있으면 URL brandId는 무시하고, 있던 쿼리는 제거합니다.
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -350,30 +689,44 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   // 섹션 ref
   const refBasic = useRef(null);
-  const refVisual = useRef(null);
+  const refLogo = useRef(null);
+  const refMotif = useRef(null);
+  const refColor = useRef(null);
   const refStyle = useRef(null);
+  const refRef = useRef(null);
+  const refFlex = useRef(null);
+  const refRatio = useRef(null);
   const refUsage = useRef(null);
-  const refNotes = useRef(null);
+  const refType = useRef(null);
 
   const sections = useMemo(
     () => [
       { id: "basic", label: "기본 정보", ref: refBasic },
-      { id: "visual", label: "형태/모티프", ref: refVisual },
-      { id: "style", label: "색/스타일", ref: refStyle },
-      { id: "usage", label: "사용처/비중", ref: refUsage },
-      { id: "notes", label: "추가 요청", ref: refNotes },
+      { id: "logo", label: "로고 형태", ref: refLogo },
+      { id: "motif", label: "비주얼 모티프", ref: refMotif },
+      { id: "color", label: "대표 색상", ref: refColor },
+      { id: "style", label: "디자인 스타일", ref: refStyle },
+      { id: "ref", label: "레퍼런스", ref: refRef },
+      { id: "flex", label: "확장성", ref: refFlex },
+      { id: "ratio", label: "비율", ref: refRatio },
+      { id: "usage", label: "사용 채널", ref: refUsage },
+      { id: "type", label: "타이포", ref: refType },
     ],
     [],
   );
 
-  // ✅ 필수 항목(Step5 기준)
+  // ✅ 필수 항목(step_5 기준)
   const requiredKeys = useMemo(
     () => [
       "logo_structure",
+      "visual_motif",
       "brand_color",
       "design_style",
-      "primary_usage",
+      "design_reference",
+      "logo_flexibility",
       "visual_text_ratio",
+      "main_usage_channels",
+      "typography_style",
     ],
     [],
   );
@@ -414,7 +767,6 @@ export default function LogoConsultingInterview({ onLogout }) {
     setToast({ msg: text, variant, muted: false });
     try {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
       if (variant === "success") {
         toastTimerRef.current = window.setTimeout(() => {
           setToast((prev) =>
@@ -441,32 +793,62 @@ export default function LogoConsultingInterview({ onLogout }) {
         setForm((prev) => {
           const next = { ...prev, ...loaded };
 
-          // 구버전 필드 -> Step5 필드로 최소 매핑
-          // - logoType: symbol/wordmark/combo
-          if (
-            !Array.isArray(next.logo_structure) ||
-            next.logo_structure.length === 0
-          ) {
-            const lt = String(loaded.logoType || "").trim();
-            if (lt === "symbol") next.logo_structure = ["심볼형"];
-            if (lt === "wordmark") next.logo_structure = ["워드마크형"];
-            if (lt === "combo") next.logo_structure = ["콤비네이션"];
+          // ---- 구버전(배열/KR 값) -> step_5 형태로 최소 변환 ----
+          // logo_structure: ["심볼형"] -> "Symbol Only"
+          if (!String(next.logo_structure || "").trim()) {
+            const lsArr = Array.isArray(loaded.logo_structure)
+              ? loaded.logo_structure
+              : [];
+            const ls0 = String(lsArr?.[0] || "").trim();
+            if (ls0 === "심볼형") next.logo_structure = "Symbol Only";
+            else if (ls0 === "워드마크형") next.logo_structure = "Wordmark";
+            else if (ls0 === "콤비네이션") next.logo_structure = "Combination";
           }
 
-          // - useCase -> primary_usage
+          // brand_color: ["블루/네이비"] -> ["Blue/Navy"]
+          if (
+            Array.isArray(loaded.brand_color) &&
+            loaded.brand_color.length &&
+            (!Array.isArray(next.brand_color) || next.brand_color.length === 0)
+          ) {
+            const map = {
+              "블루/네이비": "Blue/Navy",
+              "블랙/화이트": "Black/White/Gray",
+              "블랙/화이트/그레이": "Black/White/Gray",
+            };
+            next.brand_color = loaded.brand_color
+              .map((x) => map[String(x).trim()] || x)
+              .slice(0, 2);
+          }
+
+          // design_style: ["플랫/미니멀"] -> "Flat/Minimalist"
+          if (!String(next.design_style || "").trim()) {
+            const dsArr = Array.isArray(loaded.design_style)
+              ? loaded.design_style
+              : [];
+            const ds0 = String(dsArr?.[0] || "").trim();
+            if (ds0 === "플랫/미니멀") next.design_style = "Flat/Minimalist";
+            else if (ds0 === "3D/그라디언트") next.design_style = "3D/Gradient";
+          }
+
+          // visual_text_ratio: ["이미지 중심"] -> "Image Driven"
+          if (!String(next.visual_text_ratio || "").trim()) {
+            const vrArr = Array.isArray(loaded.visual_text_ratio)
+              ? loaded.visual_text_ratio
+              : [];
+            const vr0 = String(vrArr?.[0] || "").trim();
+            if (vr0 === "이미지 중심") next.visual_text_ratio = "Image Driven";
+            else if (vr0 === "균형") next.visual_text_ratio = "Balanced";
+            else if (vr0 === "텍스트 중심")
+              next.visual_text_ratio = "Text Driven";
+          }
+
+          // 기존 useCase/primary_usage 유지
           if (
             !String(next.primary_usage || "").trim() &&
             String(loaded.useCase || "").trim()
           ) {
             next.primary_usage = loaded.useCase;
-          }
-
-          // - references -> design_reference
-          if (
-            !String(next.design_reference || "").trim() &&
-            String(loaded.references || "").trim()
-          ) {
-            next.design_reference = loaded.references;
           }
 
           return next;
@@ -661,7 +1043,6 @@ export default function LogoConsultingInterview({ onLogout }) {
         },
       };
 
-      // ✅ 로고 생성
       const res = await apiRequestAI(`/brands/${brandId}/logo`, {
         method: "POST",
         data: payload,
@@ -697,7 +1078,6 @@ export default function LogoConsultingInterview({ onLogout }) {
         const expired = !token || isJwtExpired(token);
 
         if (expired) {
-          // ✅ 여기! 구문 오류 수정: 줄바꿈은 \n 사용
           alert(
             "로그인 토큰이 없거나 만료되었습니다.\n다시 로그인한 뒤 '완료'를 다시 눌러주세요.",
           );
@@ -786,13 +1166,10 @@ export default function LogoConsultingInterview({ onLogout }) {
 
     setFinishing(true);
     try {
-      // ✅ 프론트 로컬에도 저장(brandId -> selected logoUrl)
       upsertSelectedLogoFallback(brandId, selectedLogoUrl);
 
-      // ✅ 백엔드에 선택값 저장(로고 선택 → 브랜드 컨설팅 종료)
       await apiRequest(`/brands/${brandId}/logo/select`, {
         method: "POST",
-        // ✅ 백 구현/DTO 차이 대비: 여러 필드명으로 함께 전달
         data: {
           selectedByUser: String(selectedLogoUrl),
           selectedLogoUrl: String(selectedLogoUrl),
@@ -816,8 +1193,6 @@ export default function LogoConsultingInterview({ onLogout }) {
         return;
       }
 
-      // ✅ 재진입/중복 저장 등으로 단계가 이미 넘어갔을 수 있으므로,
-      // 메시지에 '로고'가 포함되지 않으면 치명 에러로 보고 중단.
       if (!String(msg || "").includes("로고")) {
         alert(`로고 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
         return;
@@ -848,7 +1223,6 @@ export default function LogoConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    // ✅ pipeline에서도 현재 단계(로고) 초기화
     try {
       clearStepsFrom("logo");
       setBrandFlowCurrent("logo");
@@ -904,6 +1278,49 @@ export default function LogoConsultingInterview({ onLogout }) {
     setLastSaved("-");
   };
 
+  // ====== step_5 핸들러(선택 중심) ======
+  const setLogoStructure = (value) =>
+    setForm((prev) => ({ ...prev, logo_structure: value }));
+
+  const setVisualMotif = (value) =>
+    setForm((prev) => ({ ...prev, visual_motif: value }));
+
+  const setBrandColors = (nextColors) => {
+    setForm((prev) => {
+      const list = Array.isArray(nextColors) ? nextColors : [];
+      return { ...prev, brand_color: list.slice(0, 2) };
+    });
+  };
+
+  const setDesignStyle = (value) =>
+    setForm((prev) => ({ ...prev, design_style: value }));
+
+  const setLogoFlexibility = (nextFlex) => {
+    setForm((prev) => {
+      const list = Array.isArray(nextFlex) ? nextFlex : [];
+      return { ...prev, logo_flexibility: list.slice(0, 2) };
+    });
+  };
+
+  const setVisualTextRatio = (value) =>
+    setForm((prev) => ({ ...prev, visual_text_ratio: value }));
+
+  const setMainUsageChannels = (nextChannels) => {
+    setForm((prev) => {
+      const list = Array.isArray(nextChannels) ? nextChannels : [];
+      const next = {
+        ...prev,
+        main_usage_channels: list.slice(0, 2),
+      };
+      // ✅ 호환/보험용: primary_usage 자동 채우기(기존 키 유지)
+      next.primary_usage = joinUsageLabels(next.main_usage_channels);
+      return next;
+    });
+  };
+
+  const setTypographyStyle = (value) =>
+    setForm((prev) => ({ ...prev, typography_style: value }));
+
   return (
     <div className="diagInterview consultingInterview">
       <PolicyModal
@@ -930,8 +1347,11 @@ export default function LogoConsultingInterview({ onLogout }) {
             <div>
               <h1 className="diagInterview__title">로고 컨설팅 인터뷰</h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 로고
-                방향(형태·색·스타일·사용처·이미지/텍스트 비중)을 입력합니다.
+                기업 진단에서 입력한 기본 정보는 자동 반영되며, 여기서는 Step 5
+                질문지 기준으로 로고
+                형태·모티프·색·스타일·레퍼런스·확장성·비율·사용
+                채널·타이포그래피를
+                <b> 선택 중심</b>으로 입력합니다. (기타/추가 입력란 없음)
               </p>
             </div>
 
@@ -1016,148 +1436,278 @@ export default function LogoConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 2) VISUAL */}
-              <div className="card" ref={refVisual}>
+              {/* 2) 로고 형태 */}
+              <div className="card" ref={refLogo}>
                 <div className="card__head">
                   <h2>2. 로고 형태</h2>
-                  <p>로고 구성(심볼/워드/조합)과 모티프를 정리합니다.</p>
+                  <p>어떤 형태의 로고를 원하시나요? (Step 5)</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    원하는 로고 형태 <span className="req">*</span>
+                    로고 형태 선택 <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능 (실제로는 1~2개 정도가 현실적이에요)
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {LOGO_STRUCTURE_OPTIONS.map((opt) => {
+                      const selected = form.logo_structure === opt.value;
+                      return (
+                        <ChoiceCard
+                          key={opt.id}
+                          selected={selected}
+                          title={opt.text}
+                          desc={opt.description}
+                          extra={opt.examples}
+                          onClick={() => setLogoStructure(opt.value)}
+                        />
+                      );
+                    })}
                   </div>
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.logo_structure}
-                      options={LOGO_STRUCTURE_OPTIONS}
-                      onChange={(next) => setValue("logo_structure", next)}
-                    />
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>형상화 모티프(선택)</label>
-                  <input
-                    value={form.visual_motif}
-                    onChange={(e) => setValue("visual_motif", e.target.value)}
-                    placeholder="예) 나침반, 지도 핀, 방패, 체크, 성장 그래프 등"
-                  />
                 </div>
               </div>
 
-              {/* 3) STYLE */}
-              <div className="card" ref={refStyle}>
+              {/* 3) 비주얼 모티프 */}
+              <div className="card" ref={refMotif}>
                 <div className="card__head">
-                  <h2>3. 색상/스타일</h2>
-                  <p>대표 색상과 선호 스타일을 선택합니다.</p>
+                  <h2>3. 비주얼 모티프</h2>
+                  <p>로고에 담고 싶은 이미지는 무엇인가요? (선택형)</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    대표 색상 <span className="req">*</span>
+                    비주얼 모티프 선택 <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능
+
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {VISUAL_MOTIF_OPTIONS.map((opt) => {
+                      const selected = form.visual_motif === opt.value;
+                      return (
+                        <ChoiceCard
+                          key={opt.id}
+                          selected={selected}
+                          title={opt.text}
+                          desc={opt.description}
+                          onClick={() => setVisualMotif(opt.value)}
+                        />
+                      );
+                    })}
                   </div>
+                </div>
+              </div>
+
+              {/* 4) 대표 색상 */}
+              <div className="card" ref={refColor}>
+                <div className="card__head">
+                  <h2>4. 대표 색상</h2>
+                  <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    색상 선택(최대 2개) <span className="req">*</span>
+                  </label>
+
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    2개를 넘기면 마지막으로 선택한 항목이 유지돼요.
+                  </div>
+
                   <div style={{ marginTop: 10 }}>
                     <MultiChips
                       value={form.brand_color}
-                      options={BRAND_COLOR_OPTIONS}
-                      onChange={(next) => setValue("brand_color", next)}
+                      options={BRAND_COLOR_OPTIONS.map((o) => ({
+                        value: o.value,
+                        label: o.text,
+                      }))}
+                      onChange={setBrandColors}
+                      max={2}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* 5) 디자인 스타일 */}
+              <div className="card" ref={refStyle}>
+                <div className="card__head">
+                  <h2>5. 디자인 스타일</h2>
+                  <p>선호하는 디자인 스타일은 무엇인가요? (Step 5)</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    선호 디자인 스타일 <span className="req">*</span>
+                    스타일 선택 <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    여러 개 선택 가능
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {DESIGN_STYLE_OPTIONS.map((opt) => {
+                      const selected = form.design_style === opt.value;
+                      const extra = opt.visual_note
+                        ? `노트: ${opt.visual_note}`
+                        : "";
+                      return (
+                        <ChoiceCard
+                          key={opt.id}
+                          selected={selected}
+                          title={opt.text}
+                          desc={opt.description}
+                          extra={extra}
+                          onClick={() => setDesignStyle(opt.value)}
+                        />
+                      );
+                    })}
                   </div>
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.design_style}
-                      options={DESIGN_STYLE_OPTIONS}
-                      onChange={(next) => setValue("design_style", next)}
-                    />
-                  </div>
+                </div>
+              </div>
+
+              {/* 6) 레퍼런스(필수) */}
+              <div className="card" ref={refRef}>
+                <div className="card__head">
+                  <h2>6. 로고 레퍼런스</h2>
+                  <p>
+                    평소에 “로고가 참 좋다”고 생각한 브랜드와 그 이유는
+                    무엇인가요? (2~3개)
+                  </p>
                 </div>
 
                 <div className="field">
-                  <label>좋아하는 로고 레퍼런스 + 이유(선택)</label>
+                  <label>
+                    레퍼런스(필수) <span className="req">*</span>
+                  </label>
                   <textarea
                     value={form.design_reference}
                     onChange={(e) =>
                       setValue("design_reference", e.target.value)
                     }
-                    placeholder="링크/브랜드명 + 어떤 점이 좋은지(가독, 고급, 친근, 상징성 등)"
-                    rows={4}
+                    placeholder={`예: 애플 - 심플하면서도 기억에 남음
+스타벅스 - 친근함과 고급스러움의 조화
+노션 - 미니멀하지만 개성이 있음`}
+                    rows={5}
                   />
                 </div>
               </div>
 
-              {/* 4) USAGE */}
-              <div className="card" ref={refUsage}>
+              {/* 7) 유연성/확장성 */}
+              <div className="card" ref={refFlex}>
                 <div className="card__head">
-                  <h2>4. 사용처/비중</h2>
+                  <h2>7. 로고 확장/유연성</h2>
                   <p>
-                    로고를 어디에 가장 많이 쓰는지와 이미지/텍스트 비중을
-                    정합니다.
+                    다양한 상황에서 가장 중요한 특성은 무엇인가요? (최대 2개)
                   </p>
                 </div>
 
                 <div className="field">
                   <label>
-                    로고가 가장 많이 쓰일 곳 <span className="req">*</span>
+                    중요 특성(최대 2개) <span className="req">*</span>
                   </label>
-                  <input
-                    value={form.primary_usage}
-                    onChange={(e) => setValue("primary_usage", e.target.value)}
-                    placeholder="예) 앱 아이콘/파비콘, 웹 헤더, 명함, IR/피치덱, 썸네일 등"
-                  />
-                </div>
 
-                <div className="field">
-                  <label>
-                    이미지 vs 텍스트 중요도 <span className="req">*</span>
-                  </label>
                   <div className="hint" style={{ marginTop: 6 }}>
-                    1개만 선택
+                    2개를 넘기면 마지막으로 선택한 항목이 유지돼요.
                   </div>
+
                   <div style={{ marginTop: 10 }}>
                     <MultiChips
-                      value={form.visual_text_ratio}
-                      options={VISUAL_TEXT_RATIO_OPTIONS}
-                      max={1}
-                      onChange={(next) => setValue("visual_text_ratio", next)}
+                      value={form.logo_flexibility}
+                      options={LOGO_FLEXIBILITY_OPTIONS.map((o) => ({
+                        value: o.value,
+                        label: o.text,
+                      }))}
+                      onChange={setLogoFlexibility}
+                      max={2}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* 5) NOTES */}
-              <div className="card" ref={refNotes}>
+              {/* 8) 비율 */}
+              <div className="card" ref={refRatio}>
                 <div className="card__head">
-                  <h2>5. 추가 요청 (선택)</h2>
+                  <h2>8. 이미지/텍스트 비율</h2>
+                  <p>이미지와 텍스트 중 무엇이 더 중요한가요?</p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    비율 선택 <span className="req">*</span>
+                  </label>
+
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {VISUAL_TEXT_RATIO_OPTIONS.map((opt) => {
+                      const selected = form.visual_text_ratio === opt.value;
+                      return (
+                        <ChoiceCard
+                          key={opt.id}
+                          selected={selected}
+                          title={opt.text}
+                          desc={opt.description}
+                          onClick={() => setVisualTextRatio(opt.value)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 9) 사용 채널 */}
+              <div className="card" ref={refUsage}>
+                <div className="card__head">
+                  <h2>9. 주요 사용 채널</h2>
                   <p>
-                    필요한 버전(단색/가로/세로/아이콘) 등 요청이 있으면
-                    적어주세요.
+                    로고와 브랜드가 가장 많이 사용될 곳은 어디인가요? (최대 2개)
                   </p>
                 </div>
 
                 <div className="field">
-                  <label>추가 메모</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 단색 버전 필수, 심볼만/워드만 버전도 필요, 너무 귀엽지 않게"
-                    rows={4}
-                  />
+                  <label>
+                    사용 채널(최대 2개) <span className="req">*</span>
+                  </label>
+
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    2개를 넘기면 마지막으로 선택한 항목이 유지돼요.
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <MultiChips
+                      value={form.main_usage_channels}
+                      options={MAIN_USAGE_CHANNELS_OPTIONS.map((o) => ({
+                        value: o.value,
+                        label: o.text,
+                      }))}
+                      onChange={setMainUsageChannels}
+                      max={2}
+                    />
+                  </div>
+
+                  {String(form.primary_usage || "").trim() ? (
+                    <div className="hint" style={{ marginTop: 10 }}>
+                      <b>요약</b> · {form.primary_usage}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* 10) 타이포그래피(필수) */}
+              <div className="card" ref={refType}>
+                <div className="card__head">
+                  <h2>10. 타이포그래피 스타일</h2>
+                  <p>브랜드 로고에 어울리는 폰트 스타일은 무엇인가요?</p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    폰트 스타일 선택 <span className="req">*</span>
+                  </label>
+
+                  <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+                    {TYPOGRAPHY_STYLE_OPTIONS.map((opt) => {
+                      const selected = form.typography_style === opt.value;
+                      return (
+                        <ChoiceCard
+                          key={opt.id}
+                          selected={selected}
+                          title={opt.text}
+                          desc={opt.description}
+                          onClick={() => setTypographyStyle(opt.value)}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -1202,7 +1752,7 @@ export default function LogoConsultingInterview({ onLogout }) {
               {analyzing ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
-                    <h2>로고 방향 후보 생성 중</h2>
+                    <h2>로고 시안 생성 중</h2>
                     <p>입력 내용을 바탕으로 시안 3가지를 만들고 있어요.</p>
                   </div>
                   <div className="hint">잠시만 기다려주세요…</div>

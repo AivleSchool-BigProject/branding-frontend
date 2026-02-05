@@ -317,6 +317,8 @@ const INITIAL_FORM = {
   concept_vibe: "",
   positioning_axes: [],
   positioning_axes_other: "",
+
+  // (UI에서 제거했지만, 호환/저장 구조 유지용으로 필드는 유지)
   notes: "",
 };
 
@@ -389,7 +391,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
   // 섹션 ref
   const refBasic = useRef(null);
   const refConcept = useRef(null);
-  const refNotes = useRef(null);
 
   const requiredKeys = useMemo(
     () => [
@@ -525,7 +526,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     }
   }, []);
 
-  // ✅ 결과 로드
+  // ✅ 결과 로드드
   useEffect(() => {
     try {
       const raw = userGetItem(RESULT_KEY);
@@ -972,15 +973,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
               <div className="card" ref={refConcept}>
                 <div className="card__head">
                   <h2>2. 브랜드 컨셉 (Brand Concept)</h2>
-                  <p>
-                    핵심 가치·말투·약속·키메시지·분위기·포지셔닝을 정리합니다.
-                  </p>
+                  <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요? (2-3개
-                    선택) <span className="req">*</span>
+                    1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
+                    (2-3개 선택) <span className="req">*</span>
                   </label>
                   <div className="hint" style={{ marginTop: 6 }}>
                     최소 2개 선택 필요 / 최대 3개까지 선택됩니다.
@@ -1016,7 +1015,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    고객에게 말을 건넨다면 어떤 말투일까요?{" "}
+                    2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
                     <span className="req">*</span>
                   </label>
                   <div className="hint" style={{ marginTop: 6 }}>
@@ -1047,7 +1046,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
+                    3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <input
@@ -1059,7 +1058,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
+                    4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <input
@@ -1071,7 +1070,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
+                    5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
                     <span className="req">*</span>
                   </label>
                   <input
@@ -1083,7 +1082,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
+                    6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
                     가깝나요? (최대 2개) <span className="req">*</span>
                   </label>
                   <div className="hint" style={{ marginTop: 6 }}>
@@ -1110,27 +1109,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
                       />
                     </div>
                   ) : null}
-                </div>
-              </div>
-
-              {/* 3) NOTES */}
-              <div className="card" ref={refNotes}>
-                <div className="card__head">
-                  <h2>3. 추가 요청 (선택)</h2>
-                  <p>
-                    추가로 반영하고 싶은 조건이나 강조 포인트가 있으면
-                    적어주세요.
-                  </p>
-                </div>
-
-                <div className="field">
-                  <label>추가 메모</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 너무 과장되지 않게, 1~2문장으로 짧고 선명하게"
-                    rows={5}
-                  />
                 </div>
               </div>
 

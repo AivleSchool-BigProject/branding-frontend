@@ -82,6 +82,28 @@ function isFilled(v) {
   return Boolean(String(v ?? "").trim());
 }
 
+function QTag({ n }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2px 10px",
+        borderRadius: 999,
+        background: "rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.08)",
+        fontSize: 12,
+        fontWeight: 900,
+        marginRight: 8,
+        transform: "translateY(-1px)",
+      }}
+    >
+      {n}
+    </span>
+  );
+}
+
 /** ✅ multiple 선택용 칩 UI (value는 배열) */
 function MultiChips({ value, options, onChange, max = null }) {
   const current = Array.isArray(value) ? value : [];
@@ -126,7 +148,7 @@ function MultiChips({ value, options, onChange, max = null }) {
             style={{
               fontSize: 12,
               fontWeight: 800,
-              padding: "6px 10px",
+              padding: "7px 11px",
               borderRadius: 999,
               background: active ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
               border: active
@@ -134,6 +156,7 @@ function MultiChips({ value, options, onChange, max = null }) {
                 : "1px solid rgba(0,0,0,0.10)",
               color: "rgba(0,0,0,0.78)",
               cursor: "pointer",
+              transition: "transform 120ms ease, background 140ms ease",
             }}
           >
             {opt.label}
@@ -355,7 +378,6 @@ function generateStoryCandidates(form, seed = 0) {
     const emoLine = `【자극하고 싶은 감정】 ${(emotions.length ? emotions : ["안도감"]).join(" · ")}`;
     const plotLine = `【스토리 구조】 ${plotLabel || plotTypeValue || "-"}`;
 
-    // ✅ 4가지 플롯 지원
     if (plotTypeValue === "Problem-Solution") {
       return {
         plot: plotLabel,
@@ -425,7 +447,6 @@ function generateStoryCandidates(form, seed = 0) {
       };
     }
 
-    // Founding Myth / Other
     return {
       plot: plotLabel,
       story: [
@@ -466,11 +487,10 @@ function generateStoryCandidates(form, seed = 0) {
       ]),
     ).slice(0, 10);
 
-    // oneLiner는 첫 문장(또는 훅) 기반으로
     const firstLine =
       story
         .split("\n")
-        .find((ln) => ln.trim() && !ln.trim().startsWith("【")) // 첫 일반 문장 우선
+        .find((ln) => ln.trim() && !ln.trim().startsWith("【"))
         ?.trim() ||
       story
         .split("\n")
@@ -495,7 +515,6 @@ function generateStoryCandidates(form, seed = 0) {
     };
   };
 
-  // ✅ 3안은 같은 플롯에서 문장/구성만 다르게(변형 seed)
   return [
     mk("story_1", `A · ${plotLabel || "스토리"} 1안`, 0),
     mk("story_2", `B · ${plotLabel || "스토리"} 2안`, 1),
@@ -511,25 +530,21 @@ const INITIAL_FORM = {
   oneLine: "",
   targetCustomer: "",
 
-  // Step 4 fields
+  // Step 4 fields (JSON 기준)
   founding_story: "",
   customer_transformation: "",
   aha_moment: "",
   brand_mission: "",
   story_plot: "", // single_choice value
   story_plot_other: "",
-
   customer_conflict: "",
   story_emotion: [], // multiple_choice values (max 2)
   story_emotion_other: "",
-
   ultimate_goal: "",
 
-  // optional
+  // optional (JSON 기준)
   founder_personality: "",
   flagship_case: "",
-
-  notes: "",
 };
 
 /** ======================
@@ -717,6 +732,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const [regenSeed, setRegenSeed] = useState(0);
   const refResult = useRef(null);
 
+  // ✅ JSON(step_4) required true 항목만
   const requiredKeys = useMemo(
     () => [
       "founding_story",
@@ -736,6 +752,20 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     requiredKeys.forEach((k) => {
       status[k] = isFilled(form?.[k]);
     });
+
+    // ✅ 기타 선택 시 텍스트 입력도 사실상 필수로 처리(질문지 품질)
+    if (form?.story_plot === "Other") {
+      status.story_plot =
+        isFilled(form?.story_plot) && isFilled(form?.story_plot_other);
+    }
+    if (
+      Array.isArray(form?.story_emotion) &&
+      form.story_emotion.includes("Other")
+    ) {
+      status.story_emotion =
+        isFilled(form?.story_emotion) && isFilled(form?.story_emotion_other);
+    }
+
     return status;
   }, [form, requiredKeys]);
 
@@ -968,6 +998,20 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setAnalyzeError("");
 
     if (!canAnalyze) {
+      // ✅ 기타 선택 시 텍스트 미입력 안내
+      if (form?.story_plot === "Other" && !isFilled(form?.story_plot_other)) {
+        alert("스토리텔링 구조에서 ‘기타’를 선택했다면 설명을 입력해주세요.");
+        return;
+      }
+      if (
+        Array.isArray(form?.story_emotion) &&
+        form.story_emotion.includes("Other") &&
+        !isFilled(form?.story_emotion_other)
+      ) {
+        alert("감정 선택에서 ‘기타’를 선택했다면 설명을 입력해주세요.");
+        return;
+      }
+
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
     }
@@ -1235,9 +1279,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 브랜드 스토리 컨설팅 인터뷰
               </h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영됩니다. 여기서는 Step
-                4 질문지 기준으로 “계기·변화·감탄·미션·플롯·갈등·감정·궁극
-                목표(선택: 팀 성격/사례)”를 입력합니다.
+                기업 진단에서 입력한 기본 정보는 자동 반영됩니다. 아래 질문(총
+                10문항) 답변을 기반으로 스토리 제안 3가지를 생성합니다.
               </p>
             </div>
 
@@ -1322,20 +1365,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              {/* 2) Brand Story (Step 4) - Required */}
+              {/* 2) Q1~Q4 */}
               <div className="card">
                 <div className="card__head">
-                  <h2>2. Brand Story 필수 질문</h2>
-                  <p>
-                    Step 4 질문지 기준(필수)입니다. 사실/재료가 구체적일수록
-                    결과가 좋아요.
-                  </p>
+                  <h2>2. Brand Story 질문지</h2>
+                  <p>질문지(step_4) 순서 그대로 진행합니다. (필수 항목 포함)</p>
                 </div>
 
                 <div className="field">
                   <label>
-                    창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’{" "}
-                    <span className="req">*</span>
+                    <QTag n="1" />
+                    창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’은
+                    무엇인가요? <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.founding_story}
@@ -1347,8 +1388,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
-                    우리 서비스를 이용하기 전/후 고객의 삶은 어떻게 달라지나요?{" "}
-                    <span className="req">*</span>
+                    <QTag n="2" />
+                    우리 서비스를 이용하기 전과 후, 고객의 삶은 어떻게
+                    달라지나요? <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.customer_transformation}
@@ -1362,6 +1404,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
+                    <QTag n="3" />
                     고객이 우리만의 서비스를 이용하면서 감탄하는 순간은
                     언제인가요? <span className="req">*</span>
                   </label>
@@ -1375,6 +1418,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <div className="field">
                   <label>
+                    <QTag n="4" />
                     수익 창출 외에, 우리가 세상에 기여하고자 하는 것은
                     무엇인가요? <span className="req">*</span>
                   </label>
@@ -1385,48 +1429,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                     rows={4}
                   />
                 </div>
-
-                <div className="field">
-                  <label>
-                    고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.customer_conflict}
-                    onChange={(e) =>
-                      setValue("customer_conflict", e.target.value)
-                    }
-                    placeholder="시간 부족, 정보 과부하, 높은 비용, 복잡한 과정 등"
-                    rows={4}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.ultimate_goal}
-                    onChange={(e) => setValue("ultimate_goal", e.target.value)}
-                    placeholder="10년 후, 우리의 브랜드가 있는 세상은 어떻게 변해 있을까요?"
-                    rows={4}
-                  />
-                </div>
               </div>
 
-              {/* 3) story_plot (single choice) */}
+              {/* 3) Q5 story_plot (single choice) */}
               <div className="card">
                 <div className="card__head">
-                  <h2>3. 스토리텔링 구조 선택</h2>
-                  <p>
-                    Step 4 질문지 기준: 하나만 선택해 주세요. (기타 선택 시 직접
-                    입력)
-                  </p>
+                  <h2>3. 스토리 구조 선택</h2>
+                  <p>질문지(step_4) 기준: 1개 선택 (기타 선택 시 직접 입력)</p>
                 </div>
 
                 <div className="field">
                   <label>
+                    <QTag n="5" />
                     어떤 스타일의 스토리텔링을 원하나요?{" "}
                     <span className="req">*</span>
                   </label>
@@ -1508,7 +1522,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                   {form.story_plot === "Other" ? (
                     <div className="field" style={{ marginTop: 10 }}>
-                      <label>기타(직접 입력)</label>
+                      <label>
+                        기타(직접 입력) <span className="req">*</span>
+                      </label>
                       <input
                         value={form.story_plot_other}
                         onChange={(e) =>
@@ -1516,22 +1532,54 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                         }
                         placeholder="원하는 스토리 구조를 설명해주세요"
                       />
+                      {!requiredStatus.story_plot ? (
+                        <div className="hint" style={{ marginTop: 8 }}>
+                          * ‘기타’를 선택했다면 설명을 입력해주세요.
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              {/* 4) story_emotion (multiple choice max 2) */}
+              {/* 4) Q6 conflict */}
               <div className="card">
                 <div className="card__head">
-                  <h2>4. 스토리 감정 선택</h2>
+                  <h2>4. 갈등(Conflict)</h2>
                   <p>
-                    Step 4 질문지 기준: 최대 2개 선택(기타 선택 시 직접 입력)
+                    고객이 부딪히는 “가장 큰 방해물”을 구체적으로 적어주세요.
                   </p>
                 </div>
 
                 <div className="field">
                   <label>
+                    <QTag n="6" />
+                    고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.customer_conflict}
+                    onChange={(e) =>
+                      setValue("customer_conflict", e.target.value)
+                    }
+                    placeholder="시간 부족, 정보 과부하, 높은 비용, 복잡한 과정 등"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* 5) Q7 emotion (multiple choice max 2) */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>5. 감정(Emotion)</h2>
+                  <p>
+                    질문지(step_4) 기준: 최대 2개 선택 (기타 선택 시 직접 입력)
+                  </p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    <QTag n="7" />
                     스토리를 통해 고객의 어떤 감정을 자극하고 싶나요? (최대 2개){" "}
                     <span className="req">*</span>
                   </label>
@@ -1555,7 +1603,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   {Array.isArray(form.story_emotion) &&
                   form.story_emotion.includes("Other") ? (
                     <div className="field" style={{ marginTop: 10 }}>
-                      <label>기타(직접 입력)</label>
+                      <label>
+                        기타(직접 입력) <span className="req">*</span>
+                      </label>
                       <input
                         value={form.story_emotion_other}
                         onChange={(e) =>
@@ -1563,19 +1613,51 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                         }
                         placeholder="자극하고 싶은 감정을 설명해주세요"
                       />
+                      {!requiredStatus.story_emotion ? (
+                        <div className="hint" style={{ marginTop: 8 }}>
+                          * ‘기타’를 선택했다면 설명을 입력해주세요.
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              {/* 5) Optional */}
+              {/* 6) Q8 ultimate_goal */}
               <div className="card">
                 <div className="card__head">
-                  <h2>5. 선택 질문 & 추가 요청</h2>
+                  <h2>6. 비전(Vision)</h2>
+                  <p>브랜드가 도달하고 싶은 “세상”을 그려주세요.</p>
                 </div>
 
                 <div className="field">
-                  <label>창업자(또는 팀)의 성격/스타일 (선택)</label>
+                  <label>
+                    <QTag n="8" />
+                    브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.ultimate_goal}
+                    onChange={(e) => setValue("ultimate_goal", e.target.value)}
+                    placeholder="10년 후, 우리의 브랜드가 있는 세상은 어떻게 변해 있을까요?"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* 7) Optional Q9~Q10 */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>7. 선택 질문 (Optional)</h2>
+                  <p>가능하면 적어주면 좋아요. 결과 퀄리티가 올라갑니다.</p>
+                </div>
+
+                <div className="field">
+                  <label>
+                    <QTag n="9" />
+                    창업자(또는 팀)의 성격이나 스타일을 한 문장으로 표현한다면
+                    어떤 사람들인가요?
+                  </label>
                   <textarea
                     value={form.founder_personality}
                     onChange={(e) =>
@@ -1587,22 +1669,16 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 </div>
 
                 <div className="field">
-                  <label>기억에 남는 고객 사례 1개 (선택)</label>
+                  <label>
+                    <QTag n="10" />
+                    기억에 남는 고객 사례가 있다면 하나만 구체적으로
+                    소개해주세요.
+                  </label>
                   <textarea
                     value={form.flagship_case}
                     onChange={(e) => setValue("flagship_case", e.target.value)}
                     placeholder="어떤 고객이었고, 어떤 문제가 있었으며, 우리 서비스를 통해 어떻게 달라졌는지"
                     rows={4}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>추가 메모 (선택)</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 랜딩페이지용 6~8문장 버전 + 2문장 요약도 같이"
-                    rows={3}
                   />
                 </div>
               </div>
@@ -1839,6 +1915,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 {!canAnalyze ? (
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
+                    <br />* ‘기타’를 선택했다면 설명 입력이 필요할 수 있어요.
                   </p>
                 ) : null}
 
