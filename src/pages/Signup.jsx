@@ -484,35 +484,38 @@ export default function SignupApp() {
             <div className="peek-login-card">
               <h3>LOGIN</h3>
 
-              <div className="peek-login-form">
-                <div className="peek-field-group">
+              <div className="peek-login-form-like">
+                <div className="peek-field">
                   <span className="peek-label" />
                   <span className="peek-input" />
                 </div>
-                <div className="peek-field-group">
+
+                <div className="peek-field">
                   <span className="peek-label" />
                   <span className="peek-input has-icon">
                     <span className="peek-input-icon" />
                   </span>
                 </div>
-              </div>
 
-              <div className="peek-login-links">
-                <span className="peek-link" />
-                <span className="dot" />
-                <span className="peek-link" />
-              </div>
+                <div className="peek-login-links">
+                  <span className="peek-link" />
+                  <span className="dot" />
+                  <span className="peek-link short" />
+                </div>
 
-              <div className="peek-login-actions">
-                <span className="peek-btn primary" />
-                <span className="peek-btn secondary" />
-              </div>
+                <span className="peek-error-space" />
 
-              <div className="peek-login-divider" />
+                <div className="peek-login-actions">
+                  <span className="peek-btn primary" />
+                  <span className="peek-btn secondary" />
+                </div>
 
-              <div className="peek-login-signup-row">
-                <span className="peek-signup-text" />
-                <span className="peek-signup-btn" />
+                <div className="peek-login-divider" />
+
+                <div className="peek-login-signup-row">
+                  <span className="peek-signup-copy" />
+                  <span className="peek-signup-btn" />
+                </div>
               </div>
             </div>
           </section>

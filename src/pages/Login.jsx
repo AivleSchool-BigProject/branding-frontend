@@ -257,66 +257,78 @@ export default function LoginApp() {
             <div className="flip-signup-card" aria-hidden="true">
               <h3>회원가입</h3>
 
-              <div className="flip-signup-form">
-                <div className="flip-field-group">
-                  <span className="flip-label" />
-                  <span className="flip-input" />
+              <div className="flip-signup-form-like">
+                <div className="flip-field">
+                  <span className="flip-field-label" />
+                  <span className="flip-field-input" />
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label" />
-                  <span className="flip-input" />
+
+                <div className="flip-field">
+                  <span className="flip-field-label" />
+                  <span className="flip-field-input" />
+                  <span className="flip-field-hint" />
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label" />
-                  <span className="flip-input" />
+
+                <div className="flip-field">
+                  <span className="flip-field-label" />
+                  <span className="flip-field-input" />
+                  <span className="flip-field-hint wide" />
+                  <div className="flip-pill-row">
+                    <span className="flip-pill" />
+                    <span className="flip-pill" />
+                    <span className="flip-pill" />
+                    <span className="flip-pill" />
+                  </div>
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label flip-label-short" />
-                  <span className="flip-input" />
+
+                <div className="flip-field">
+                  <span className="flip-field-label" />
+                  <span className="flip-field-input" />
+                  <div className="flip-pill-row single">
+                    <span className="flip-pill short" />
+                  </div>
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label flip-label-short" />
-                  <span className="flip-input" />
+
+                <div className="flip-field">
+                  <span className="flip-field-label short" />
+                  <span className="flip-field-input" />
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label flip-label-short" />
-                  <span className="flip-input" />
+
+                <div className="flip-field">
+                  <span className="flip-field-label short" />
+                  <span className="flip-field-input" />
                 </div>
-                <div className="flip-field-group">
-                  <span className="flip-label flip-label-short" />
-                  <span className="flip-input has-icon">
+
+                <div className="flip-field">
+                  <span className="flip-field-label short" />
+                  <span className="flip-field-input has-icon">
                     <span className="flip-input-icon" />
                   </span>
                 </div>
-              </div>
 
-              <div className="flip-pill-row">
-                <span className="flip-pill" />
-                <span className="flip-pill" />
-                <span className="flip-pill" />
-                <span className="flip-pill" />
-              </div>
-
-              <div className="flip-consent-preview">
-                <div className="flip-consent-row">
-                  <span className="flip-consent-dot" />
-                  <span className="flip-consent-text" />
-                  <span className="flip-consent-view">보기</span>
+                <div className="flip-consent-preview">
+                  <div className="flip-consent-row">
+                    <span className="flip-consent-dot" />
+                    <span className="flip-consent-text" />
+                    <span className="flip-consent-view">보기</span>
+                  </div>
+                  <div className="flip-consent-row">
+                    <span className="flip-consent-dot" />
+                    <span className="flip-consent-text" />
+                    <span className="flip-consent-view">보기</span>
+                  </div>
                 </div>
-                <div className="flip-consent-row">
-                  <span className="flip-consent-dot" />
-                  <span className="flip-consent-text" />
-                  <span className="flip-consent-view">보기</span>
-                </div>
-              </div>
 
-              <div className="flip-actions">
-                <span className="flip-btn primary" />
-                <span className="flip-btn secondary" />
+                <div className="flip-button-row">
+                  <span className="flip-btn primary" />
+                  <span className="flip-btn secondary" />
+                </div>
               </div>
             </div>
           </section>
         </div>
+
+        <div className="right-page-flip-sheet" aria-hidden="true" />
 
         {/* Left: 로그인 폼 */}
 
