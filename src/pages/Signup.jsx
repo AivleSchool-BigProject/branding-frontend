@@ -13,6 +13,14 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 
+const FLIP_MS = 850;
+const SUCCESS_HOLD_MS = 260;
+
+function shouldReduceMotion() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 export default function SignupApp() {
   const navigate = useNavigate();
 
@@ -26,24 +34,62 @@ export default function SignupApp() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
-  // 동의 모달 체크값
+  // 동의 상태
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
 
-  // 읽기 완료 여부(체크 활성화 조건)
+  // 읽기 완료 여부 (체크 활성화 조건)
   const [readTerms, setReadTerms] = useState(false);
   const [readPrivacy, setReadPrivacy] = useState(false);
 
   // 모달 상태
   const [consentOpen, setConsentOpen] = useState(false);
   const [readOpenType, setReadOpenType] = useState(null); // "terms" | "privacy" | null
-  const [consentError, setConsentError] = useState("");
+
+  // 메시지/로딩
   const [error, setError] = useState("");
+  const [consentError, setConsentError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 읽기 모달 내부 스크롤 완료 여부
+  // 읽기 모달 스크롤 완료 여부
   const [canMarkRead, setCanMarkRead] = useState(false);
   const policyScrollRef = useRef(null);
+
+  // 회원가입 -> 로그인 페이지 넘김
+  const [isFlippingToLogin, setIsFlippingToLogin] = useState(false);
+  const [isRoutingToLogin, setIsRoutingToLogin] = useState(false);
+  const timersRef = useRef([]);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current = [];
+    };
+  }, []);
+
+  const queueTimer = (callback, ms) => {
+    const timerId = window.setTimeout(callback, ms);
+    timersRef.current.push(timerId);
+  };
+
+  const goLoginWithFlip = (holdMs = 0) => {
+    if (isRoutingToLogin) return;
+
+    if (shouldReduceMotion()) {
+      navigate("/login");
+      return;
+    }
+
+    setIsRoutingToLogin(true);
+
+    if (holdMs > 0) {
+      queueTimer(() => setIsFlippingToLogin(true), holdMs);
+    } else {
+      setIsFlippingToLogin(true);
+    }
+
+    queueTimer(() => navigate("/login"), holdMs + FLIP_MS);
+  };
 
   const isEmailLike = useMemo(() => {
     const v = email.trim();
@@ -103,7 +149,12 @@ export default function SignupApp() {
           username: name.trim(),
         },
       });
-      navigate("/login");
+
+      // 가입 완료: 동의 모달 닫기 -> 잠깐 유지 -> 책장 넘김
+      setConsentOpen(false);
+      setReadOpenType(null);
+      setConsentError("");
+      goLoginWithFlip(SUCCESS_HOLD_MS);
     } catch {
       setError("회원가입에 실패했습니다.");
     } finally {
@@ -121,7 +172,7 @@ export default function SignupApp() {
       return;
     }
 
-    // 동의 모달 열 때는 체크 초기화(읽음 상태는 유지)
+    // 동의 모달 열 때 체크값만 초기화 (읽음 상태는 유지)
     setAgreeTerms(false);
     setAgreePrivacy(false);
     setConsentError("");
@@ -147,30 +198,21 @@ export default function SignupApp() {
   const evaluateScrollBottom = () => {
     const el = policyScrollRef.current;
     if (!el) return;
-
     const remain = el.scrollHeight - el.scrollTop - el.clientHeight;
     setCanMarkRead(remain <= 6);
   };
 
   useEffect(() => {
     if (!readOpenType) return;
-
-    const t = setTimeout(() => {
-      evaluateScrollBottom();
-    }, 30);
-
+    const t = setTimeout(() => evaluateScrollBottom(), 30);
     return () => clearTimeout(t);
   }, [readOpenType]);
 
   const markAsRead = () => {
     if (!canMarkRead) return;
 
-    if (readOpenType === "terms") {
-      setReadTerms(true);
-    }
-    if (readOpenType === "privacy") {
-      setReadPrivacy(true);
-    }
+    if (readOpenType === "terms") setReadTerms(true);
+    if (readOpenType === "privacy") setReadPrivacy(true);
 
     closeReadModal();
   };
@@ -214,6 +256,8 @@ export default function SignupApp() {
     await registerAccount();
   };
 
+  const disabled = loading || isRoutingToLogin;
+
   return (
     <div className="signup-page">
       {/* 필수 동의 모달 */}
@@ -234,7 +278,7 @@ export default function SignupApp() {
                 className="consent-box"
                 checked={allChecked}
                 onChange={(e) => toggleAllConsent(e.target.checked)}
-                disabled={loading}
+                disabled={disabled}
               />
               <span className="consent-label">전체 동의</span>
             </label>
@@ -247,7 +291,7 @@ export default function SignupApp() {
                 className="consent-box"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                disabled={loading || !readTerms}
+                disabled={disabled || !readTerms}
               />
 
               <span className="consent-label">
@@ -266,7 +310,7 @@ export default function SignupApp() {
                 type="button"
                 className="consent-view"
                 onClick={() => openReadModal("terms")}
-                disabled={loading}
+                disabled={disabled}
               >
                 보기
               </button>
@@ -280,7 +324,7 @@ export default function SignupApp() {
                 className="consent-box"
                 checked={agreePrivacy}
                 onChange={(e) => setAgreePrivacy(e.target.checked)}
-                disabled={loading || !readPrivacy}
+                disabled={disabled || !readPrivacy}
               />
 
               <span className="consent-label">
@@ -299,7 +343,7 @@ export default function SignupApp() {
                 type="button"
                 className="consent-view"
                 onClick={() => openReadModal("privacy")}
-                disabled={loading}
+                disabled={disabled}
               >
                 보기
               </button>
@@ -317,7 +361,7 @@ export default function SignupApp() {
               type="button"
               className="primary"
               onClick={handleConsentConfirm}
-              disabled={loading}
+              disabled={disabled}
             >
               동의하고 회원가입
             </button>
@@ -325,7 +369,7 @@ export default function SignupApp() {
               type="button"
               className="secondary"
               onClick={closeConsentModal}
-              disabled={loading}
+              disabled={disabled}
             >
               취소
             </button>
@@ -410,12 +454,16 @@ export default function SignupApp() {
         </div>
       </PolicyModal>
 
-      <div className="signup-shell split">
-        {/* Left: 소개 영역 */}
-        <section className="signup-hero login-hero navy-panel">
+      <div
+        className={`signup-shell ${
+          isFlippingToLogin ? "is-flipping-to-login" : ""
+        }`}
+      >
+        {/* Left: 소개 패널 */}
+        <section className="signup-hero navy-panel">
           <div className="hero-top">
-            <span className="hero-title-line">여러분의 새로운 시작</span>
-            <span className="hero-title-line">BRANDPILOT이 함께 합니다.</span>
+            <span className="hero-title-line">회원가입으로 더 많은 기능을</span>
+            <span className="hero-title-line">BRANDPILOT에서 시작하세요.</span>
           </div>
 
           <div className="feature-marquee" aria-label="서비스 핵심 기능">
@@ -501,7 +549,7 @@ export default function SignupApp() {
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
                   autoComplete="username"
-                  disabled={loading}
+                  disabled={disabled}
                 />
               </div>
 
@@ -514,7 +562,7 @@ export default function SignupApp() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
-                  disabled={loading}
+                  disabled={disabled}
                 />
                 <small className="hint">* 이메일 형식으로 입력해주세요.</small>
               </div>
@@ -528,7 +576,7 @@ export default function SignupApp() {
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
                   autoComplete="new-password"
-                  disabled={loading}
+                  disabled={disabled}
                 />
                 <small className="hint">
                   * 8자 이상, <b>대문자</b>, 숫자, 특수문자를 포함해주세요.
@@ -559,7 +607,7 @@ export default function SignupApp() {
                   value={pw2}
                   onChange={(e) => setPw2(e.target.value)}
                   autoComplete="new-password"
-                  disabled={loading}
+                  disabled={disabled}
                 />
                 <div className="checkline">
                   <span className={`pill ${pwMatch ? "ok" : ""}`}>일치</span>
@@ -575,7 +623,7 @@ export default function SignupApp() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
-                  disabled={loading}
+                  disabled={disabled}
                 />
               </div>
 
@@ -588,7 +636,7 @@ export default function SignupApp() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   autoComplete="tel"
-                  disabled={loading}
+                  disabled={disabled}
                 />
               </div>
 
@@ -604,21 +652,21 @@ export default function SignupApp() {
                   dropdownMode="select"
                   maxDate={new Date()}
                   customInput={<DateInput />}
-                  disabled={loading}
+                  disabled={disabled}
                 />
               </div>
 
               {error ? <p className="error">{error}</p> : null}
 
               <div className="button-row">
-                <button type="submit" className="primary" disabled={loading}>
+                <button type="submit" className="primary" disabled={disabled}>
                   회원가입 하기
                 </button>
                 <button
                   type="button"
                   className="secondary"
-                  onClick={() => navigate("/login")}
-                  disabled={loading}
+                  onClick={() => goLoginWithFlip()}
+                  disabled={disabled}
                 >
                   돌아가기
                 </button>

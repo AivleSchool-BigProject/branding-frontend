@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
@@ -15,6 +15,13 @@ import EasyLoginModal from "../components/EasyLoginModal.jsx";
 // ✅ 팀 코드의 백 연동 방식으로 통일
 import { apiRequest, setAccessToken } from "../api/client.js";
 import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
+
+const FLIP_MS = 850;
+
+function shouldReduceMotion() {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 function EyeIcon(props) {
   return (
@@ -88,6 +95,7 @@ export default function LoginApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location?.state?.redirectTo;
+
   // ✅ 약관/개인정보 모달
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
@@ -103,6 +111,34 @@ export default function LoginApp() {
   // ✅ UX
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ 로그인 -> 회원가입 페이지 넘김
+  const [isFlippingToSignup, setIsFlippingToSignup] = useState(false);
+  const timersRef = useRef([]);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current = [];
+    };
+  }, []);
+
+  const queueTimer = (callback, ms) => {
+    const timerId = window.setTimeout(callback, ms);
+    timersRef.current.push(timerId);
+  };
+
+  const goSignupWithFlip = () => {
+    if (isLoading || isFlippingToSignup) return;
+
+    if (shouldReduceMotion()) {
+      navigate("/signup");
+      return;
+    }
+
+    setIsFlippingToSignup(true);
+    queueTimer(() => navigate("/signup"), FLIP_MS);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -166,7 +202,11 @@ export default function LoginApp() {
 
       <EasyLoginModal open={easyOpen} onClose={() => setEasyOpen(false)} />
 
-      <div className="login-shell split">
+      <div
+        className={`login-shell split ${
+          isFlippingToSignup ? "is-flipping-to-signup" : ""
+        }`}
+      >
         {/* Left: 로그인 폼 */}
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
@@ -181,7 +221,7 @@ export default function LoginApp() {
                 autoComplete="username"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                disabled={isLoading}
+                disabled={isLoading || isFlippingToSignup}
               />
             </div>
 
@@ -197,7 +237,7 @@ export default function LoginApp() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading || isFlippingToSignup}
                 />
 
                 <button
@@ -208,7 +248,7 @@ export default function LoginApp() {
                     showPassword ? "비밀번호 숨기기" : "비밀번호 보기"
                   }
                   aria-pressed={showPassword}
-                  disabled={isLoading}
+                  disabled={isLoading || isFlippingToSignup}
                 >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
@@ -230,7 +270,7 @@ export default function LoginApp() {
             <button
               type="submit"
               className="login-primary"
-              disabled={isLoading}
+              disabled={isLoading || isFlippingToSignup}
             >
               {isLoading ? "로그인 중..." : "로그인"}
             </button>
@@ -239,7 +279,7 @@ export default function LoginApp() {
               type="button"
               className="login-easy"
               onClick={() => setEasyOpen(true)}
-              disabled={isLoading}
+              disabled={isLoading || isFlippingToSignup}
             >
               간편로그인
             </button>
@@ -254,14 +294,15 @@ export default function LoginApp() {
               <button
                 type="button"
                 className="signup-cta"
-                onClick={() => navigate("/signup")}
-                disabled={isLoading}
+                onClick={goSignupWithFlip}
+                disabled={isLoading || isFlippingToSignup}
               >
                 회원가입
               </button>
             </div>
           </form>
         </section>
+
         {/* Right: 소개 영역 */}
         <section className="login-hero navy-panel">
           <div className="hero-top">
