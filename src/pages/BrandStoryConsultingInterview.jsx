@@ -77,9 +77,72 @@ function readDiagnosisForm() {
   return null;
 }
 
+function getBasicFromDiagnosis(diag) {
+  if (!diag || typeof diag !== "object") return null;
+
+  return {
+    companyName: safeText(
+      diag.companyName || diag.brandName || diag.projectName,
+      "",
+    ),
+    industry: safeText(diag.industry || diag.category || diag.field, ""),
+    stage: safeText(diag.stage, ""),
+    website: safeText(diag.website || diag.homepage || diag.siteUrl, ""),
+    oneLine: safeText(
+      diag.oneLine ||
+        diag.companyIntro ||
+        diag.intro ||
+        diag.serviceIntro ||
+        diag.shortIntro,
+      "",
+    ),
+    targetCustomer: safeText(
+      diag.targetCustomer ||
+        diag.target ||
+        diag.customerTarget ||
+        diag.primaryCustomer,
+      "",
+    ),
+  };
+}
+
+function buildDiagnosisSummaryString(ctx) {
+  if (!ctx) return "";
+  const parts = [];
+  if (ctx.companyName) parts.push(`회사/프로젝트: ${ctx.companyName}`);
+  if (ctx.industry) parts.push(`산업/분야: ${ctx.industry}`);
+  if (ctx.stage) parts.push(`성장단계: ${stageLabel(ctx.stage)}`);
+  if (ctx.targetCustomer) parts.push(`타깃: ${ctx.targetCustomer}`);
+  if (ctx.website) parts.push(`링크: ${ctx.website}`);
+  if (ctx.oneLine) parts.push(`한줄소개: ${ctx.oneLine}`);
+  return parts.join(" | ");
+}
+
 function isFilled(v) {
   if (Array.isArray(v)) return v.length > 0;
   return Boolean(String(v ?? "").trim());
+}
+
+function QTag({ n }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2px 10px",
+        borderRadius: 999,
+        background: "rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.08)",
+        fontSize: 12,
+        fontWeight: 900,
+        marginRight: 8,
+        transform: "translateY(-1px)",
+      }}
+    >
+      {n}
+    </span>
+  );
 }
 
 /** ✅ multiple 선택용 칩 UI (value는 배열) */
@@ -126,7 +189,7 @@ function MultiChips({ value, options, onChange, max = null }) {
             style={{
               fontSize: 12,
               fontWeight: 800,
-              padding: "6px 10px",
+              padding: "7px 11px",
               borderRadius: 999,
               background: active ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
               border: active
@@ -134,6 +197,7 @@ function MultiChips({ value, options, onChange, max = null }) {
                 : "1px solid rgba(0,0,0,0.10)",
               color: "rgba(0,0,0,0.78)",
               cursor: "pointer",
+              transition: "transform 120ms ease, background 140ms ease",
             }}
           >
             {opt.label}
@@ -255,12 +319,18 @@ function emotionLabels(values, otherText) {
   return mapped.filter(Boolean);
 }
 
-function generateStoryCandidates(form, seed = 0) {
-  const companyName = safeText(form?.companyName, "우리");
-  const industry = safeText(form?.industry, "분야");
-  const stage = stageLabel(form?.stage);
-  const target = safeText(form?.targetCustomer, "고객");
-  const oneLine = safeText(form?.oneLine, "");
+/**
+ * ✅ (보험) 백 응답이 비거나 실패할 때 로컬에서 3안 생성
+ * - 기본정보(UI 제거됨)는 diagCtx에서 가져와 품질 유지
+ */
+function generateStoryCandidates(form, seed = 0, diagCtx = null) {
+  const ctx = diagCtx || {};
+
+  const companyName = safeText(ctx?.companyName, "우리");
+  const industry = safeText(ctx?.industry, "분야");
+  const stage = stageLabel(ctx?.stage);
+  const target = safeText(ctx?.targetCustomer, "고객");
+  const oneLine = safeText(ctx?.oneLine, "");
 
   const founding = safeText(form?.founding_story, "");
   const transformation = safeText(form?.customer_transformation, "");
@@ -355,7 +425,6 @@ function generateStoryCandidates(form, seed = 0) {
     const emoLine = `【자극하고 싶은 감정】 ${(emotions.length ? emotions : ["안도감"]).join(" · ")}`;
     const plotLine = `【스토리 구조】 ${plotLabel || plotTypeValue || "-"}`;
 
-    // ✅ 4가지 플롯 지원
     if (plotTypeValue === "Problem-Solution") {
       return {
         plot: plotLabel,
@@ -425,7 +494,6 @@ function generateStoryCandidates(form, seed = 0) {
       };
     }
 
-    // Founding Myth / Other
     return {
       plot: plotLabel,
       story: [
@@ -466,11 +534,10 @@ function generateStoryCandidates(form, seed = 0) {
       ]),
     ).slice(0, 10);
 
-    // oneLiner는 첫 문장(또는 훅) 기반으로
     const firstLine =
       story
         .split("\n")
-        .find((ln) => ln.trim() && !ln.trim().startsWith("【")) // 첫 일반 문장 우선
+        .find((ln) => ln.trim() && !ln.trim().startsWith("【"))
         ?.trim() ||
       story
         .split("\n")
@@ -495,7 +562,6 @@ function generateStoryCandidates(form, seed = 0) {
     };
   };
 
-  // ✅ 3안은 같은 플롯에서 문장/구성만 다르게(변형 seed)
   return [
     mk("story_1", `A · ${plotLabel || "스토리"} 1안`, 0),
     mk("story_2", `B · ${plotLabel || "스토리"} 2안`, 1),
@@ -503,41 +569,44 @@ function generateStoryCandidates(form, seed = 0) {
   ];
 }
 
+/**
+ * ✅ (요청 반영) 기본정보(자동반영) UI 제거
+ * - form에서 회사/산업/단계/링크/한줄/타깃 필드 제거
+ * - 대신 diagCtx를 내부에서만 유지해서 AI payload/메타 품질 유지
+ */
 const INITIAL_FORM = {
-  companyName: "",
-  industry: "",
-  stage: "",
-  website: "",
-  oneLine: "",
-  targetCustomer: "",
-
-  // Step 4 fields
+  // Step 4 fields (JSON 기준)
   founding_story: "",
   customer_transformation: "",
   aha_moment: "",
   brand_mission: "",
   story_plot: "", // single_choice value
   story_plot_other: "",
-
   customer_conflict: "",
   story_emotion: [], // multiple_choice values (max 2)
   story_emotion_other: "",
-
   ultimate_goal: "",
 
-  // optional
+  // optional (JSON 기준)
   founder_personality: "",
   flagship_case: "",
-
-  notes: "",
 };
+
+const ALLOWED_FORM_KEYS = Object.keys(INITIAL_FORM);
+function sanitizeForm(raw) {
+  const obj = raw && typeof raw === "object" ? raw : {};
+  const next = { ...INITIAL_FORM };
+  ALLOWED_FORM_KEYS.forEach((k) => {
+    if (k in obj) next[k] = obj[k];
+  });
+  return next;
+}
 
 /** ======================
  *  백 응답 후보 normalize (스토리)
  *  - 백이 어떤 포맷을 주더라도 UI에서 쓰기 쉽게 3안 형태로 맞춤
- *  - 현재 백(Mock): { story1, story2, story3 }
  *  ====================== */
-function normalizeStoryCandidates(raw, form = {}) {
+function normalizeStoryCandidates(raw, form = {}, diagCtx = null) {
   const payload = raw?.data ?? raw?.result ?? raw;
 
   const pickStr = (v) => (typeof v === "string" ? v.trim() : "");
@@ -549,10 +618,11 @@ function normalizeStoryCandidates(raw, form = {}) {
     return "";
   };
 
+  const ctx = diagCtx || {};
   const metaParts = [
-    safeText(form?.industry, ""),
-    stageLabel(form?.stage),
-    safeText(form?.targetCustomer, ""),
+    safeText(ctx?.industry, ""),
+    stageLabel(ctx?.stage),
+    safeText(ctx?.targetCustomer, ""),
   ].filter((v) => v && v !== "-");
   const meta = metaParts.join(" · ");
 
@@ -655,6 +725,19 @@ function normalizeStoryCandidates(raw, form = {}) {
 export default function BrandStoryConsultingInterview({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const REQUIRED_FIELD_ID = {
+    founding_story: "story-q-founding_story",
+    customer_transformation: "story-q-customer_problem",
+    aha_moment: "story-q-solution_essence",
+    brand_mission: "story-q-emotional_hook",
+    story_plot: "story-q-brand_persona",
+    customer_conflict: "story-q-credibility_basis",
+    story_emotion: "story-q-story_emotion",
+    ultimate_goal: "story-q-ultimate_goal",
+  };
+
+  // ✅ 기본정보(UI 제거됐지만) 내부 컨텍스트로만 보관
+  const [diagCtx, setDiagCtx] = useState(null);
 
   // ✅ (최우선) strict 접근 제어 + flow 현재 단계 고정(절대 뒤로가기 금지)
   useEffect(() => {
@@ -689,6 +772,17 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ 진단 컨텍스트 로드(화면에는 표시 X)
+  useEffect(() => {
+    try {
+      const diag = readDiagnosisForm();
+      const ctx = getBasicFromDiagnosis(diag);
+      if (ctx) setDiagCtx(ctx);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
@@ -717,6 +811,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const [regenSeed, setRegenSeed] = useState(0);
   const refResult = useRef(null);
 
+  // ✅ JSON(step_4) required true 항목만
   const requiredKeys = useMemo(
     () => [
       "founding_story",
@@ -736,6 +831,20 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     requiredKeys.forEach((k) => {
       status[k] = isFilled(form?.[k]);
     });
+
+    // ✅ 기타 선택 시 텍스트 입력도 사실상 필수로 처리(질문지 품질)
+    if (form?.story_plot === "Other") {
+      status.story_plot =
+        isFilled(form?.story_plot) && isFilled(form?.story_plot_other);
+    }
+    if (
+      Array.isArray(form?.story_emotion) &&
+      form.story_emotion.includes("Other")
+    ) {
+      status.story_emotion =
+        isFilled(form?.story_emotion) && isFilled(form?.story_emotion_other);
+    }
+
     return status;
   }, [form, requiredKeys]);
 
@@ -752,6 +861,34 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   const canAnalyze = completedRequired === requiredKeys.length;
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
+  const requiredLabelMap = {
+    founding_story: "창업 계기",
+    customer_transformation: "고객 변화",
+    aha_moment: "핵심 전환점",
+    brand_mission: "브랜드 미션",
+    story_plot: "스토리 플롯",
+    customer_conflict: "고객 갈등",
+    story_emotion: "스토리 감정 톤",
+    ultimate_goal: "궁극적 목표",
+  };
+
+  const scrollToRequiredField = (key) => {
+    try {
+      const id = REQUIRED_FIELD_ID?.[key];
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const focusTarget = el.querySelector(
+        "textarea, input, button, [role='button']",
+      );
+      if (focusTarget && typeof focusTarget.focus === "function") {
+        focusTarget.focus({ preventScroll: true });
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const setValue = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -791,101 +928,66 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setExpandedCandidates((prev) => ({ ...prev, [id]: !prev?.[id] }));
   };
 
-  // draft 로드
+  // ✅ draft 로드 (키 sanitize + legacy 매핑)
   useEffect(() => {
     try {
       const raw = userGetItem(STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
+
       const loaded =
-        parsed?.form && typeof parsed.form === "object" ? parsed.form : null;
+        parsed?.form && typeof parsed.form === "object"
+          ? sanitizeForm(parsed.form)
+          : null;
+
       if (loaded) {
         setForm((prev) => {
           const next = { ...prev, ...loaded };
 
           // legacy 매핑(이전 필드명 호환)
+          const rawLoaded = parsed?.form || {};
           if (
             !String(next.founding_story || "").trim() &&
-            String(loaded.originStory || "").trim()
+            String(rawLoaded.originStory || "").trim()
           ) {
-            next.founding_story = loaded.originStory;
+            next.founding_story = rawLoaded.originStory;
           }
           if (
             !String(next.customer_conflict || "").trim() &&
-            String(loaded.problemStory || "").trim()
+            String(rawLoaded.problemStory || "").trim()
           ) {
-            next.customer_conflict = loaded.problemStory;
+            next.customer_conflict = rawLoaded.problemStory;
           }
           if (
             !String(next.customer_transformation || "").trim() &&
-            String(loaded.solutionStory || "").trim()
+            String(rawLoaded.solutionStory || "").trim()
           ) {
-            next.customer_transformation = loaded.solutionStory;
+            next.customer_transformation = rawLoaded.solutionStory;
           }
           if (
             !String(next.ultimate_goal || "").trim() &&
-            String(loaded.goal || "").trim()
+            String(rawLoaded.goal || "").trim()
           ) {
-            next.ultimate_goal = loaded.goal;
+            next.ultimate_goal = rawLoaded.goal;
           }
           if (
             !String(next.brand_mission || "").trim() &&
-            String(loaded.brandCore || "").trim()
+            String(rawLoaded.brandCore || "").trim()
           ) {
-            next.brand_mission = loaded.brandCore;
+            next.brand_mission = rawLoaded.brandCore;
           }
 
           return next;
         });
       }
+
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
         if (!Number.isNaN(d.getTime())) setLastSaved(d.toLocaleString());
       }
-    } catch {}
-  }, []);
-
-  // 기업진단 자동 반영
-  useEffect(() => {
-    try {
-      const diag = readDiagnosisForm();
-      if (!diag) return;
-
-      const next = {
-        companyName: safeText(
-          diag.companyName || diag.brandName || diag.projectName,
-          "",
-        ),
-        industry: safeText(diag.industry || diag.category || diag.field, ""),
-        stage: safeText(diag.stage, ""),
-        website: safeText(diag.website || diag.homepage || diag.siteUrl, ""),
-        oneLine: safeText(
-          diag.oneLine ||
-            diag.companyIntro ||
-            diag.intro ||
-            diag.serviceIntro ||
-            diag.shortIntro,
-          "",
-        ),
-        targetCustomer: safeText(
-          diag.targetCustomer ||
-            diag.target ||
-            diag.customerTarget ||
-            diag.primaryCustomer,
-          "",
-        ),
-      };
-
-      setForm((prev) => ({
-        ...prev,
-        companyName: next.companyName || prev.companyName,
-        industry: next.industry || prev.industry,
-        stage: next.stage || prev.stage,
-        website: next.website || prev.website,
-        oneLine: next.oneLine || prev.oneLine,
-        targetCustomer: next.targetCustomer || prev.targetCustomer,
-      }));
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, []);
 
   // 결과 로드
@@ -897,7 +999,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       if (Array.isArray(parsed?.candidates)) setCandidates(parsed.candidates);
       if (parsed?.selectedId) setSelectedId(parsed.selectedId);
       if (typeof parsed?.regenSeed === "number") setRegenSeed(parsed.regenSeed);
-    } catch {}
+    } catch {
+      // ignore
+    }
   }, []);
 
   // 자동 저장
@@ -909,7 +1013,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         userSetItem(STORAGE_KEY, JSON.stringify(payload));
         setLastSaved(new Date(payload.updatedAt).toLocaleString());
         setSaveMsg("자동 저장됨");
-      } catch {}
+      } catch {
+        // ignore
+      }
     }, 600);
 
     return () => clearTimeout(t);
@@ -928,7 +1034,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
           updatedAt,
         }),
       );
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     // legacy 저장
     try {
@@ -945,7 +1053,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
           updatedAt,
         }),
       );
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     // ✅ pipeline 저장 + 이후 단계 초기화(스토리가 바뀌면 로고는 무효)
     try {
@@ -968,6 +1078,20 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     setAnalyzeError("");
 
     if (!canAnalyze) {
+      // ✅ 기타 선택 시 텍스트 미입력 안내
+      if (form?.story_plot === "Other" && !isFilled(form?.story_plot_other)) {
+        alert("스토리텔링 구조에서 ‘기타’를 선택했다면 설명을 입력해주세요.");
+        return;
+      }
+      if (
+        Array.isArray(form?.story_emotion) &&
+        form.story_emotion.includes("Other") &&
+        !isFilled(form?.story_emotion_other)
+      ) {
+        alert("감정 선택에서 ‘기타’를 선택했다면 설명을 입력해주세요.");
+        return;
+      }
+
       alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
       return;
     }
@@ -994,19 +1118,28 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
-      const payload = { ...form, step: "story", mode, regenSeed: nextSeed };
+      // ✅ 기본정보(UI 제거)지만 백이 기대할 수 있어 payload에 포함(진단 컨텍스트 기반)
+      const basic = diagCtx || {};
+      const payload = {
+        ...basic, // companyName/industry/stage/website/oneLine/targetCustomer
+        ...form, // story 질문지
+        step: "story",
+        mode,
+        regenSeed: nextSeed,
+        diagnosisSummary: buildDiagnosisSummaryString(basic) || undefined,
+      };
 
       const raw = await apiRequestAI(`/brands/${brandId}/story`, {
         method: "POST",
         data: payload,
       });
 
-      const nextCandidates = normalizeStoryCandidates(raw, form);
+      const nextCandidates = normalizeStoryCandidates(raw, form, diagCtx);
 
       // 백이 비어주면 로컬 후보 생성(보험)
       const fallbackCandidates = nextCandidates.length
         ? nextCandidates
-        : generateStoryCandidates(form, nextSeed);
+        : generateStoryCandidates(form, nextSeed, diagCtx);
 
       if (!fallbackCandidates.length) {
         alert("스토리 제안을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
@@ -1133,54 +1266,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       userRemoveItem(STORAGE_KEY);
       userRemoveItem(RESULT_KEY);
       userRemoveItem(LEGACY_KEY);
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     try {
       clearStepsFrom("story");
       setBrandFlowCurrent("story");
-    } catch {}
-
-    const diag = (() => {
-      try {
-        return readDiagnosisForm();
-      } catch {
-        return null;
-      }
-    })();
-
-    const base = { ...INITIAL_FORM };
-    if (diag) {
-      base.companyName = safeText(
-        diag.companyName || diag.brandName || diag.projectName,
-        "",
-      );
-      base.industry = safeText(
-        diag.industry || diag.category || diag.field,
-        "",
-      );
-      base.stage = safeText(diag.stage, "");
-      base.website = safeText(
-        diag.website || diag.homepage || diag.siteUrl,
-        "",
-      );
-      base.oneLine = safeText(
-        diag.oneLine ||
-          diag.companyIntro ||
-          diag.intro ||
-          diag.serviceIntro ||
-          diag.shortIntro,
-        "",
-      );
-      base.targetCustomer = safeText(
-        diag.targetCustomer ||
-          diag.target ||
-          diag.customerTarget ||
-          diag.primaryCustomer,
-        "",
-      );
+    } catch {
+      // ignore
     }
 
-    setForm(base);
+    setForm({ ...INITIAL_FORM });
     setCandidates([]);
     setSelectedId(null);
     setRegenSeed(0);
@@ -1235,9 +1332,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 브랜드 스토리 컨설팅 인터뷰
               </h1>
               <p className="diagInterview__sub">
-                기업 진단에서 입력한 기본 정보는 자동 반영됩니다. 여기서는 Step
-                4 질문지 기준으로 “계기·변화·감탄·미션·플롯·갈등·감정·궁극
-                목표(선택: 팀 성격/사례)”를 입력합니다.
+                아래 질문(총 10문항) 답변을 기반으로 스토리 제안 3가지를
+                생성합니다.
               </p>
             </div>
 
@@ -1256,86 +1352,23 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              {/* 1) BASIC */}
+              {/* ✅ (요청 반영) 1) 기본 정보(자동 반영) 카드 제거 */}
+
+              {/* 2) Q1~Q4 */}
               <div className="card">
                 <div className="card__head">
-                  <h2>1. 기본 정보 (자동 반영)</h2>
+                  <h2>Brand Story Consulting</h2>
                   <p>
-                    기업 진단&인터뷰에서 입력한 정보를 자동으로 불러옵니다. (이
-                    페이지에서 수정하지 않아요)
+                    아래 질문에 답하면, 브랜드 스토리 제안 3가지를 생성할 수
+                    있어요.
                   </p>
                 </div>
 
-                <div className="formGrid">
-                  <div className="field">
-                    <label>회사/프로젝트명</label>
-                    <input
-                      value={form.companyName}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>산업/분야</label>
-                    <input
-                      value={form.industry}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>성장 단계</label>
-                    <input
-                      value={stageLabel(form.stage)}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크</label>
-                    <input
-                      value={form.website}
-                      disabled
-                      placeholder="기업 진단에서 자동 반영"
-                    />
-                  </div>
-                </div>
-
-                {String(form.targetCustomer || "").trim() ? (
-                  <div className="field">
-                    <label>타깃(진단 기준)</label>
-                    <input value={form.targetCustomer} disabled />
-                  </div>
-                ) : null}
-
-                <div className="field">
-                  <label>회사/서비스 소개</label>
-                  <textarea
-                    value={form.oneLine}
-                    disabled
-                    placeholder="기업 진단에서 자동 반영"
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              {/* 2) Brand Story (Step 4) - Required */}
-              <div className="card">
-                <div className="card__head">
-                  <h2>2. Brand Story 필수 질문</h2>
-                  <p>
-                    Step 4 질문지 기준(필수)입니다. 사실/재료가 구체적일수록
-                    결과가 좋아요.
-                  </p>
-                </div>
-
-                <div className="field">
+                <div className="field" id="story-q-founding_story">
                   <label>
-                    창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’{" "}
-                    <span className="req">*</span>
+                    <QTag n="1" />
+                    창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’은
+                    무엇인가요? <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.founding_story}
@@ -1345,10 +1378,11 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-customer_problem">
                   <label>
-                    우리 서비스를 이용하기 전/후 고객의 삶은 어떻게 달라지나요?{" "}
-                    <span className="req">*</span>
+                    <QTag n="2" />
+                    우리 서비스를 이용하기 전과 후, 고객의 삶은 어떻게
+                    달라지나요? <span className="req">*</span>
                   </label>
                   <textarea
                     value={form.customer_transformation}
@@ -1360,8 +1394,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-solution_essence">
                   <label>
+                    <QTag n="3" />
                     고객이 우리만의 서비스를 이용하면서 감탄하는 순간은
                     언제인가요? <span className="req">*</span>
                   </label>
@@ -1373,8 +1408,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-emotional_hook">
                   <label>
+                    <QTag n="4" />
                     수익 창출 외에, 우리가 세상에 기여하고자 하는 것은
                     무엇인가요? <span className="req">*</span>
                   </label>
@@ -1385,48 +1421,18 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                     rows={4}
                   />
                 </div>
-
-                <div className="field">
-                  <label>
-                    고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.customer_conflict}
-                    onChange={(e) =>
-                      setValue("customer_conflict", e.target.value)
-                    }
-                    placeholder="시간 부족, 정보 과부하, 높은 비용, 복잡한 과정 등"
-                    rows={4}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>
-                    브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
-                    <span className="req">*</span>
-                  </label>
-                  <textarea
-                    value={form.ultimate_goal}
-                    onChange={(e) => setValue("ultimate_goal", e.target.value)}
-                    placeholder="10년 후, 우리의 브랜드가 있는 세상은 어떻게 변해 있을까요?"
-                    rows={4}
-                  />
-                </div>
               </div>
 
-              {/* 3) story_plot (single choice) */}
+              {/* 3) Q5 story_plot (single choice) */}
               <div className="card">
                 <div className="card__head">
-                  <h2>3. 스토리텔링 구조 선택</h2>
-                  <p>
-                    Step 4 질문지 기준: 하나만 선택해 주세요. (기타 선택 시 직접
-                    입력)
-                  </p>
+                  <h2>2. 스토리 구조 선택</h2>
+                  <p>질문지(step_4) 기준: 1개 선택 (기타 선택 시 직접 입력)</p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-brand_persona">
                   <label>
+                    <QTag n="5" />
                     어떤 스타일의 스토리텔링을 원하나요?{" "}
                     <span className="req">*</span>
                   </label>
@@ -1508,7 +1514,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                   {form.story_plot === "Other" ? (
                     <div className="field" style={{ marginTop: 10 }}>
-                      <label>기타(직접 입력)</label>
+                      <label>
+                        기타(직접 입력) <span className="req">*</span>
+                      </label>
                       <input
                         value={form.story_plot_other}
                         onChange={(e) =>
@@ -1516,22 +1524,54 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                         }
                         placeholder="원하는 스토리 구조를 설명해주세요"
                       />
+                      {!requiredStatus.story_plot ? (
+                        <div className="hint" style={{ marginTop: 8 }}>
+                          * ‘기타’를 선택했다면 설명을 입력해주세요.
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              {/* 4) story_emotion (multiple choice max 2) */}
+              {/* 4) Q6 conflict */}
               <div className="card">
                 <div className="card__head">
-                  <h2>4. 스토리 감정 선택</h2>
+                  <h2>3. 갈등(Conflict)</h2>
                   <p>
-                    Step 4 질문지 기준: 최대 2개 선택(기타 선택 시 직접 입력)
+                    고객이 부딪히는 “가장 큰 방해물”을 구체적으로 적어주세요.
                   </p>
                 </div>
 
-                <div className="field">
+                <div className="field" id="story-q-credibility_basis">
                   <label>
+                    <QTag n="6" />
+                    고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.customer_conflict}
+                    onChange={(e) =>
+                      setValue("customer_conflict", e.target.value)
+                    }
+                    placeholder="시간 부족, 정보 과부하, 높은 비용, 복잡한 과정 등"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* 5) Q7 emotion (multiple choice max 2) */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>4. 감정(Emotion)</h2>
+                  <p>
+                    질문지(step_4) 기준: 최대 2개 선택 (기타 선택 시 직접 입력)
+                  </p>
+                </div>
+
+                <div className="field" id="story-q-story_emotion">
+                  <label>
+                    <QTag n="7" />
                     스토리를 통해 고객의 어떤 감정을 자극하고 싶나요? (최대 2개){" "}
                     <span className="req">*</span>
                   </label>
@@ -1555,7 +1595,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   {Array.isArray(form.story_emotion) &&
                   form.story_emotion.includes("Other") ? (
                     <div className="field" style={{ marginTop: 10 }}>
-                      <label>기타(직접 입력)</label>
+                      <label>
+                        기타(직접 입력) <span className="req">*</span>
+                      </label>
                       <input
                         value={form.story_emotion_other}
                         onChange={(e) =>
@@ -1563,19 +1605,51 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                         }
                         placeholder="자극하고 싶은 감정을 설명해주세요"
                       />
+                      {!requiredStatus.story_emotion ? (
+                        <div className="hint" style={{ marginTop: 8 }}>
+                          * ‘기타’를 선택했다면 설명을 입력해주세요.
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              {/* 5) Optional */}
+              {/* 6) Q8 ultimate_goal */}
               <div className="card">
                 <div className="card__head">
-                  <h2>5. 선택 질문 & 추가 요청</h2>
+                  <h2>5. 비전(Vision)</h2>
+                  <p>브랜드가 도달하고 싶은 “세상”을 그려주세요.</p>
+                </div>
+
+                <div className="field" id="story-q-ultimate_goal">
+                  <label>
+                    <QTag n="8" />
+                    브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
+                    <span className="req">*</span>
+                  </label>
+                  <textarea
+                    value={form.ultimate_goal}
+                    onChange={(e) => setValue("ultimate_goal", e.target.value)}
+                    placeholder="10년 후, 우리의 브랜드가 있는 세상은 어떻게 변해 있을까요?"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {/* 7) Optional Q9~Q10 */}
+              <div className="card">
+                <div className="card__head">
+                  <h2>6. 선택 질문 (Optional)</h2>
+                  <p>가능하면 적어주면 좋아요. 결과 퀄리티가 올라갑니다.</p>
                 </div>
 
                 <div className="field">
-                  <label>창업자(또는 팀)의 성격/스타일 (선택)</label>
+                  <label>
+                    <QTag n="9" />
+                    창업자(또는 팀)의 성격이나 스타일을 한 문장으로 표현한다면
+                    어떤 사람들인가요?
+                  </label>
                   <textarea
                     value={form.founder_personality}
                     onChange={(e) =>
@@ -1587,22 +1661,16 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 </div>
 
                 <div className="field">
-                  <label>기억에 남는 고객 사례 1개 (선택)</label>
+                  <label>
+                    <QTag n="10" />
+                    기억에 남는 고객 사례가 있다면 하나만 구체적으로
+                    소개해주세요.
+                  </label>
                   <textarea
                     value={form.flagship_case}
                     onChange={(e) => setValue("flagship_case", e.target.value)}
                     placeholder="어떤 고객이었고, 어떤 문제가 있었으며, 우리 서비스를 통해 어떻게 달라졌는지"
                     rows={4}
-                  />
-                </div>
-
-                <div className="field">
-                  <label>추가 메모 (선택)</label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setValue("notes", e.target.value)}
-                    placeholder="예) 랜딩페이지용 6~8문장 버전 + 2문장 요약도 같이"
-                    rows={3}
                   />
                 </div>
               </div>
@@ -1685,15 +1753,17 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                               <div style={{ marginTop: 6, opacity: 0.9 }}>
                                 {c.oneLiner}
                               </div>
-                              <div
-                                style={{
-                                  marginTop: 6,
-                                  opacity: 0.8,
-                                  fontSize: 12,
-                                }}
-                              >
-                                {c.meta}
-                              </div>
+                              {c.meta ? (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    opacity: 0.8,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {c.meta}
+                                </div>
+                              ) : null}
                               {c.plot ? (
                                 <div
                                   style={{
@@ -1799,13 +1869,62 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                     <span className="k">마지막 저장</span>
                     <span className="v">{lastSaved}</span>
                   </div>
-                  <div className="sideMeta__row">
-                    <span className="k">단계</span>
-                    <span className="v">{stageLabel(form.stage)}</span>
-                  </div>
+                  {/* ✅ (요청 반영) 기본정보 제거에 맞춰 단계(stage) 표시도 제거 */}
                 </div>
 
                 {saveMsg ? <p className="saveMsg">{saveMsg}</p> : null}
+
+                <div className="divider" />
+
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    display: "grid",
+                    gap: 8,
+                  }}
+                >
+                  {requiredKeys.map((key, idx) => {
+                    const ok = requiredStatus[key];
+                    const label = requiredLabelMap[key] || key;
+                    return (
+                      <li
+                        key={key}
+                        style={{
+                          borderRadius: 10,
+                          border: ok
+                            ? "1px solid rgba(34,197,94,.35)"
+                            : "1px solid rgba(239,68,68,.35)",
+                          background: ok
+                            ? "rgba(34,197,94,.10)"
+                            : "rgba(239,68,68,.10)",
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => scrollToRequiredField(key)}
+                          aria-label={`${label} 항목으로 이동`}
+                          style={{
+                            all: "unset",
+                            width: "100%",
+                            display: "block",
+                            cursor: "pointer",
+                            color: ok
+                              ? "rgba(22,101,52,.95)"
+                              : "rgba(153,27,27,.95)",
+                          }}
+                        >
+                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <div className="divider" />
 
@@ -1839,6 +1958,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                 {!canAnalyze ? (
                   <p className="hint" style={{ marginTop: 10 }}>
                     * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
+                    <br />* ‘기타’를 선택했다면 설명 입력이 필요할 수 있어요.
                   </p>
                 ) : null}
 
