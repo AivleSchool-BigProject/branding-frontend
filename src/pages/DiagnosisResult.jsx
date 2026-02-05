@@ -123,8 +123,8 @@ function QACard({ qa }) {
                 background: "#fff",
               }}
             >
-              <div style={{ fontWeight: 900, marginBottom: 6 }}>{q}</div>
-              <div style={{ color: "#111827", whiteSpace: "pre-wrap" }}>
+              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 14  }}>{q}</div>
+              <div style={{ color: "#111827", whiteSpace: "pre-wrap", fontSize: 12 }}>
                 {renderText(a)}
               </div>
             </div>
@@ -549,7 +549,7 @@ export default function DiagnosisResult({ onLogout }) {
                 <>
                   <Card
                     title="AI 진단 요약"
-                    sub="FastAPI 응답(summary/analysis/key_insights)을 보기 좋게 정리합니다."
+                    sub="AI가 분석한 브랜드 진단 결과를 요약해 제공합니다."
                     footer={
                       <div style={{ fontSize: 12, color: "#6b7280" }}>
                         마지막 저장: {lastSaved}
@@ -561,20 +561,6 @@ export default function DiagnosisResult({ onLogout }) {
                     <Block title="핵심 인사이트">
                       {renderText(uiKeyInsights)}
                     </Block>
-
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontWeight: 900 }}>키워드</div>
-                      <Chips items={uiKeywords} />
-                    </div>
-
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                        타깃 페르소나
-                      </div>
-                      <div style={{ whiteSpace: "pre-wrap" }}>
-                        {renderText(uiPersona)}
-                      </div>
-                    </div>
                   </Card>
 
                   {/* 다각도 분석은 현재 더미 백에서 주지 않으니,
