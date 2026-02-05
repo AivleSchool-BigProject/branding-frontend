@@ -59,6 +59,8 @@ export default function MainPage({ onLogout }) {
   const brandProgress = useMemo(() => {
     const p = readPipeline() || {};
 
+    // 2025-02-05
+    // 네이밍이 이어하기가 되지 않아 수정
     const hasDiagnosis = Boolean(
       (typeof p?.diagnosisSummary === "string" && p.diagnosisSummary.trim()) ||
       p?.diagnosisSummary?.companyName ||
