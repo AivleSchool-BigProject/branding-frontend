@@ -34,6 +34,10 @@ import {
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest, apiRequestAI } from "../api/client.js";
 
+// 2026-02-06
+// 컬러 피커 - react-colorful import
+import { HexColorPicker } from "react-colorful";
+
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
@@ -245,6 +249,32 @@ function ChoiceCard({ selected, title, desc, extra, onClick }) {
       ) : null}
     </button>
   );
+}
+
+// 2026-02-06
+// 컬러 피커 추가
+function clamp(n, min, max) {
+  const x = Number(n);
+  if (Number.isNaN(x)) return min;
+  return Math.min(max, Math.max(min, x));
+}
+
+function normalizeHex(input, fallback = "#000000") {
+  let s = String(input || "").trim();
+  if (!s) return fallback;
+  if (s[0] !== "#") s = "#" + s;
+  // #RGB -> #RRGGBB
+  if (/^#([0-9a-fA-F]{3})$/.test(s)) {
+    const m = s.slice(1);
+    s =
+      "#" +
+      m
+        .split("")
+        .map((c) => c + c)
+        .join("");
+  }
+  if (!/^#([0-9a-fA-F]{6})$/.test(s)) return fallback;
+  return s.toUpperCase();
 }
 
 /** ======================
@@ -597,6 +627,12 @@ const INITIAL_FORM = {
   // ✅ step_5 질문지(입력란 최소화: 선택 중심, 기타/조건부 입력 제거)
   logo_structure: "", // single_choice
   visual_motif: "", // single_choice
+
+  // 2026-02-06
+  // 컬러 피커 추가 - 대표 색상
+  brand_color_primary: "#3B7CF3",
+  brand_color_secondary: "#0A2540",
+
   brand_color: [], // multiple_choice max 2
   design_style: "", // single_choice
   design_reference: "", // long_answer (required)
@@ -1455,31 +1491,115 @@ export default function LogoConsultingInterview({ onLogout }) {
               </div>
 
               {/* 3) 대표 색상 */}
+              {/* 2026-02-06 - 컬러 피커 추가 */}
               <div className="card" ref={refColor}>
                 <div className="card__head">
                   <h2>3. 대표 색상</h2>
                   <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
                 </div>
-
                 <div className="field" id="logo-q-brand_color">
                   <label>
                     색상 선택(최대 2개) <span className="req">*</span>
                   </label>
 
                   <div className="hint" style={{ marginTop: 6 }}>
-                    2개를 넘기면 마지막으로 선택한 항목이 유지돼요.
+                    대표 색상 1(Primary)과 대표 색상 2(Secondary)를 각각 선택해
+                    주세요.
                   </div>
 
-                  <div style={{ marginTop: 10 }}>
-                    <MultiChips
-                      value={form.brand_color}
-                      options={BRAND_COLOR_OPTIONS.map((o) => ({
-                        value: o.value,
-                        label: o.text,
-                      }))}
-                      onChange={setBrandColors}
-                      max={2}
-                    />
+                  {/* ✅ 카드 2개 */}
+                  <div className="colorPickGrid" style={{ marginTop: 12 }}>
+                    {/* Primary */}
+                    <div className="colorPickCard">
+                      <div className="colorPickTop">
+                        <div>
+                          <div className="colorPickTitle">
+                            대표 색상 1 (Primary)
+                          </div>
+                          <div className="colorPickDesc">
+                            로고/메인 화면에서 가장 먼저 보이는 핵심 색상
+                          </div>
+                        </div>
+                        <div
+                          className="colorSwatch"
+                          style={{ background: form.brand_color_primary }}
+                        />
+                      </div>
+
+                      <div className="colorPickBody">
+                        <div className="wheelWrap">
+                          <div className="pickerBox">
+                            <HexColorPicker
+                              color={form.brand_color_primary || "#3B7CF3"}
+                              onChange={(hex) => {
+                                setForm((prev) => ({
+                                  ...prev,
+                                  brand_color_primary: hex,
+                                  brand_color: [hex,
+                                    prev.brand_color_secondary,
+                                  ]
+                                    .filter(Boolean)
+                                    .slice(0, 2),
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Secondary */}
+                    <div className="colorPickCard">
+                      <div className="colorPickTop">
+                        <div>
+                          <div className="colorPickTitle">
+                            대표 색상 2 (Secondary)
+                          </div>
+                          <div className="colorPickDesc">
+                            버튼/강조 요소에 사용되는 보조 색상
+                          </div>
+                        </div>
+                        <div
+                          className="colorSwatch"
+                          style={{ background: form.brand_color_secondary }}
+                        />
+                      </div>
+
+                      <div className="colorPickBody">
+                        <div className="wheelWrap">
+                          <div className="pickerBox">
+                            <HexColorPicker
+                              color={normalizeHex(
+                                form.brand_color_secondary,
+                                "#0A2540",
+                              )}
+                              onChange={(hex) => {
+                                const next = normalizeHex(hex, "#0A2540");
+                                setForm((prev) => ({
+                                  ...prev,
+                                  brand_color_secondary: next,
+                                  brand_color: [prev.brand_color_primary, next]
+                                    .filter(Boolean)
+                                    .slice(0, 2),
+                                }));
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ✅ 요약 */}
+                  <div className="colorSummaryRow">
+                    <span className="colorChip">
+                      <i style={{ background: form.brand_color_primary }} />
+                      Primary <b>{form.brand_color_primary}</b>
+                    </span>
+                    <span className="colorChip">
+                      <i style={{ background: form.brand_color_secondary }} />
+                      Secondary <b>{form.brand_color_secondary}</b>
+                    </span>
                   </div>
                 </div>
               </div>

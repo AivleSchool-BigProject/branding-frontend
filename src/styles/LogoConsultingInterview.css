@@ -640,3 +640,124 @@
     box-shadow: 0 0 0 10px rgba(225, 29, 72, 0);
   }
 }
+/* ===== 대표 색상: react-colorful 레이아웃 ===== */
+.diagInterview.consultingInterview .colorPickGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media (max-width: 980px){
+  .diagInterview.consultingInterview .colorPickGrid{ grid-template-columns:1fr; }
+}
+
+.diagInterview.consultingInterview .colorPickCard{
+  border:1px solid rgba(15, 23, 42, 0.10);
+  border-radius:14px;
+  padding:12px;
+  background:rgba(255,255,255,0.85);
+}
+
+.diagInterview.consultingInterview .colorPickTop{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.diagInterview.consultingInterview .colorPickTitle{
+  font-size:13px;
+  font-weight:900;
+  color:#0f172a;
+}
+.diagInterview.consultingInterview .colorPickDesc{
+  margin-top:6px;
+  font-size:12px;
+  color:#5b6476;
+  line-height:1.35;
+}
+
+.diagInterview.consultingInterview .colorSwatch{
+  width:36px;
+  height:36px;
+  border-radius:12px;
+  border:1px solid rgba(15,23,42,0.12);
+  box-shadow: 0 6px 16px rgba(15,23,42,0.10);
+  flex:0 0 36px;
+}
+
+.diagInterview.consultingInterview .colorPickBody{
+  margin-top:12px;
+  display:grid;
+  justify-content:center;
+}
+
+.diagInterview.consultingInterview .wheelWrap{
+  display:flex;
+  justify-content:center;
+}
+
+.diagInterview.consultingInterview .pickerBox{
+  width: 240px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15,23,42,0.10);
+  background: #fff;
+}
+.diagInterview.consultingInterview .pickerBox.sm{
+  width: 240px;
+}
+
+/* react-colorful 기본 클래스 크기 조정 */
+.diagInterview.consultingInterview .react-colorful{
+  width: 220px;
+  height: 220px;
+}
+.diagInterview.consultingInterview .react-colorful__saturation{
+  border-radius: 12px;
+}
+.diagInterview.consultingInterview .react-colorful__hue,
+.diagInterview.consultingInterview .react-colorful__alpha{
+  border-radius: 999px;
+  height: 14px;
+  margin-top: 10px;
+}
+.diagInterview.consultingInterview .react-colorful__pointer{
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #fff, 0 6px 16px rgba(15,23,42,0.25);
+}
+
+.diagInterview.consultingInterview .colorSummaryRow{
+  margin-top:12px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.diagInterview.consultingInterview .colorChip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.10);
+  background:#fff;
+  font-size:12px;
+  color:#334155;
+}
+.diagInterview.consultingInterview .colorChip i{
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  border:1px solid rgba(15,23,42,0.10);
+  display:inline-block;
+}
+.diagInterview.consultingInterview .react-colorful,
+.diagInterview.consultingInterview .react-colorful * {
+  transition: none !important;
+}
+.diagInterview.consultingInterview .react-colorful {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
