@@ -123,10 +123,47 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  background: rgba(0, 31, 102, 0.08);
-  border: 1px solid rgba(0, 31, 102, 0.12);
-  color: var(--navy);
-  font-weight: 900;
+  border: 1px solid #d5dceb;
+  background: #fff;
+  color: #101828;
+  overflow: hidden;
+}
+
+.easyModal__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.easyModal__icon--google {
+  background: #fff;
+  border-color: #d9deea;
+}
+
+.easyModal__icon--kakao {
+  background: #fee500;
+  border-color: #f2db00;
+}
+
+.easyModal__icon--kakao svg {
+  width: 24px;
+  height: 24px;
+}
+
+.easyModal__icon--naver {
+  background: #03c75a;
+  border-color: #02b250;
+}
+
+.easyModal__icon--naver svg {
+  width: 22px;
+  height: 22px;
+}
+
+.easyModal__icon--apple {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
 }
 
 .easyModal__text {
@@ -188,4 +225,10 @@
   font-size: 12px;
   line-height: 1.4;
   text-align: center;
+}
+
+/* 상단 파란 포인트 라인 제거 (이전 디자인 유지) */
+.easyModal__panel::before {
+  content: none !important;
+  display: none !important;
 }

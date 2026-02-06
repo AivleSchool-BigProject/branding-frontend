@@ -97,7 +97,7 @@ export default function BrandAllResults({ onLogout }) {
   /**
    * ✅ 브랜드 통합 결과(모아보기)
    * - 완료 기준: legacyKey(brandInterview_*_v1)에 selectedId가 존재하면 "완료"
-   * - 진행중 기준: 완료는 아니지만 draftKey에 form이 있으면 "진행중"
+   * - 진행중 기준: 완료는 아니지만 draftKey/기존 form이 있으면 "진행중"
    * - 미시작 기준: 둘 다 없으면 "미시작"
    *
    * 🔔 컨셉은 내부적으로 service=homepage 로 결과 페이지가 연결됨
@@ -291,29 +291,20 @@ export default function BrandAllResults({ onLogout }) {
 
                   <div className="brandAll-cardActions">
                     {c.isDone ? (
-                      <>
-                        <button
-                          type="button"
-                          className="btn primary"
-                          onClick={() => {
-                            const base = c.resultRoute;
-                            const next =
-                              report && rid
-                                ? `${base}${base.includes("?") ? "&" : "?"}rid=${encodeURIComponent(rid)}`
-                                : base;
-                            navigate(next);
-                          }}
-                        >
-                          결과 보기
-                        </button>
-                        <button
-                          type="button"
-                          className="btn ghost"
-                          onClick={() => navigate(c.interviewRoute)}
-                        >
-                          다시 인터뷰
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => {
+                          const base = c.resultRoute;
+                          const next =
+                            report && rid
+                              ? `${base}${base.includes("?") ? "&" : "?"}rid=${encodeURIComponent(rid)}`
+                              : base;
+                          navigate(next);
+                        }}
+                      >
+                        결과 보기
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -392,9 +383,8 @@ export default function BrandAllResults({ onLogout }) {
                 </button>
 
                 <p className="hint">
-                  * 이 페이지는 localStorage에 저장된 brandInterview_*_v1 /
-                  Draft 값을 기준으로 상태를 표시합니다.
-                  {report ? " (현재는 히스토리 스냅샷 보기 모드)" : ""}
+                  * 원큐 플로우(기업진단 → 네이밍 → 컨셉 → 스토리 → 로고)에
+                  맞춰, 완료 단계는 결과 보기 중심으로 표시됩니다.
                 </p>
               </div>
             </aside>
