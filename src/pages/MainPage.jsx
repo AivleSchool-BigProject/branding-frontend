@@ -1,6 +1,6 @@
 // src/pages/MainPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/MainPage.css";
 
 // UI: 메인 카드(컨설팅 시작하기)에서 사용하는 이미지 에셋
@@ -24,6 +24,12 @@ import {
 
 export default function MainPage({ onLogout }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ✅ 로그인 직후 진입 시 아주 약한 줌인 연출
+  const [isEntryFromLogin, setIsEntryFromLogin] = useState(
+    Boolean(location?.state?.fromLoginTransition),
+  );
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
@@ -200,8 +206,16 @@ export default function MainPage({ onLogout }) {
     navigate("/diagnosisinterview", { state: { mode: "start" } });
   };
 
+  useEffect(() => {
+    if (!isEntryFromLogin) return;
+    const timer = window.setTimeout(() => setIsEntryFromLogin(false), 360);
+    return () => window.clearTimeout(timer);
+  }, [isEntryFromLogin]);
+
   return (
-    <div className="main-page">
+    <div
+      className={`main-page ${isEntryFromLogin ? "main-page--entry-from-login" : ""}`}
+    >
       {/* ✅ 개인정보/약관 모달 */}
       <PolicyModal
         open={openType === "privacy"}
