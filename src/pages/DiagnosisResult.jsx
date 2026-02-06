@@ -112,7 +112,7 @@ function QACard({ qa }) {
       sub="사용자가 작성한 입력을 그대로 정리했습니다."
     >
       {entries.length ? (
-        <div style={{ display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
           {entries.map(([q, a]) => (
             <div
               key={q}
@@ -123,8 +123,8 @@ function QACard({ qa }) {
                 background: "#fff",
               }}
             >
-              <div style={{ fontWeight: 900, marginBottom: 6 }}>{q}</div>
-              <div style={{ color: "#111827", whiteSpace: "pre-wrap" }}>
+              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 13  }}>{q}</div>
+              <div style={{ color: "#111827", whiteSpace: "pre-wrap", fontSize: 12 }}>
                 {renderText(a)}
               </div>
             </div>
@@ -470,17 +470,6 @@ export default function DiagnosisResult({ onLogout }) {
           <div className="diagResult__titleRow">
             <div>
               <h1 className="diagResult__title">기업 진단 결과 리포트</h1>
-              <p className="diagResult__sub">
-                백엔드 응답을 카드 형태로 정리해 보여줍니다.
-                {brandId ? (
-                  ` (brandId: ${brandId})`
-                ) : (
-                  <span style={{ color: "#b91c1c" }}>
-                    {" "}
-                    (brandId 없음: 다음 단계 진행 불가)
-                  </span>
-                )}
-              </p>
             </div>
 
             <div className="diagResult__topActions">
@@ -549,7 +538,7 @@ export default function DiagnosisResult({ onLogout }) {
                 <>
                   <Card
                     title="AI 진단 요약"
-                    sub="FastAPI 응답(summary/analysis/key_insights)을 보기 좋게 정리합니다."
+                    sub="AI가 분석한 브랜드 진단 결과를 요약해 제공합니다."
                     footer={
                       <div style={{ fontSize: 12, color: "#6b7280" }}>
                         마지막 저장: {lastSaved}
@@ -561,22 +550,9 @@ export default function DiagnosisResult({ onLogout }) {
                     <Block title="핵심 인사이트">
                       {renderText(uiKeyInsights)}
                     </Block>
-
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontWeight: 900 }}>키워드</div>
-                      <Chips items={uiKeywords} />
-                    </div>
-
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontWeight: 900, marginBottom: 6 }}>
-                        타깃 페르소나
-                      </div>
-                      <div style={{ whiteSpace: "pre-wrap" }}>
-                        {renderText(uiPersona)}
-                      </div>
-                    </div>
                   </Card>
 
+                  {/* ------------------- 삭제해야 할 부분 -------------------- */}
                   {/* 다각도 분석은 현재 더미 백에서 주지 않으니,
                       있으면 보여주고 없으면 카드 생략 */}
                   {isPlainObject(uiPerspectives) &&
@@ -636,6 +612,7 @@ export default function DiagnosisResult({ onLogout }) {
                       </div>
                     </Card>
                   ) : null}
+                  {/* --------------------------------------------------- */}
 
                   {/* 입력 요약은 raw_qa가 있을 때만 보여주기 */}
                   {inputSummaryRows.length ? (
@@ -723,11 +700,6 @@ export default function DiagnosisResult({ onLogout }) {
                 >
                   처음부터 다시하기(초기화)
                 </button>
-
-                <p className="hint">
-                  * 인터뷰 페이지에서 “AI 진단하기” 요청이 성공하면 결과가
-                  표시됩니다.
-                </p>
               </div>
 
               {hasReport ? (

@@ -22,32 +22,32 @@ export function userKey(baseKey, userId) {
   return `${baseKey}${SUFFIX}${uid}`;
 }
 
-export function userGetItem(baseKey) {
+export function userGetItem(baseKey, userId) {
   try {
-    return localStorage.getItem(userKey(baseKey));
+    return localStorage.getItem(userKey(baseKey, userId));
   } catch {
     return null;
   }
 }
 
-export function userSetItem(baseKey, value) {
+export function userSetItem(baseKey, value, userId) {
   try {
-    localStorage.setItem(userKey(baseKey), value);
+    localStorage.setItem(userKey(baseKey, userId), value);
   } catch {
     // ignore
   }
 }
 
-export function userRemoveItem(baseKey) {
+export function userRemoveItem(baseKey, userId) {
   try {
-    localStorage.removeItem(userKey(baseKey));
+    localStorage.removeItem(userKey(baseKey, userId));
   } catch {
     // ignore
   }
 }
 
-export function userSafeParse(baseKey) {
-  const raw = userGetItem(baseKey);
+export function userSafeParse(baseKey, userId) {
+  const raw = userGetItem(baseKey, userId);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -56,9 +56,9 @@ export function userSafeParse(baseKey) {
   }
 }
 
-export function userSetJSON(baseKey, payload) {
+export function userSetJSON(baseKey, payload, userId) {
   try {
-    userSetItem(baseKey, JSON.stringify(payload));
+    userSetItem(baseKey, JSON.stringify(payload), userId);
   } catch {
     // ignore
   }

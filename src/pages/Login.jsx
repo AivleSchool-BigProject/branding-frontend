@@ -206,8 +206,15 @@ export default function LoginApp() {
       setIsLoggedIn(true);
 
       navigate(redirectTo || "/main");
+      // 2026-02-05
+      // 로그인 실패 시 오류 메시지 변경
     } catch (err) {
-      setErrorMsg(err?.userMessage || "로그인에 실패했습니다.");
+      const status = err?.status || err?.response?.status;
+      if (status === 401 || status === 403) {
+        setErrorMsg("아이디 또는 비밀번호가 올바르지 않습니다.");
+      } else {
+        setErrorMsg(err?.userMessage || "로그인에 실패했습니다.");
+      }
     } finally {
       setIsLoading(false);
     }
