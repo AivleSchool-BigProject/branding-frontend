@@ -220,6 +220,29 @@ export default function LoginApp() {
     }
   };
 
+  const handleEasyLoginSuccess = ({ provider, accessToken, user }) => {
+    try {
+      // ✅ 백엔드 없이 프론트 세션 로그인(임시 운영/시연용)
+      if (accessToken) setAccessToken(accessToken);
+
+      const derivedId =
+        user?.email ||
+        user?.id ||
+        user?.name ||
+        `${String(provider || "social").toLowerCase()}_${Date.now()}`;
+
+      setCurrentUserId(String(derivedId));
+      setIsLoggedIn(true);
+      setEasyOpen(false);
+
+      navigate(redirectTo || "/main", {
+        state: { fromLoginTransition: true },
+      });
+    } catch {
+      setErrorMsg("간편로그인 처리 중 오류가 발생했습니다.");
+    }
+  };
+
   return (
     <div className="login-page navy">
       <PolicyModal
@@ -238,7 +261,11 @@ export default function LoginApp() {
         <TermsContent />
       </PolicyModal>
 
-      <EasyLoginModal open={easyOpen} onClose={() => setEasyOpen(false)} />
+      <EasyLoginModal
+        open={easyOpen}
+        onClose={() => setEasyOpen(false)}
+        onSuccess={handleEasyLoginSuccess}
+      />
 
       <div
         className={`login-shell split ${
