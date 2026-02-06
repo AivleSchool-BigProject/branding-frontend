@@ -177,3 +177,15 @@
   text-align: center;
   line-height: 1.4;
 }
+
+.easyModal__status {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #ffe0b2;
+  background: #fff8ee;
+  color: #8a5300;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
