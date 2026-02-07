@@ -39,11 +39,13 @@ import { apiRequest, apiRequestAI } from "../api/client.js";
 import { HexColorPicker } from "react-colorful";
 
 import exNetflix from "../Image/logo_example_image/logo-Netflix.jpg";
-import exAdidas from "../Image/logo_example_image/adidas_logo.jpg";
-import exStarbucks from "../Image/logo_example_image/starbucks_logo.jpg";
+import exdunkin from "../Image/logo_example_image/logo_dunkin.png";
 import exBurgerKing from "../Image/logo_example_image/burgerking_logo.png";
 import exNike from "../Image/logo_example_image/nike-logos-swoosh-white.jpg";
 import exCocaCola from "../Image/logo_example_image/coca-cola-logo.webp";
+import exHarley from "../Image/logo_example_image/logo_Harley.png";
+import exNFL from "../Image/logo_example_image/logo_nfl.png";
+import exSnapchat from "../Image/logo_example_image/logo_snapchat.png";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
@@ -276,7 +278,7 @@ function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
               <div
                 style={{
                   marginTop: 8,
-                  fontSize: 10,
+                  fontSize: 11,
                   opacity: 0.78,
                   lineHeight: 1.45,
                 }}
@@ -315,7 +317,7 @@ function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
                     left: 0, // ✅ 이제 left=0이 "썸네일 묶음의 left"가 됨
                     fontSize: 12,
                     fontWeight: 900,
-                    opacity: 0.7,
+                    opacity: 0.6,
                     lineHeight: 1,
                     textAlign: "left",
                     pointerEvents: "none",
@@ -336,8 +338,8 @@ function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
                     <div
                       key={idx}
                       style={{
-                        width: 78,
-                        height: 52,
+                        width: 85,
+                        height: 65,
                         borderRadius: 14,
                         border: "1px solid rgba(0,0,0,0.10)",
                         background: "#fff",
@@ -444,19 +446,19 @@ const LOGO_STRUCTURE_OPTIONS = [
 const LOGO_EXAMPLES_BY_STRUCTURE = {
   "Symbol Only": [
     { src: exNike, alt: "Nike" },
-    { src: exAdidas, alt: "Adidas" },
+    { src: exSnapchat, alt: "SnapChat" },
   ],
   Wordmark: [
     { src: exNetflix, alt: "Netflix" },
     { src: exCocaCola, alt: "Coca-Cola" },
   ],
   Combination: [
-    { src: exStarbucks, alt: "Starbucks" },
+    { src: exdunkin, alt: "Dunkin" },
     { src: exBurgerKing, alt: "Burger King" },
   ],
   Emblem: [
-    { src: exStarbucks, alt: "Starbucks (Emblem)" },
-    { src: exBurgerKing, alt: "Burger King (Emblem)" },
+    { src: exNFL, alt: "NFL" },
+    { src: exHarley, alt: "Harley" },
   ],
 };
 
@@ -490,51 +492,6 @@ const VISUAL_MOTIF_OPTIONS = [
     text: "특정 이미지 없음 (AI 추천)",
     value: "None",
     description: "브랜드에 가장 잘 맞는 모티프를 AI가 제안",
-  },
-];
-
-const BRAND_COLOR_OPTIONS = [
-  {
-    id: "col_blue",
-    text: "블루/네이비",
-    value: "Blue/Navy",
-    description: "신뢰, 안정, 전문성",
-  },
-  {
-    id: "col_red",
-    text: "레드/오렌지",
-    value: "Red/Orange",
-    description: "열정, 에너지, 행동",
-  },
-  {
-    id: "col_green",
-    text: "그린",
-    value: "Green",
-    description: "자연, 성장, 안정",
-  },
-  {
-    id: "col_purple",
-    text: "퍼플/바이올렛",
-    value: "Purple/Violet",
-    description: "창의성, 혁신, 고급",
-  },
-  {
-    id: "col_yellow",
-    text: "옐로우",
-    value: "Yellow",
-    description: "활기, 긍정, 친근함",
-  },
-  {
-    id: "col_bw",
-    text: "블랙/화이트/그레이",
-    value: "Black/White/Gray",
-    description: "미니멀, 세련, 타임리스",
-  },
-  {
-    id: "col_gold",
-    text: "골드/브라운",
-    value: "Gold/Brown",
-    description: "프리미엄, 전통, 신뢰",
   },
 ];
 
