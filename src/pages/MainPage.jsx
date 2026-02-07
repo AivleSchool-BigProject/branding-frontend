@@ -36,8 +36,11 @@ export default function MainPage({ onLogout }) {
   const closeModal = () => setOpenType(null);
 
   // ✅ 브랜드 컨설팅 진행 안내(가이드) 모달
-  const [openBrandGuide, setOpenBrandGuide] = useState(false);
-  const closeBrandGuide = () => setOpenBrandGuide(false);
+  const [brandGuideMode, setBrandGuideMode] = useState(null);
+  const openBrandGuideStart = () => setBrandGuideMode("start");
+  const openBrandGuideSteps = () => setBrandGuideMode("steps");
+  const closeBrandGuide = () => setBrandGuideMode(null);
+  const openBrandGuide = brandGuideMode !== null;
 
   // ✅ 브랜드(기업진단 포함) 진행 데이터 여부
   const hasAnyBrandProgress = useMemo(() => {
@@ -57,9 +60,7 @@ export default function MainPage({ onLogout }) {
     );
   }, []);
 
-  const brandCtaLabel = hasAnyBrandProgress
-    ? "기업진단부터 다시 시작하기"
-    : "기업진단 인터뷰부터 시작하기";
+  const brandCtaLabel = "기업진단 인터뷰부터 시작하기";
 
   // ✅ 좌측 패널(진행중/이어하기) + 배너 CTA에서 사용할 진행 상태
   const brandProgress = useMemo(() => {
@@ -70,7 +71,7 @@ export default function MainPage({ onLogout }) {
     const hasDiagnosis = Boolean(
       (typeof p?.diagnosisSummary === "string" && p.diagnosisSummary.trim()) ||
       p?.diagnosisSummary?.companyName ||
-      p?.diagnosisSummary?.oneLine
+      p?.diagnosisSummary?.oneLine,
     );
     const hasNaming = Boolean(p?.naming?.selectedId || p?.naming?.selected);
     const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);
@@ -84,7 +85,7 @@ export default function MainPage({ onLogout }) {
         status: "완료",
         stepLabel: "브랜드 컨설팅 완료",
         ctaLabel: "결과 보기",
-        nextRoute: "/mypage/brand-results",
+        nextRoute: "/mypage",
       };
     }
 
@@ -190,7 +191,12 @@ export default function MainPage({ onLogout }) {
 
   const handleStartBrandFromDiagnosis = () => {
     // ✅ 메인에서 바로 진입 시에도 단계 안내를 먼저 보여줌
-    setOpenBrandGuide(true);
+    openBrandGuideStart();
+  };
+
+  const handleOpenStepGuide = () => {
+    // ✅ 단계 보기: 라우팅 없이 모달로 안내
+    openBrandGuideSteps();
   };
 
   const proceedStartBrandFromDiagnosis = () => {
@@ -275,7 +281,7 @@ export default function MainPage({ onLogout }) {
             </li>
           </ul>
 
-          {hasAnyBrandProgress && (
+          {brandGuideMode === "start" && hasAnyBrandProgress && (
             <div className="mp-warn">
               진행 데이터가 있어요. 기업진단부터 다시 시작하면 진행 데이터가
               초기화됩니다.
@@ -283,24 +289,23 @@ export default function MainPage({ onLogout }) {
           )}
 
           <div className="mp-guide__actions">
-            <button
-              type="button"
-              className="mp-cta"
-              onClick={proceedStartBrandFromDiagnosis}
-            >
-              {brandCtaLabel}
-            </button>
-
-            <button
-              type="button"
-              className="mp-side__ghost mp-guide__ghost"
-              onClick={() => {
-                closeBrandGuide();
-                navigate("/brandconsulting");
-              }}
-            >
-              단계 안내 페이지로 이동
-            </button>
+            {brandGuideMode === "start" ? (
+              <button
+                type="button"
+                className="mp-cta"
+                onClick={proceedStartBrandFromDiagnosis}
+              >
+                {brandCtaLabel}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="mp-cta"
+                onClick={closeBrandGuide}
+              >
+                확인
+              </button>
+            )}
           </div>
         </div>
       </PolicyModal>
@@ -343,7 +348,7 @@ export default function MainPage({ onLogout }) {
                 onClick={() => {
                   // ✅ 시작 전이면 안내 모달을 먼저 노출
                   if (brandProgress.percent === 0) {
-                    setOpenBrandGuide(true);
+                    openBrandGuideStart();
                     return;
                   }
                   // 완료면 결과, 진행중이면 다음 단계로
@@ -356,9 +361,9 @@ export default function MainPage({ onLogout }) {
               <button
                 type="button"
                 className="mp-side__ghost"
-                onClick={() => navigate("/brandconsulting")}
+                onClick={handleOpenStepGuide}
               >
-                단계 안내 보기
+                단계 보기
               </button>
             </div>
           </aside>
