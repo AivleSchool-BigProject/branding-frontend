@@ -38,6 +38,15 @@ import { apiRequest, apiRequestAI } from "../api/client.js";
 // 컬러 피커 - react-colorful import
 import { HexColorPicker } from "react-colorful";
 
+import exNetflix from "../Image/logo_example_image/logo-Netflix.jpg";
+import exdunkin from "../Image/logo_example_image/logo_dunkin.png";
+import exBurgerKing from "../Image/logo_example_image/burgerking_logo.png";
+import exNike from "../Image/logo_example_image/nike-logos-swoosh-white.jpg";
+import exCocaCola from "../Image/logo_example_image/coca-cola-logo.webp";
+import exHarley from "../Image/logo_example_image/logo_Harley.png";
+import exNFL from "../Image/logo_example_image/logo_nfl.png";
+import exSnapchat from "../Image/logo_example_image/logo_snapchat.png";
+
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
@@ -206,7 +215,10 @@ function MultiChips({ value, options, onChange, max = null }) {
   );
 }
 
-function ChoiceCard({ selected, title, desc, extra, onClick }) {
+function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
+  const hasExamples = Array.isArray(examples) && examples.length > 0;
+  const EX_COL_W = 220;
+
   return (
     <button
       type="button"
@@ -214,39 +226,159 @@ function ChoiceCard({ selected, title, desc, extra, onClick }) {
       onClick={onClick}
       aria-pressed={selected}
       style={{
+        width: "100%",
         textAlign: "left",
-        padding: "12px 12px",
-        borderRadius: 12,
+        padding: "16px 18px",
+        borderRadius: 16,
         border: selected
           ? "1px solid rgba(99,102,241,0.40)"
           : "1px solid rgba(0,0,0,0.10)",
         background: selected
-          ? "rgba(99,102,241,0.08)"
-          : "rgba(255,255,255,0.9)",
+          ? "rgba(99,102,241,0.06)"
+          : "rgba(255,255,255,0.92)",
         cursor: "pointer",
+        display: "block",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          justifyContent: "space-between",
+          gap: 18,
+          width: "100%",
+        }}
+      >
+        {/* LEFT */}
+        <div
           style={{
-            width: 14,
-            height: 14,
-            borderRadius: 999,
-            border: "2px solid rgba(0,0,0,0.35)",
-            background: selected ? "rgba(99,102,241,0.9)" : "transparent",
-            boxShadow: selected ? "0 0 0 3px rgba(99,102,241,0.15)" : "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flex: "1 1 auto",
+            minWidth: 0,
           }}
-        />
-        <div style={{ fontWeight: 900 }}>{title}</div>
+        >
+          <span
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 999,
+              border: "2px solid rgba(0,0,0,0.35)",
+              background: selected ? "rgba(99,102,241,0.9)" : "transparent",
+              boxShadow: selected ? "0 0 0 3px rgba(99,102,241,0.15)" : "none",
+              flex: "0 0 auto",
+            }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 900, fontSize: 12, lineHeight: 1.15 }}>
+              {title}
+            </div>
+            {desc ? (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 11,
+                  opacity: 0.78,
+                  lineHeight: 1.45,
+                }}
+              >
+                {desc}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {/* 오른쪽 */}
+        {hasExamples ? (
+          <div
+            style={{
+              width: EX_COL_W,
+              flex: `0 0 ${EX_COL_W}px`,
+              marginLeft: "auto",
+              textAlign: "right",
+            }}
+          >
+            {/* ✅ 썸네일 row 기준으로 라벨을 붙이기 위한 wrapper */}
+            <div style={{ display: "inline-block" }}>
+              {/* ✅ 라벨 + 썸네일을 같이 묶어서 "왼쪽 기준"을 동일하게 만든다 */}
+              <div
+                style={{
+                  position: "relative", // ✅ 라벨 absolute 기준점
+                  paddingTop: 18, // ✅ 라벨 자리 확보
+                  display: "inline-block", // ✅ 내용(썸네일 2개) 폭만큼만 wrapper 폭이 잡힘
+                }}
+              >
+                {/* ✅ 예시: 첫 썸네일 카드의 '정확한 왼쪽' */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0, // ✅ 이제 left=0이 "썸네일 묶음의 left"가 됨
+                    fontSize: 12,
+                    fontWeight: 900,
+                    opacity: 0.6,
+                    lineHeight: 1,
+                    textAlign: "left",
+                    pointerEvents: "none",
+                  }}
+                >
+                  예시
+                </div>
+
+                {/* ✅ 썸네일 row */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  {examples.slice(0, 2).map((ex, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        width: 85,
+                        height: 65,
+                        borderRadius: 14,
+                        border: "1px solid rgba(0,0,0,0.10)",
+                        background: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <img
+                        src={ex.src}
+                        alt={ex.alt || "example"}
+                        style={{
+                          maxWidth: "82%",
+                          maxHeight: "82%",
+                          objectFit: "contain",
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 6,
+                fontSize: 11,
+                opacity: 0.55,
+                textAlign: "right",
+              }}
+            >
+              * 참고용 예시입니다.
+            </div>
+          </div>
+        ) : null}
       </div>
-
-      {desc ? (
-        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.82 }}>{desc}</div>
-      ) : null}
-
-      {extra ? (
-        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.75 }}>{extra}</div>
-      ) : null}
     </button>
   );
 }
@@ -290,30 +422,45 @@ const LOGO_STRUCTURE_OPTIONS = [
     text: "심볼형 (Symbol Only)",
     value: "Symbol Only",
     description: "이미지/아이콘만으로 구성",
-    examples: "예: 애플, 나이키, 트위터",
   },
   {
     id: "shape_wordmark",
     text: "워드마크형 (Wordmark)",
     value: "Wordmark",
     description: "텍스트(브랜드명)만으로 구성",
-    examples: "예: 구글, 코카콜라, 페덱스",
   },
   {
     id: "shape_combination",
     text: "콤비네이션 (Combination)",
     value: "Combination",
     description: "심볼 + 텍스트 결합",
-    examples: "예: 스타벅스, 아디다스, 버거킹",
   },
   {
     id: "shape_emblem",
     text: "엠블럼형 (Emblem)",
     value: "Emblem",
     description: "텍스트가 심볼 안에 들어간 형태",
-    examples: "예: 할리데이비슨, BMW, 스타벅스(초기)",
   },
 ];
+
+const LOGO_EXAMPLES_BY_STRUCTURE = {
+  "Symbol Only": [
+    { src: exNike, alt: "Nike" },
+    { src: exSnapchat, alt: "SnapChat" },
+  ],
+  Wordmark: [
+    { src: exNetflix, alt: "Netflix" },
+    { src: exCocaCola, alt: "Coca-Cola" },
+  ],
+  Combination: [
+    { src: exdunkin, alt: "Dunkin" },
+    { src: exBurgerKing, alt: "Burger King" },
+  ],
+  Emblem: [
+    { src: exNFL, alt: "NFL" },
+    { src: exHarley, alt: "Harley" },
+  ],
+};
 
 const VISUAL_MOTIF_OPTIONS = [
   {
@@ -345,51 +492,6 @@ const VISUAL_MOTIF_OPTIONS = [
     text: "특정 이미지 없음 (AI 추천)",
     value: "None",
     description: "브랜드에 가장 잘 맞는 모티프를 AI가 제안",
-  },
-];
-
-const BRAND_COLOR_OPTIONS = [
-  {
-    id: "col_blue",
-    text: "블루/네이비",
-    value: "Blue/Navy",
-    description: "신뢰, 안정, 전문성",
-  },
-  {
-    id: "col_red",
-    text: "레드/오렌지",
-    value: "Red/Orange",
-    description: "열정, 에너지, 행동",
-  },
-  {
-    id: "col_green",
-    text: "그린",
-    value: "Green",
-    description: "자연, 성장, 안정",
-  },
-  {
-    id: "col_purple",
-    text: "퍼플/바이올렛",
-    value: "Purple/Violet",
-    description: "창의성, 혁신, 고급",
-  },
-  {
-    id: "col_yellow",
-    text: "옐로우",
-    value: "Yellow",
-    description: "활기, 긍정, 친근함",
-  },
-  {
-    id: "col_bw",
-    text: "블랙/화이트/그레이",
-    value: "Black/White/Gray",
-    description: "미니멀, 세련, 타임리스",
-  },
-  {
-    id: "col_gold",
-    text: "골드/브라운",
-    value: "Gold/Brown",
-    description: "프리미엄, 전통, 신뢰",
   },
 ];
 
@@ -1446,13 +1548,15 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                     {LOGO_STRUCTURE_OPTIONS.map((opt) => {
                       const selected = form.logo_structure === opt.value;
+                      const examples =
+                        LOGO_EXAMPLES_BY_STRUCTURE?.[opt.value] || [];
                       return (
                         <ChoiceCard
                           key={opt.id}
                           selected={selected}
                           title={opt.text}
                           desc={opt.description}
-                          extra={opt.examples}
+                          examples={examples}
                           onClick={() => setLogoStructure(opt.value)}
                         />
                       );
@@ -1535,9 +1639,7 @@ export default function LogoConsultingInterview({ onLogout }) {
                                 setForm((prev) => ({
                                   ...prev,
                                   brand_color_primary: hex,
-                                  brand_color: [hex,
-                                    prev.brand_color_secondary,
-                                  ]
+                                  brand_color: [hex, prev.brand_color_secondary]
                                     .filter(Boolean)
                                     .slice(0, 2),
                                 }));
