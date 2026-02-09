@@ -160,7 +160,7 @@ export const apiRequest = async (path, options = {}) => {
 };
 
 // ✅ AI 생성/요약 요청은 시간이 오래 걸릴 수 있어요.
-export const AI_TIMEOUT_MS = 180000; // 3분
+export const AI_TIMEOUT_MS = 3600000; // 60분
 
 export const apiRequestAI = async (path, options = {}) => {
   const timeout = options?.timeout ?? AI_TIMEOUT_MS;

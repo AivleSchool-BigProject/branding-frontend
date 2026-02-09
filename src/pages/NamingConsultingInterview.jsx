@@ -419,6 +419,16 @@ export default function NamingConsultingInterview({ onLogout }) {
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
   const TOAST_DURATION = 3200;
   const EMPTY_TOAST = {
     show: false,
@@ -759,6 +769,7 @@ export default function NamingConsultingInterview({ onLogout }) {
 
     setAnalyzing(true);
     setAnalyzeError("");
+    let requestStartedAt = null;
 
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
@@ -795,6 +806,7 @@ export default function NamingConsultingInterview({ onLogout }) {
         diagnosisSummary,
       });
 
+      requestStartedAt = Date.now();
       const namingRes = await apiRequestAI(`/brands/${brandId}/naming`, {
         method: "POST",
         data: payload,
@@ -844,6 +856,7 @@ export default function NamingConsultingInterview({ onLogout }) {
       setAnalyzeError(`네이밍 생성에 실패했습니다: ${msg}`);
       showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
+      await waitForMinAiLoading(requestStartedAt);
       setAnalyzing(false);
     }
   };
@@ -1721,6 +1734,24 @@ export default function NamingConsultingInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
+
+      {analyzing ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 네이밍 컨설팅 제안을 생성하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
+              표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

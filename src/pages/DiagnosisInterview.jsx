@@ -320,6 +320,16 @@ export default function DiagnosisInterview({ onLogout }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOnceRef = useRef(false);
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
 
   const TOAST_DURATION = 3200;
   const EMPTY_TOAST = {
@@ -974,6 +984,7 @@ export default function DiagnosisInterview({ onLogout }) {
     }
 
     setIsSubmitting(true);
+    let requestStartedAt = null;
 
     try {
       const qa = buildQaMap();
@@ -986,6 +997,7 @@ export default function DiagnosisInterview({ onLogout }) {
         raw_qa_fields,
       };
 
+      requestStartedAt = Date.now();
       const responseData = await apiRequest("/brands/interview", {
         method: "POST",
         data: requestBody,
@@ -1063,6 +1075,8 @@ export default function DiagnosisInterview({ onLogout }) {
         );
       }
 
+      await waitForMinAiLoading(requestStartedAt);
+
       navigate("/diagnosis/result", {
         state: {
           from: "diagnosisInterview",
@@ -1077,6 +1091,7 @@ export default function DiagnosisInterview({ onLogout }) {
         err?.response?.data?.message ||
         err?.message ||
         "요청 실패";
+      await waitForMinAiLoading(requestStartedAt);
       alert(msg);
     } finally {
       setIsSubmitting(false);
@@ -1318,6 +1333,24 @@ export default function DiagnosisInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
+
+      {isSubmitting ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 진단 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 기업 진단 결과를 정리하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 분석 응답이 빨라도 로딩 화면이 최소 1.5초
+              동안 표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

@@ -191,9 +191,9 @@ function MultiChips({ value, options, onChange, max = null }) {
               fontWeight: 800,
               padding: "7px 11px",
               borderRadius: 999,
-              background: active ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
+              background: active ? "rgba(37,99,235,0.10)" : "rgba(0,0,0,0.04)",
               border: active
-                ? "1px solid rgba(99,102,241,0.25)"
+                ? "1px solid rgba(37,99,235,0.36)"
                 : "1px solid rgba(0,0,0,0.10)",
               color: "rgba(0,0,0,0.78)",
               cursor: "pointer",
@@ -793,6 +793,16 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
 
   const TOAST_DURATION = 3200;
   const EMPTY_TOAST = {
@@ -1170,6 +1180,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
     setAnalyzing(true);
     setAnalyzeError("");
+    let requestStartedAt = null;
 
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
@@ -1186,6 +1197,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
         diagnosisSummary: buildDiagnosisSummaryString(basic) || undefined,
       };
 
+      requestStartedAt = Date.now();
       const raw = await apiRequestAI(`/brands/${brandId}/story`, {
         method: "POST",
         data: payload,
@@ -1246,6 +1258,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       setAnalyzeError(`스토리 생성에 실패했습니다: ${msg}`);
       showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
+      await waitForMinAiLoading(requestStartedAt);
       setAnalyzing(false);
     }
   };
@@ -1545,10 +1558,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                             padding: "12px 12px",
                             borderRadius: 12,
                             border: selected
-                              ? "1px solid rgba(99,102,241,0.40)"
+                              ? "1px solid rgba(37,99,235,0.44)"
                               : "1px solid rgba(0,0,0,0.10)",
                             background: selected
-                              ? "rgba(99,102,241,0.08)"
+                              ? "rgba(37,99,235,0.08)"
                               : "rgba(255,255,255,0.9)",
                             cursor: "pointer",
                           }}
@@ -1568,10 +1581,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                                 borderRadius: 999,
                                 border: "2px solid rgba(0,0,0,0.35)",
                                 background: selected
-                                  ? "rgba(99,102,241,0.9)"
+                                  ? "rgba(37,99,235,0.92)"
                                   : "transparent",
                                 boxShadow: selected
-                                  ? "0 0 0 3px rgba(99,102,241,0.15)"
+                                  ? "0 0 0 3px rgba(37,99,235,0.15)"
                                   : "none",
                               }}
                             />
@@ -2089,6 +2102,24 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
+
+      {analyzing ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 스토리 컨설팅 제안을 생성하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
+              표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
