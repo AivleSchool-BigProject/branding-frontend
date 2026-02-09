@@ -943,7 +943,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <h2>Brand Concept Consulting</h2>
                   <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
@@ -980,7 +982,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     </div>
                   ) : null}
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
@@ -1011,7 +1015,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     </div>
                   ) : null}
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
@@ -1023,7 +1029,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: 3일 안에 배송 / 24시간 응대 / 100% 환불"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
@@ -1035,7 +1043,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: '당신의 시간을 아껴드립니다'"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
@@ -1047,7 +1057,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: 깨끗하고 미니멀 / 따뜻한 카페 / 활기찬 스타트업"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에

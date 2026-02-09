@@ -90,6 +90,11 @@
   margin-top: 12px;
 }
 
+/* 질문 1개 = 1박스 레이아웃 */
+.diagInterview.consultingInterview .questionCard .field {
+  margin-top: 0;
+}
+
 .diagInterview.consultingInterview .field label {
   font-size: 12px;
   font-weight: 700;
