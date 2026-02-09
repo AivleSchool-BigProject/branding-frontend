@@ -541,8 +541,13 @@ export default function InvestmentPostCreate({ onLogout }) {
                 <textarea
                   value={form.summary}
                   onChange={updateField("summary")}
-                  placeholder="사업 모델, traction, 지표 등 투자자가 바로 이해할 수 있도록 작성해 주세요."
-                  rows={5}
+                  placeholder={`아래 질문을 참고해 자유롭게 작성해 주세요.
+• 어떤 문제를 해결하고 있나요?
+• 누구를 위한 서비스인가요?
+• 어떻게 수익을 만들고 있나요?
+• 현재까지의 성과(고객, 매출, 지표 등)는 무엇인가요?
+• 앞으로 어떤 성장을 계획하고 있나요?`}
+                  rows={6}
                 />
               </label>
             </div>
@@ -612,9 +617,7 @@ export default function InvestmentPostCreate({ onLogout }) {
                   주세요.
                 </li>
                 <li>태그는 핵심 키워드 위주로 최대 5개까지 입력해 주세요.</li>
-                <li>
-                  로고 이미지를 입력하면 게시글 완성도가 높아집니다.
-                </li>
+                <li>로고 이미지를 입력하면 게시글 완성도가 높아집니다.</li>
               </ul>
             </div>
           </aside>
