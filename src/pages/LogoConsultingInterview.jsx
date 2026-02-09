@@ -689,7 +689,7 @@ function normalizeLogoCandidates(raw) {
   }
 
   if (!list && payload && typeof payload === "object") {
-    const keys = ["logo1", "logo2", "logo3"];
+    const keys = ["logo1_url", "logo2_url", "logo3_url"];
     const picked = [];
     for (const k of keys) {
       const u = readUrl(payload?.[k]);
