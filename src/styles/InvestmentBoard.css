@@ -403,3 +403,186 @@
 .invest-page .btn.ghost:hover {
   background: rgba(79, 70, 229, 0.1);
 }
+/* ================================
+   ✅ 투자 라운지 이용 가이드 (RESET)
+================================ */
+
+/* 섹션 래퍼 */
+.invest-guide {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+/* 공통 카드 */
+.invest-guide-card {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  background: #f3f6fb;
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+}
+
+/* ✅ intro 카드: 타이틀 기준 오프셋 변수 */
+.invest-guide-card--intro {
+  --badge-height: 34px;   /* 뱃지 높이(대략) */
+  --badge-gap: 5px;      /* 뱃지 아래 여백(취향: 8~14px) */
+  --image-offset: -10px;
+  overflow: hidden;
+}
+
+/* 왼쪽 텍스트 영역 */
+.invest-guide-left {
+  max-width: 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 뱃지 */
+.invest-guide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #7c5a2a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 7px 10px;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+/* 타이틀 */
+.invest-guide-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.3px;
+  line-height: 1.45;
+}
+
+/* Steps + Questions 공통 */
+.invest-guide-steps,
+.invest-guide-questionsMini {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+/* li 공통 */
+.invest-guide-steps li,
+.invest-guide-questionsMini li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  margin: 0;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  color: #334155;
+  font-size: 14px;
+}
+
+/* 숫자 동그라미 */
+.invest-guide-steps li::before {
+  content: attr(data-step);
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+}
+
+/* 질문 불릿 */
+.invest-guide-questionsMini li::before {
+  content: "•";
+  font-size: 18px;
+  line-height: 1;
+  color: #4f46e5;
+  display: grid;
+  place-items: center;
+  margin-top: 2px;
+}
+
+/* ✅ 오른쪽 이미지: absolute (공통) */
+.invest-guide-right {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  right: 24px; /* 공통 가로 위치 */
+}
+
+/* ✅ intro 카드에서만: 타이틀 기준 top 적용 (덮어쓰기 방지) */
+.invest-guide-card--intro .invest-guide-right {
+  top: var(--image-offset);
+}
+
+.invest-guide-img {
+  width: 340px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(30, 58, 138, 0.08));
+}
+
+/* (선택) 1~2px 보정 필요하면 */
+.invest-guide-card--intro .invest-guide-img {
+  transform: none;
+}
+
+/* 2번 카드: 질문 카드 */
+.invest-guide-card--questions .invest-guide-left {
+  max-width: 100%;
+}
+
+/* 미니 타이틀 */
+.invest-guide-miniTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.2px;
+}
+
+/* 하단 팁 바 */
+.invest-guide-tip {
+  margin-top: 10px;
+  border: 1px solid #e6e9f1;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font-size: 12px;
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.05);
+}
+
+.invest-guide-link {
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.invest-guide-link:hover {
+  background: rgba(79, 70, 229, 0.08);
+}
+

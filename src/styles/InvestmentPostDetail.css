@@ -422,3 +422,7 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+.invest-detail-summary p {
+  white-space: pre-line;
+}
