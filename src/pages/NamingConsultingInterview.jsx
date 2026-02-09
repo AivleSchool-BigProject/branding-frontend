@@ -415,20 +415,23 @@ export default function NamingConsultingInterview({ onLogout }) {
   // ✅ 저장 상태 UI
   const [saveMsg, setSaveMsg] = useState("");
   const [lastSaved, setLastSaved] = useState("-");
-  const [loaded, setLoaded] = useState(false);
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
-  const [toast, setToast] = useState({
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
     msg: "",
     variant: "success",
-    muted: false,
-  });
+  };
+
+  const [toast, setToast] = useState(EMPTY_TOAST);
   const toastTimerRef = useRef(null);
-  const toastMsg = toast.msg;
-  const toastMuted = toast.muted;
-  const toastVariant = toast.variant;
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -471,74 +474,6 @@ export default function NamingConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
-
-  // ✅ 모든 필수 입력 완료 시 하단 토스트(3.2초 후 자동 사라짐)
-  const [completeToast, setCompleteToast] = useState({
-    open: false,
-    msg: "",
-    title: "알림",
-    icon: "✅",
-  });
-  const completeToastTimerRef = useRef(null);
-  const completeToastInitRef = useRef(false);
-  const prevCanAnalyzeRef = useRef(false);
-
-  const showCompleteToast = (msg, options = {}) => {
-    const { title = "알림", icon = "✅" } = options || {};
-
-    try {
-      if (completeToastTimerRef.current) {
-        window.clearTimeout(completeToastTimerRef.current);
-      }
-    } catch {
-      // ignore
-    }
-
-    setCompleteToast({
-      open: true,
-      msg: String(msg || ""),
-      title: String(title || "알림"),
-      icon: String(icon || "✅"),
-    });
-    completeToastTimerRef.current = window.setTimeout(() => {
-      setCompleteToast((prev) => ({ ...prev, open: false }));
-    }, 3200);
-  };
-
-  useEffect(() => {
-    return () => {
-      try {
-        if (completeToastTimerRef.current) {
-          window.clearTimeout(completeToastTimerRef.current);
-        }
-      } catch {
-        // ignore
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-
-    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막음
-    if (!completeToastInitRef.current) {
-      completeToastInitRef.current = true;
-      prevCanAnalyzeRef.current = Boolean(canAnalyze);
-      return;
-    }
-
-    const prev = prevCanAnalyzeRef.current;
-    const cur = Boolean(canAnalyze);
-
-    if (!prev && cur) {
-      showCompleteToast(
-        "모든 필수 입력이 완료됐어요! 아래 ‘AI 분석 요청’ 버튼을 눌러 다음 단계로 진행하세요.",
-        { title: "모든 필수 입력 완료", icon: "✅" },
-      );
-    }
-
-    prevCanAnalyzeRef.current = cur;
-  }, [loaded, canAnalyze]);
   const remainingRequired = Math.max(
     requiredKeys.length - completedRequired,
     0,
@@ -590,26 +525,74 @@ export default function NamingConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const showToast = (msg) => {
-    const text = String(msg || "");
-    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
-    setToast({ msg: text, variant, muted: false });
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
 
     try {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-
-      // ✅ 성공 메시지는 몇 초 뒤 “톤다운(흰 배경)” 처리(문구는 유지)
-      if (variant === "success") {
-        toastTimerRef.current = window.setTimeout(() => {
-          setToast((prev) =>
-            prev.msg === text ? { ...prev, muted: true } : prev,
-          );
-        }, 3500);
-      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
     } catch {
       // ignore
     }
   };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 분석 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   /** ======================
    *  Strict Flow 가드 + pipeline 준비
@@ -653,12 +636,12 @@ export default function NamingConsultingInterview({ onLogout }) {
       if (!raw) return;
       const parsed = JSON.parse(raw);
 
-      const loadedForm =
+      const loaded =
         parsed?.form && typeof parsed.form === "object"
           ? sanitizeForm(parsed.form)
           : null;
 
-      if (loadedForm) setForm(loadedForm);
+      if (loaded) setForm(loaded);
 
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
@@ -666,8 +649,6 @@ export default function NamingConsultingInterview({ onLogout }) {
       }
     } catch {
       // ignore
-    } finally {
-      setLoaded(true);
     }
   }, []);
 
@@ -830,9 +811,12 @@ export default function NamingConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      showToast(
-        "✅ 네이밍 컨설팅 제안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
-      );
+      showToast({
+        icon: "💡",
+        title: "AI 분석 완료",
+        msg: "네이밍 컨설팅 제안 3개가 도착했어요. 1개를 선택하면 다음 단계로 진행할 수 있어요.",
+        variant: "success",
+      });
       window.setTimeout(() => scrollToResult(), 50);
     } catch (error) {
       const status = error?.response?.status;
@@ -867,10 +851,12 @@ export default function NamingConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
-    showCompleteToast(
-      "제안 1개 선택 완료! 사이드 카드의 ‘컨셉 단계로 이동’ 버튼을 눌러 다음 단계로 진행하세요.",
-      { title: "다음 단계 진행 가능", icon: "🚀" },
-    );
+    showToast({
+      icon: "🚀",
+      title: "선택 완료",
+      msg: "제안 1개 선택 완료! 오른쪽 진행 상태 카드에서 다음 단계 버튼으로 진행하세요.",
+      variant: "success",
+    });
   };
 
   const handleGoNext = async () => {
@@ -1372,13 +1358,19 @@ export default function NamingConsultingInterview({ onLogout }) {
 
               <div ref={refResult} />
 
-              {toastMsg ? (
+              {toast?.show ? (
                 <div
-                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  className={`aiToast ${toast.variant}`}
                   role="status"
                   aria-live="polite"
                 >
-                  {toastMsg}
+                  <div className="aiToast__head">
+                    <span className="aiToast__icon" aria-hidden="true">
+                      {toast.icon}
+                    </span>
+                    <strong>{toast.title}</strong>
+                  </div>
+                  <p className="aiToast__msg">{toast.msg}</p>
                 </div>
               ) : null}
 
@@ -1649,15 +1641,8 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </ul>
 
                 <div className="divider" />
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
-                >
-                  네이밍 초기화
-                </button>
 
+                <h4 className="sideSubTitle">빠른 작업</h4>
                 <button
                   type="button"
                   className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
@@ -1665,7 +1650,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
-                  style={{ width: "100%", marginTop: 8, marginBottom: 8 }}
+                  style={{ width: "100%", marginBottom: 8 }}
                 >
                   {analyzing
                     ? "생성 중..."
@@ -1683,6 +1668,15 @@ export default function NamingConsultingInterview({ onLogout }) {
                     ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
                     : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
                 </p>
+
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%" }}
+                >
+                  네이밍 초기화
+                </button>
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
@@ -1710,31 +1704,25 @@ export default function NamingConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
+
+          {canAnalyze ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
+                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
 
-      {/* ✅ 완료 안내 하단 토스트 */}
-      <div
-        className={`completionBottomToast ${completeToast.open ? "show" : ""}`}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        aria-hidden={!completeToast.open}
-      >
-        <div className="completionBottomToast__card">
-          <span className="completionBottomToast__icon" aria-hidden="true">
-            {completeToast.icon || "✅"}
-          </span>
-          <div className="completionBottomToast__text">
-            <div className="completionBottomToast__title">
-              {completeToast.title || "알림"}
-            </div>
-            <div className="completionBottomToast__desc">
-              {completeToast.msg}
-            </div>
-          </div>
-        </div>
-      </div>
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );

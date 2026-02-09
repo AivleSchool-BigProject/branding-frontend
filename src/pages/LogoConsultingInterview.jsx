@@ -815,7 +815,6 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   // ✅ 폼 상태
   const [form, setForm] = useState(INITIAL_FORM);
-  const [loaded, setLoaded] = useState(false);
 
   // ✅ 저장 상태 UI
   const [saveMsg, setSaveMsg] = useState("");
@@ -824,15 +823,19 @@ export default function LogoConsultingInterview({ onLogout }) {
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
-  const [toast, setToast] = useState({
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
     msg: "",
     variant: "success",
-    muted: false,
-  });
+  };
+
+  const [toast, setToast] = useState(EMPTY_TOAST);
   const toastTimerRef = useRef(null);
-  const toastMsg = toast.msg;
-  const toastMuted = toast.muted;
-  const toastVariant = toast.variant;
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -884,58 +887,6 @@ export default function LogoConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
-
-  // ✅ 모든 필수 입력 완료 시 하단 토스트(몇 초 후 자동 사라짐)
-  const [completeToast, setCompleteToast] = useState({ open: false, msg: "" });
-  const completeToastTimerRef = useRef(null);
-  const completeToastInitRef = useRef(false);
-  const prevCanAnalyzeRef = useRef(false);
-
-  const showCompleteToast = (msg) => {
-    try {
-      if (completeToastTimerRef.current)
-        clearTimeout(completeToastTimerRef.current);
-    } catch {
-      // ignore
-    }
-    setCompleteToast({ open: true, msg });
-    completeToastTimerRef.current = setTimeout(() => {
-      setCompleteToast((prev) => ({ ...prev, open: false }));
-    }, 3200);
-  };
-
-  useEffect(() => {
-    return () => {
-      try {
-        if (completeToastTimerRef.current)
-          clearTimeout(completeToastTimerRef.current);
-      } catch {
-        // ignore
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-
-    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막아요.
-    if (!completeToastInitRef.current) {
-      completeToastInitRef.current = true;
-      prevCanAnalyzeRef.current = Boolean(canAnalyze);
-      return;
-    }
-
-    const prev = prevCanAnalyzeRef.current;
-    const cur = Boolean(canAnalyze);
-
-    if (!prev && cur) {
-      showCompleteToast(
-        "모든 필수 입력이 완료됐어요! 아래 ‘AI 분석 요청’ 버튼을 눌러 다음 단계로 진행하세요.",
-      );
-    }
-
-    prevCanAnalyzeRef.current = cur;
-  }, [loaded, canAnalyze]);
   const remainingRequired = Math.max(
     requiredKeys.length - completedRequired,
     0,
@@ -981,23 +932,74 @@ export default function LogoConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const showToast = (msg) => {
-    const text = String(msg || "");
-    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
-    setToast({ msg: text, variant, muted: false });
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
+
     try {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      if (variant === "success") {
-        toastTimerRef.current = window.setTimeout(() => {
-          setToast((prev) =>
-            prev.msg === text ? { ...prev, muted: true } : prev,
-          );
-        }, 3500);
-      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
     } catch {
       // ignore
     }
   };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 분석 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
   useEffect(() => {
@@ -1006,18 +1008,18 @@ export default function LogoConsultingInterview({ onLogout }) {
       if (!raw) return;
       const parsed = JSON.parse(raw);
 
-      const loadedForm =
+      const loaded =
         parsed?.form && typeof parsed.form === "object" ? parsed.form : null;
 
-      if (loadedForm) {
+      if (loaded) {
         setForm((prev) => {
-          const next = { ...prev, ...loadedForm };
+          const next = { ...prev, ...loaded };
 
           // ---- 구버전(배열/KR 값) -> step_5 형태로 최소 변환 ----
           // logo_structure: ["심볼형"] -> "Symbol Only"
           if (!String(next.logo_structure || "").trim()) {
-            const lsArr = Array.isArray(loadedForm.logo_structure)
-              ? loadedForm.logo_structure
+            const lsArr = Array.isArray(loaded.logo_structure)
+              ? loaded.logo_structure
               : [];
             const ls0 = String(lsArr?.[0] || "").trim();
             if (ls0 === "심볼형") next.logo_structure = "Symbol Only";
@@ -1027,8 +1029,8 @@ export default function LogoConsultingInterview({ onLogout }) {
 
           // brand_color: ["블루/네이비"] -> ["Blue/Navy"]
           if (
-            Array.isArray(loadedForm.brand_color) &&
-            loadedForm.brand_color.length &&
+            Array.isArray(loaded.brand_color) &&
+            loaded.brand_color.length &&
             (!Array.isArray(next.brand_color) || next.brand_color.length === 0)
           ) {
             const map = {
@@ -1036,15 +1038,15 @@ export default function LogoConsultingInterview({ onLogout }) {
               "블랙/화이트": "Black/White/Gray",
               "블랙/화이트/그레이": "Black/White/Gray",
             };
-            next.brand_color = loadedForm.brand_color
+            next.brand_color = loaded.brand_color
               .map((x) => map[String(x).trim()] || x)
               .slice(0, 2);
           }
 
           // design_style: ["플랫/미니멀"] -> "Flat/Minimalist"
           if (!String(next.design_style || "").trim()) {
-            const dsArr = Array.isArray(loadedForm.design_style)
-              ? loadedForm.design_style
+            const dsArr = Array.isArray(loaded.design_style)
+              ? loaded.design_style
               : [];
             const ds0 = String(dsArr?.[0] || "").trim();
             if (ds0 === "플랫/미니멀") next.design_style = "Flat/Minimalist";
@@ -1053,8 +1055,8 @@ export default function LogoConsultingInterview({ onLogout }) {
 
           // visual_text_ratio: ["이미지 중심"] -> "Image Driven"
           if (!String(next.visual_text_ratio || "").trim()) {
-            const vrArr = Array.isArray(loadedForm.visual_text_ratio)
-              ? loadedForm.visual_text_ratio
+            const vrArr = Array.isArray(loaded.visual_text_ratio)
+              ? loaded.visual_text_ratio
               : [];
             const vr0 = String(vrArr?.[0] || "").trim();
             if (vr0 === "이미지 중심") next.visual_text_ratio = "Image Driven";
@@ -1066,9 +1068,9 @@ export default function LogoConsultingInterview({ onLogout }) {
           // 기존 useCase/primary_usage 유지
           if (
             !String(next.primary_usage || "").trim() &&
-            String(loadedForm.useCase || "").trim()
+            String(loaded.useCase || "").trim()
           ) {
-            next.primary_usage = loadedForm.useCase;
+            next.primary_usage = loaded.useCase;
           }
 
           return next;
@@ -1081,8 +1083,6 @@ export default function LogoConsultingInterview({ onLogout }) {
       }
     } catch {
       // ignore
-    } finally {
-      setLoaded(true);
     }
   }, []);
 
@@ -1285,9 +1285,12 @@ export default function LogoConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      showToast(
-        "✅ 로고 시안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
-      );
+      showToast({
+        icon: "💡",
+        title: "AI 분석 완료",
+        msg: "로고 시안 3개가 도착했어요. 1개를 선택하면 최종 결과 보기로 진행할 수 있어요.",
+        variant: "success",
+      });
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
@@ -1329,6 +1332,12 @@ export default function LogoConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+    showToast({
+      icon: "🚀",
+      title: "선택 완료",
+      msg: "시안 1개 선택 완료! 오른쪽 진행 상태 카드에서 최종 결과 보기 버튼으로 진행하세요.",
+      variant: "success",
+    });
 
     // ✅ 선택 즉시 로컬 fallback 저장(brandId -> logoUrl)
     try {
@@ -1981,13 +1990,19 @@ export default function LogoConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
-              {toastMsg ? (
+              {toast?.show ? (
                 <div
-                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  className={`aiToast ${toast.variant}`}
                   role="status"
                   aria-live="polite"
                 >
-                  {toastMsg}
+                  <div className="aiToast__head">
+                    <span className="aiToast__icon" aria-hidden="true">
+                      {toast.icon}
+                    </span>
+                    <strong>{toast.title}</strong>
+                  </div>
+                  <p className="aiToast__msg">{toast.msg}</p>
                 </div>
               ) : null}
 
@@ -2283,32 +2298,24 @@ export default function LogoConsultingInterview({ onLogout }) {
             </aside>
           </div>
 
-          {/* ✅ 입력 완료 안내는 하단 토스트로 표시됩니다. */}
+          {canAnalyze ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
+                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
 
-      {/* ✅ 완료 안내 하단 토스트 */}
-      <div
-        className={`completionBottomToast ${completeToast.open ? "show" : ""}`}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        aria-hidden={!completeToast.open}
-      >
-        <div className="completionBottomToast__card">
-          <span className="completionBottomToast__icon" aria-hidden="true">
-            ✅
-          </span>
-          <div className="completionBottomToast__text">
-            <div className="completionBottomToast__title">
-              모든 필수 입력 완료
-            </div>
-            <div className="completionBottomToast__desc">
-              {completeToast.msg}
-            </div>
-          </div>
-        </div>
-      </div>
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );

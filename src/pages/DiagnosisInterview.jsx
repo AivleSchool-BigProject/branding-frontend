@@ -321,6 +321,19 @@ export default function DiagnosisInterview({ onLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOnceRef = useRef(false);
 
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
+    msg: "",
+    variant: "success",
+  };
+  const [toast, setToast] = useState(EMPTY_TOAST);
+  const toastTimerRef = useRef(null);
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
+
   const refBasic = useRef(null);
 
   const categoriesOrdered = useMemo(() => {
@@ -454,58 +467,6 @@ export default function DiagnosisInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
-
-  // ✅ 모든 필수 입력 완료 시 하단 토스트(몇 초 후 자동 사라짐)
-  const [completeToast, setCompleteToast] = useState({ open: false, msg: "" });
-  const completeToastTimerRef = useRef(null);
-  const completeToastInitRef = useRef(false);
-  const prevCanAnalyzeRef = useRef(false);
-
-  const showCompleteToast = (msg) => {
-    try {
-      if (completeToastTimerRef.current)
-        clearTimeout(completeToastTimerRef.current);
-    } catch {
-      // ignore
-    }
-    setCompleteToast({ open: true, msg });
-    completeToastTimerRef.current = setTimeout(() => {
-      setCompleteToast((prev) => ({ ...prev, open: false }));
-    }, 3200);
-  };
-
-  useEffect(() => {
-    return () => {
-      try {
-        if (completeToastTimerRef.current)
-          clearTimeout(completeToastTimerRef.current);
-      } catch {
-        // ignore
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-
-    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막아요.
-    if (!completeToastInitRef.current) {
-      completeToastInitRef.current = true;
-      prevCanAnalyzeRef.current = Boolean(canAnalyze);
-      return;
-    }
-
-    const prev = prevCanAnalyzeRef.current;
-    const cur = Boolean(canAnalyze);
-
-    if (!prev && cur) {
-      showCompleteToast(
-        "모든 필수 입력이 완료됐어요! 오른쪽 ‘AI 요약 결과 보기’ 버튼을 눌러 다음 단계로 진행하세요.",
-      );
-    }
-
-    prevCanAnalyzeRef.current = cur;
-  }, [loaded, canAnalyze]);
   const remainingRequired = Math.max(
     requiredKeys.length - completedRequired,
     0,
@@ -531,6 +492,75 @@ export default function DiagnosisInterview({ onLogout }) {
     const cat = target.category || "기타";
     scrollToSection(categoryRefs[cat] || refBasic);
   };
+
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
+
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 요약 결과 보기 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   const getFirstIncompleteRef = () => {
     for (const q of STEP_1.questions) {
@@ -1271,33 +1301,24 @@ export default function DiagnosisInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {/* ✅ 입력 완료 안내는 하단 토스트로 표시됩니다. */}
+          {toast?.show ? (
+            <div
+              className={`aiToast ${toast.variant}`}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="aiToast__head">
+                <span className="aiToast__icon" aria-hidden="true">
+                  {toast.icon}
+                </span>
+                <strong>{toast.title}</strong>
+              </div>
+              <p className="aiToast__msg">{toast.msg}</p>
+            </div>
+          ) : null}
         </div>
       </main>
 
-      {/* ✅ 완료 안내 하단 토스트 */}
-      <div
-        className={`completionBottomToast ${completeToast.open ? "show" : ""}`}
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        aria-hidden={!completeToast.open}
-      >
-        <div className="completionBottomToast__card">
-          <span className="completionBottomToast__icon" aria-hidden="true">
-            ✅
-          </span>
-          <div className="completionBottomToast__text">
-            <div className="completionBottomToast__title">
-              모든 필수 입력 완료
-            </div>
-            <div className="completionBottomToast__desc">
-              {completeToast.msg}
-            </div>
-          </div>
-        </div>
-      </div>
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );

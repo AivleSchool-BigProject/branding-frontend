@@ -122,28 +122,48 @@
 }
 
 .diagInterview.consultingInterview .aiToast {
-  margin-top: 12px;
-  padding: 10px 12px;
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(92vw, 760px);
+  margin: 0;
+  padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.18);
-  font-size: 13px;
-  font-weight: 700;
-  transition:
-    background-color 320ms ease,
-    border-color 320ms ease,
-    color 320ms ease;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.82);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.26);
+  z-index: 1200;
 }
 
 .diagInterview.consultingInterview .aiToast.warn {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(153, 27, 27, 0.96);
+  border-color: rgba(127, 29, 29, 0.95);
 }
-.diagInterview.consultingInterview .aiToast.muted {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+
+.diagInterview.consultingInterview .aiToast__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
 }
+
+.diagInterview.consultingInterview .aiToast__icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.diagInterview.consultingInterview .aiToast__msg {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  opacity: 0.98;
+}
+
 .diagInterview.consultingInterview .aiInlineError {
   padding: 10px 12px;
   border-radius: 14px;
