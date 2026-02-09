@@ -321,12 +321,6 @@ export default function DiagnosisInterview({ onLogout }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOnceRef = useRef(false);
 
-  const [noticeMsg, setNoticeMsg] = useState("");
-  const [noticeType, setNoticeType] = useState("info");
-  const [ctaPulse, setCtaPulse] = useState(false);
-  const noticeTimerRef = useRef(null);
-  const prevCanAnalyzeRef = useRef(false);
-
   const refBasic = useRef(null);
 
   const categoriesOrdered = useMemo(() => {
@@ -395,6 +389,17 @@ export default function DiagnosisInterview({ onLogout }) {
     return keys;
   }, []);
 
+  const requiredItems = useMemo(
+    () =>
+      STEP_1.questions
+        .filter((q) => q.required)
+        .map((q) => ({
+          key: q.context_key,
+          label: q.category || q.question_text || q.context_key,
+        })),
+    [],
+  );
+
   const requiredStatus = useMemo(() => {
     const status = {};
 
@@ -443,17 +448,16 @@ export default function DiagnosisInterview({ onLogout }) {
     [requiredKeys, requiredStatus],
   );
 
-  const remainingRequired = Math.max(
-    requiredKeys.length - completedRequired,
-    0,
-  );
-
   const progress = useMemo(() => {
     if (requiredKeys.length === 0) return 0;
     return Math.round((completedRequired / requiredKeys.length) * 100);
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
 
   const currentSectionLabel = useMemo(() => {
     for (const q of STEP_1.questions) {
@@ -469,6 +473,13 @@ export default function DiagnosisInterview({ onLogout }) {
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const scrollToRequiredField = (contextKey) => {
+    const target = STEP_1.questions.find((q) => q.context_key === contextKey);
+    if (!target) return;
+    const cat = target.category || "기타";
+    scrollToSection(categoryRefs[cat] || refBasic);
+  };
+
   const getFirstIncompleteRef = () => {
     for (const q of STEP_1.questions) {
       if (q.required && !requiredStatus[q.context_key]) {
@@ -480,46 +491,17 @@ export default function DiagnosisInterview({ onLogout }) {
     return categoryRefs[lastCat] || refBasic;
   };
 
-  const showNotice = (message, type = "info") => {
-    setNoticeMsg(message);
-    setNoticeType(type);
-
-    if (noticeTimerRef.current) {
-      clearTimeout(noticeTimerRef.current);
-    }
-    noticeTimerRef.current = setTimeout(() => {
-      setNoticeMsg("");
-      noticeTimerRef.current = null;
-    }, 2200);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (noticeTimerRef.current) {
-        clearTimeout(noticeTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-
-    let pulseTimer = null;
-    if (canAnalyze && !prevCanAnalyzeRef.current) {
-      setCtaPulse(true);
-      showNotice(
-        "모든 필수 입력 완료! AI 요약 결과를 볼 수 있어요.",
-        "success",
-      );
-      pulseTimer = setTimeout(() => setCtaPulse(false), 1300);
-    }
-
-    prevCanAnalyzeRef.current = canAnalyze;
-
-    return () => {
-      if (pulseTimer) clearTimeout(pulseTimer);
-    };
-  }, [canAnalyze, loaded]);
+  const sections = useMemo(() => {
+    const items = [{ id: "basic", label: "기본 정보(선택)", ref: refBasic }];
+    categoriesOrdered.forEach((cat, idx) => {
+      items.push({
+        id: `cat_${cat}`,
+        label: `${idx + 1}. ${cat}`,
+        ref: categoryRefs[cat],
+      });
+    });
+    return items;
+  }, [categoriesOrdered, categoryRefs]);
 
   const saveHomeSummary = (updatedAtTs) => {
     try {
@@ -887,21 +869,6 @@ export default function DiagnosisInterview({ onLogout }) {
     );
   };
 
-  const handlePrimaryAction = () => {
-    if (isSubmitting) return;
-
-    if (!canAnalyze) {
-      scrollToSection(getFirstIncompleteRef());
-      showNotice(
-        `필수 항목 ${remainingRequired}개를 더 입력하면 AI 요약 결과를 볼 수 있어요.`,
-        "info",
-      );
-      return;
-    }
-
-    handleViewResult();
-  };
-
   const handleViewResult = async () => {
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 AI 요약 결과를 볼 수 있어요.");
@@ -1200,44 +1167,40 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
                 <ul className="checkList checkList--cards">
-                  {STEP_1.questions
-                    .filter((q) => q.required)
-                    .map((q) => {
-                      const done = Boolean(requiredStatus[q.context_key]);
-                      const targetRef =
-                        categoryRefs[q.category || "기타"] || refBasic;
+                  {requiredItems.map((item) => {
+                    const ok = Boolean(requiredStatus[item.key]);
 
-                      return (
-                        <li key={`req_${q.context_key}`}>
-                          <button
-                            type="button"
-                            className={`checkItemBtn ${done ? "ok" : "todo"}`}
-                            onClick={() => scrollToSection(targetRef)}
-                            aria-label={`${q.category} 섹션으로 이동`}
-                          >
-                            <span className="checkItemLeft">
-                              <span
-                                className={`checkStateIcon ${done ? "ok" : "todo"}`}
-                                aria-hidden="true"
-                              >
-                                {done ? "✅" : "❗"}
-                              </span>
-                              <span>{q.category}</span>
+                    return (
+                      <li key={item.key}>
+                        <button
+                          type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                          onClick={() => scrollToRequiredField(item.key)}
+                          aria-label={`${item.label} 항목으로 이동`}
+                        >
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
+                            >
+                              {ok ? "✅" : "❗"}
                             </span>
-                            <span className="checkItemState">
-                              {done ? "완료" : "필수"}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
+                            <span>{item.label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${ctaPulse ? "pulse" : ""}`}
-                  onClick={handlePrimaryAction}
-                  disabled={isSubmitting}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"}`}
+                  onClick={handleViewResult}
+                  disabled={!canAnalyze || isSubmitting}
                 >
                   {isSubmitting
                     ? "요청 중..."
@@ -1275,15 +1238,6 @@ export default function DiagnosisInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
-
-      {noticeMsg ? (
-        <div
-          className={`diagToast ${noticeType === "success" ? "success" : "info"}`}
-          role="status"
-        >
-          {noticeMsg}
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

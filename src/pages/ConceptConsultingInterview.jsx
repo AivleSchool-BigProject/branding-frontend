@@ -414,6 +414,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
 
@@ -817,25 +821,53 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
       <main className="diagInterview__main">
         <div className="diagInterview__container">
-          <div className="diagInterview__titleRow">
-            <div>
-              <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
-              <p className="diagInterview__sub">
-                아래 질문에 답하면 컨셉 제안 3안을 생성합니다. 선택한 1안은 다음
-                단계(스토리) 생성에 사용됩니다.
-              </p>
-            </div>
+          <section className="diagInterviewHero" aria-label="인터뷰 안내 배너">
+            <div className="diagInterviewHero__inner">
+              <div className="diagInterviewHero__left">
+                <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
+                <p className="diagInterview__sub">
+                  아래 질문에 답하면 컨셉 제안 3안을 생성합니다. 선택한 1안은
+                  다음 단계(스토리) 생성에 사용됩니다.
+                </p>
 
-            <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/brandconsulting")}
-              >
-                브랜드 컨설팅 홈
-              </button>
+                <div className="diagInterviewHero__chips">
+                  <span className="diagInterviewHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagInterviewHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {completedRequired}/{requiredKeys.length}
+                    </span>
+                  </span>
+                  <span
+                    className={`diagInterviewHero__chip state ${canAnalyze ? "ready" : "pending"}`}
+                  >
+                    {canAnalyze
+                      ? "AI 분석 요청 가능"
+                      : `필수 ${remainingRequired}개 남음`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagInterviewHero__right">
+                <div
+                  className={`diagInterviewHero__status ${canAnalyze ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagInterviewHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canAnalyze
+                      ? "모든 필수 입력이 완료되었어요"
+                      : "필수 항목을 입력하면 AI 분석 요청이 활성화돼요"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <ConsultingFlowPanel activeKey="concept" />
 
@@ -1250,49 +1282,31 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul
-                  style={{
-                    listStyle: "none",
-                    padding: 0,
-                    margin: "8px 0 0",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  {requiredKeys.map((key, idx) => {
-                    const ok = requiredStatus[key];
+                <ul className="checkList checkList--cards">
+                  {requiredKeys.map((key) => {
+                    const ok = Boolean(requiredStatus[key]);
                     const label = requiredLabelMap[key] || key;
+
                     return (
-                      <li
-                        key={key}
-                        style={{
-                          borderRadius: 10,
-                          border: ok
-                            ? "1px solid rgba(34,197,94,.35)"
-                            : "1px solid rgba(239,68,68,.35)",
-                          background: ok
-                            ? "rgba(34,197,94,.10)"
-                            : "rgba(239,68,68,.10)",
-                          padding: "8px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
+                      <li key={key}>
                         <button
                           type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
                           onClick={() => scrollToRequiredField(key)}
                           aria-label={`${label} 항목으로 이동`}
-                          style={{
-                            all: "unset",
-                            width: "100%",
-                            display: "block",
-                            cursor: "pointer",
-                            color: ok
-                              ? "rgba(22,101,52,.95)"
-                              : "rgba(153,27,27,.95)",
-                          }}
                         >
-                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
+                            >
+                              {ok ? "✅" : "❗"}
+                            </span>
+                            <span>{label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
                         </button>
                       </li>
                     );
@@ -1305,7 +1319,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
@@ -1316,8 +1330,18 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     ? "생성 중..."
                     : hasResult
                       ? "AI 분석 재요청"
-                      : "AI 분석 요청"}
+                      : canAnalyze
+                        ? "AI 분석 요청"
+                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
                 </button>
+
+                <p
+                  className={`hint sideActionHint ${canAnalyze ? "ready" : ""}`}
+                >
+                  {canAnalyze
+                    ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
+                    : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
+                </p>
 
                 <button
                   type="button"
@@ -1327,13 +1351,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 >
                   전체 초기화
                 </button>
-
-                {!canAnalyze ? (
-                  <p className="hint" style={{ marginTop: 10 }}>
-                    * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
-                    <br />* 핵심 가치는 최소 2개 선택이 필요합니다.
-                  </p>
-                ) : null}
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
@@ -1361,6 +1378,22 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
+
+          {canAnalyze ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
+                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
 
