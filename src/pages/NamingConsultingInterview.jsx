@@ -411,11 +411,11 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   // ✅ 폼 상태
   const [form, setForm] = useState(INITIAL_FORM);
-  const [loaded, setLoaded] = useState(false);
 
   // ✅ 저장 상태 UI
   const [saveMsg, setSaveMsg] = useState("");
   const [lastSaved, setLastSaved] = useState("-");
+  const [loaded, setLoaded] = useState(false);
 
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
@@ -472,21 +472,35 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   const canAnalyze = completedRequired === requiredKeys.length;
 
-  // ✅ 모든 필수 입력 완료 시 하단 토스트(몇 초 후 자동 사라짐)
-  const [completeToast, setCompleteToast] = useState({ open: false, msg: "" });
+  // ✅ 모든 필수 입력 완료 시 하단 토스트(3.2초 후 자동 사라짐)
+  const [completeToast, setCompleteToast] = useState({
+    open: false,
+    msg: "",
+    title: "알림",
+    icon: "✅",
+  });
   const completeToastTimerRef = useRef(null);
   const completeToastInitRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
 
-  const showCompleteToast = (msg) => {
+  const showCompleteToast = (msg, options = {}) => {
+    const { title = "알림", icon = "✅" } = options || {};
+
     try {
-      if (completeToastTimerRef.current)
-        clearTimeout(completeToastTimerRef.current);
+      if (completeToastTimerRef.current) {
+        window.clearTimeout(completeToastTimerRef.current);
+      }
     } catch {
       // ignore
     }
-    setCompleteToast({ open: true, msg });
-    completeToastTimerRef.current = setTimeout(() => {
+
+    setCompleteToast({
+      open: true,
+      msg: String(msg || ""),
+      title: String(title || "알림"),
+      icon: String(icon || "✅"),
+    });
+    completeToastTimerRef.current = window.setTimeout(() => {
       setCompleteToast((prev) => ({ ...prev, open: false }));
     }, 3200);
   };
@@ -494,8 +508,9 @@ export default function NamingConsultingInterview({ onLogout }) {
   useEffect(() => {
     return () => {
       try {
-        if (completeToastTimerRef.current)
-          clearTimeout(completeToastTimerRef.current);
+        if (completeToastTimerRef.current) {
+          window.clearTimeout(completeToastTimerRef.current);
+        }
       } catch {
         // ignore
       }
@@ -505,7 +520,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   useEffect(() => {
     if (!loaded) return;
 
-    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막아요.
+    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막음
     if (!completeToastInitRef.current) {
       completeToastInitRef.current = true;
       prevCanAnalyzeRef.current = Boolean(canAnalyze);
@@ -518,6 +533,7 @@ export default function NamingConsultingInterview({ onLogout }) {
     if (!prev && cur) {
       showCompleteToast(
         "모든 필수 입력이 완료됐어요! 아래 ‘AI 분석 요청’ 버튼을 눌러 다음 단계로 진행하세요.",
+        { title: "모든 필수 입력 완료", icon: "✅" },
       );
     }
 
@@ -851,6 +867,10 @@ export default function NamingConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+    showCompleteToast(
+      "제안 1개 선택 완료! 사이드 카드의 ‘컨셉 단계로 이동’ 버튼을 눌러 다음 단계로 진행하세요.",
+      { title: "다음 단계 진행 가능", icon: "🚀" },
+    );
   };
 
   const handleGoNext = async () => {
@@ -1629,8 +1649,15 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </ul>
 
                 <div className="divider" />
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%" }}
+                >
+                  네이밍 초기화
+                </button>
 
-                <h4 className="sideSubTitle">빠른 작업</h4>
                 <button
                   type="button"
                   className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
@@ -1638,7 +1665,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
-                  style={{ width: "100%", marginBottom: 8 }}
+                  style={{ width: "100%", marginTop: 8, marginBottom: 8 }}
                 >
                   {analyzing
                     ? "생성 중..."
@@ -1656,15 +1683,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                     ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
                     : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
                 </p>
-
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
-                >
-                  네이밍 초기화
-                </button>
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
@@ -1692,8 +1710,6 @@ export default function NamingConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {/* ✅ 입력 완료 안내는 하단 토스트로 표시됩니다. */}
         </div>
       </main>
 
@@ -1707,11 +1723,11 @@ export default function NamingConsultingInterview({ onLogout }) {
       >
         <div className="completionBottomToast__card">
           <span className="completionBottomToast__icon" aria-hidden="true">
-            ✅
+            {completeToast.icon || "✅"}
           </span>
           <div className="completionBottomToast__text">
             <div className="completionBottomToast__title">
-              모든 필수 입력 완료
+              {completeToast.title || "알림"}
             </div>
             <div className="completionBottomToast__desc">
               {completeToast.msg}
