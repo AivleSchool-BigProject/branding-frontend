@@ -19,7 +19,7 @@ export default function SiteFooter({ onOpenPolicy }) {
   return (
     <footer className="site-footer">
       <div className="site-footer__inner">
-        <div className="site-footer__links">
+        <div className="site-footer__links" aria-label="정책 링크">
           <button
             type="button"
             className="site-footer__link"
@@ -37,15 +37,40 @@ export default function SiteFooter({ onOpenPolicy }) {
           </button>
         </div>
 
-        <div className="site-footer__brand">
-          <strong>BRANDPILOT</strong>
+        <div
+          className="site-footer__info"
+          role="contentinfo"
+          aria-label="운영 정보"
+        >
+          <div className="site-footer__row">
+            <span className="site-footer__label">상호</span>
+            <span className="site-footer__value">BRANDPILOT</span>
+          </div>
+          <div className="site-footer__row">
+            <span className="site-footer__label">운영주체</span>
+            <span className="site-footer__value">KT AIVLE 8기 7반 15조</span>
+          </div>
+          <div className="site-footer__row">
+            <span className="site-footer__label">주소</span>
+            <span className="site-footer__value">
+              대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
+            </span>
+          </div>
+          <div className="site-footer__row">
+            <span className="site-footer__label">사업자등록번호</span>
+            <span className="site-footer__value">
+              해당 없음 (교육 프로젝트 단계)
+            </span>
+          </div>
         </div>
-        <div className="site-footer__text">
-          BRANDPILOT | 대전광역시 서구 문정로48번길 30 (탄방동, KT타워)
-        </div>
-        <div className="site-footer__text">KT AIVLE 7반 15조</div>
-        <div className="site-footer__copy">
-          © 2026 Team15 Corp. All rights reserved.
+
+        <div className="site-footer__bottom">
+          <div className="site-footer__copy">
+            © 2026 BRANDPILOT Team. All rights reserved.
+          </div>
+          <a className="site-footer__email" href="mailto:aivle8.team15@kt.com">
+            문의: aivle8.team15@kt.com
+          </a>
         </div>
       </div>
     </footer>
