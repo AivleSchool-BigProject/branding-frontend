@@ -349,6 +349,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
   // ✅ 폼 상태
   const [form, setForm] = useState(INITIAL_FORM);
+  const [loaded, setLoaded] = useState(false);
 
   // ✅ 저장 UI
   const [saveMsg, setSaveMsg] = useState("");
@@ -414,6 +415,58 @@ export default function ConceptConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+
+  // ✅ 모든 필수 입력 완료 시 하단 토스트(몇 초 후 자동 사라짐)
+  const [completeToast, setCompleteToast] = useState({ open: false, msg: "" });
+  const completeToastTimerRef = useRef(null);
+  const completeToastInitRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
+
+  const showCompleteToast = (msg) => {
+    try {
+      if (completeToastTimerRef.current)
+        clearTimeout(completeToastTimerRef.current);
+    } catch {
+      // ignore
+    }
+    setCompleteToast({ open: true, msg });
+    completeToastTimerRef.current = setTimeout(() => {
+      setCompleteToast((prev) => ({ ...prev, open: false }));
+    }, 3200);
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (completeToastTimerRef.current)
+          clearTimeout(completeToastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    // 첫 로드에서는 저장된 값으로 인한 즉시 토스트 노출을 막아요.
+    if (!completeToastInitRef.current) {
+      completeToastInitRef.current = true;
+      prevCanAnalyzeRef.current = Boolean(canAnalyze);
+      return;
+    }
+
+    const prev = prevCanAnalyzeRef.current;
+    const cur = Boolean(canAnalyze);
+
+    if (!prev && cur) {
+      showCompleteToast(
+        "모든 필수 입력이 완료됐어요! 아래 ‘AI 분석 요청’ 버튼을 눌러 다음 단계로 진행하세요.",
+      );
+    }
+
+    prevCanAnalyzeRef.current = cur;
+  }, [loaded, canAnalyze]);
   const remainingRequired = Math.max(
     requiredKeys.length - completedRequired,
     0,
@@ -482,12 +535,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
       if (!raw) return;
       const parsed = JSON.parse(raw);
 
-      const loaded =
+      const loadedForm =
         parsed?.form && typeof parsed.form === "object"
           ? sanitizeForm(parsed.form)
           : null;
 
-      if (loaded) setForm(loaded);
+      if (loadedForm) setForm(loadedForm);
 
       if (parsed?.updatedAt) {
         const d = new Date(parsed.updatedAt);
@@ -495,6 +548,8 @@ export default function ConceptConsultingInterview({ onLogout }) {
       }
     } catch {
       // ignore
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -1379,24 +1434,32 @@ export default function ConceptConsultingInterview({ onLogout }) {
             </aside>
           </div>
 
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
+          {/* ✅ 입력 완료 안내는 하단 토스트로 표시됩니다. */}
         </div>
       </main>
 
+      {/* ✅ 완료 안내 하단 토스트 */}
+      <div
+        className={`completionBottomToast ${completeToast.open ? "show" : ""}`}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        aria-hidden={!completeToast.open}
+      >
+        <div className="completionBottomToast__card">
+          <span className="completionBottomToast__icon" aria-hidden="true">
+            ✅
+          </span>
+          <div className="completionBottomToast__text">
+            <div className="completionBottomToast__title">
+              모든 필수 입력 완료
+            </div>
+            <div className="completionBottomToast__desc">
+              {completeToast.msg}
+            </div>
+          </div>
+        </div>
+      </div>
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
   );
