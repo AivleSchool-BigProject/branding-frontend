@@ -45,6 +45,7 @@ import "./styles/BrandStoryConsultingInterview.css";
 
 import "./styles/BrandAllResults.css";
 import "./styles/PromotionAllResults.css";
+import "./styles/ConsultingUnifiedTheme.css";
 
 // NOTE: 개발 환경(React 18)에서 React.StrictMode는 useEffect 등을 2번 실행해서
 // API 조회가 네트워크에 2번 찍히는 현상이 생길 수 있어요.

@@ -320,6 +320,29 @@ export default function DiagnosisInterview({ onLogout }) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitOnceRef = useRef(false);
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
+
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
+    msg: "",
+    variant: "success",
+  };
+  const [toast, setToast] = useState(EMPTY_TOAST);
+  const toastTimerRef = useRef(null);
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
 
   const refBasic = useRef(null);
 
@@ -389,6 +412,17 @@ export default function DiagnosisInterview({ onLogout }) {
     return keys;
   }, []);
 
+  const requiredItems = useMemo(
+    () =>
+      STEP_1.questions
+        .filter((q) => q.required)
+        .map((q) => ({
+          key: q.context_key,
+          label: q.category || q.question_text || q.context_key,
+        })),
+    [],
+  );
+
   const requiredStatus = useMemo(() => {
     const status = {};
 
@@ -443,6 +477,10 @@ export default function DiagnosisInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
 
   const currentSectionLabel = useMemo(() => {
     for (const q of STEP_1.questions) {
@@ -457,6 +495,82 @@ export default function DiagnosisInterview({ onLogout }) {
     if (!ref?.current) return;
     ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const scrollToRequiredField = (contextKey) => {
+    const target = STEP_1.questions.find((q) => q.context_key === contextKey);
+    if (!target) return;
+    const cat = target.category || "기타";
+    scrollToSection(categoryRefs[cat] || refBasic);
+  };
+
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
+
+    try {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 요약 결과 보기 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   const getFirstIncompleteRef = () => {
     for (const q of STEP_1.questions) {
@@ -870,6 +984,7 @@ export default function DiagnosisInterview({ onLogout }) {
     }
 
     setIsSubmitting(true);
+    let requestStartedAt = null;
 
     try {
       const qa = buildQaMap();
@@ -882,6 +997,7 @@ export default function DiagnosisInterview({ onLogout }) {
         raw_qa_fields,
       };
 
+      requestStartedAt = Date.now();
       const responseData = await apiRequest("/brands/interview", {
         method: "POST",
         data: requestBody,
@@ -959,6 +1075,8 @@ export default function DiagnosisInterview({ onLogout }) {
         );
       }
 
+      await waitForMinAiLoading(requestStartedAt);
+
       navigate("/diagnosis/result", {
         state: {
           from: "diagnosisInterview",
@@ -973,6 +1091,7 @@ export default function DiagnosisInterview({ onLogout }) {
         err?.response?.data?.message ||
         err?.message ||
         "요청 실패";
+      await waitForMinAiLoading(requestStartedAt);
       alert(msg);
     } finally {
       setIsSubmitting(false);
@@ -1002,28 +1121,56 @@ export default function DiagnosisInterview({ onLogout }) {
 
       <main className="diagInterview__main">
         <div className="diagInterview__container">
-          <div className="diagInterview__titleRow">
-            <div>
-              <h1 className="diagInterview__title">
-                초기 진단 인터뷰 (Foundation)
-              </h1>
-              <p className="diagInterview__sub">
-                AI 팀 질문지(JSON) 기준으로 자동 렌더링됩니다. 필수 입력을
-                완료하면 백엔드로 전송하고, “진단 결과” 페이지에서 결과를
-                보여줘요.
-              </p>
-            </div>
+          <section className="diagInterviewHero" aria-label="인터뷰 안내 배너">
+            <div className="diagInterviewHero__inner">
+              <div className="diagInterviewHero__left">
+                <h1 className="diagInterview__title">
+                  초기 진단 인터뷰 (Foundation)
+                </h1>
+                <p className="diagInterview__sub">
+                  AI 팀 질문지(JSON) 기준으로 자동 렌더링됩니다. 필수 입력을
+                  완료하면 백엔드로 전송하고, “진단 결과” 페이지에서 결과를
+                  보여줘요.
+                </p>
 
-            <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/brandconsulting")}
-              >
-                브랜드 컨설팅 홈으로
-              </button>
+                <div className="diagInterviewHero__chips">
+                  <span className="diagInterviewHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagInterviewHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {completedRequired}/{requiredKeys.length}
+                    </span>
+                  </span>
+                  <span
+                    className={`diagInterviewHero__chip state ${canAnalyze ? "ready" : "pending"}`}
+                  >
+                    {canAnalyze
+                      ? "다음 진행 가능"
+                      : `필수 ${remainingRequired}개 남음`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagInterviewHero__right">
+                <div
+                  className={`diagInterviewHero__status ${canAnalyze ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagInterviewHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canAnalyze
+                      ? "모든 필수 입력이 완료되었어요"
+                      : `${currentSectionLabel} 섹션 작성 중`}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
@@ -1061,8 +1208,8 @@ export default function DiagnosisInterview({ onLogout }) {
                   <div className="card__head">
                     <h2>
                       {idx + 1}. {cat}
-                      </h2>
-                      <p>{SECTION_DESCRIPTIONS[cat]}</p>
+                    </h2>
+                    <p>{SECTION_DESCRIPTIONS[cat]}</p>
                   </div>
 
                   {(questionsByCategory[cat] || []).map((q) => (
@@ -1116,54 +1263,94 @@ export default function DiagnosisInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList">
-                  {STEP_1.questions
-                    .filter((q) => q.required)
-                    .map((q) => (
-                      <li
-                        key={`req_${q.context_key}`}
-                        className={requiredStatus[q.context_key] ? "ok" : ""}
-                      >
-                        {q.category}
+                <ul className="checkList checkList--cards">
+                  {requiredItems.map((item) => {
+                    const ok = Boolean(requiredStatus[item.key]);
+
+                    return (
+                      <li key={item.key}>
+                        <button
+                          type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                          onClick={() => scrollToRequiredField(item.key)}
+                          aria-label={`${item.label} 항목으로 이동`}
+                        >
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
+                            >
+                              {ok ? "✅" : "❗"}
+                            </span>
+                            <span>{item.label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
+                        </button>
                       </li>
-                    ))}
+                    );
+                  })}
                 </ul>
-
-                <div className="divider" />
-
-                <h4 className="sideSubTitle">빠른 이동</h4>
-                <div className="jumpGrid">
-                  {sections.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className="jumpBtn"
-                      onClick={() => scrollToSection(s.ref)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze && !isSubmitting ? "" : "disabled"}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"}`}
                   onClick={handleViewResult}
                   disabled={!canAnalyze || isSubmitting}
                 >
-                  {isSubmitting ? "요청 중..." : "AI 요약 결과 보기"}
+                  {isSubmitting
+                    ? "요청 중..."
+                    : canAnalyze
+                      ? "AI 요약 결과 보기"
+                      : `AI 요약 결과 보기 (${remainingRequired}개 남음)`}
                 </button>
 
-                {!canAnalyze ? (
-                  <p className="hint">
-                    * 필수 항목을 모두 입력하면 결과 보기 버튼이 활성화됩니다.
-                  </p>
-                ) : null}
+                <p
+                  className={`hint sideActionHint ${canAnalyze ? "ready" : ""}`}
+                >
+                  {canAnalyze
+                    ? "모든 필수 입력이 완료됐어요. AI 요약 결과 보기를 눌러주세요."
+                    : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 요약 결과 보기 버튼이 활성화돼요.`}
+                </p>
               </div>
             </aside>
           </div>
+          {toast?.show ? (
+            <div
+              className={`aiToast ${toast.variant}`}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="aiToast__head">
+                <span className="aiToast__icon" aria-hidden="true">
+                  {toast.icon}
+                </span>
+                <strong>{toast.title}</strong>
+              </div>
+              <p className="aiToast__msg">{toast.msg}</p>
+            </div>
+          ) : null}
         </div>
       </main>
+
+      {isSubmitting ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 진단 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 기업 진단 결과를 정리하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 분석 응답이 빨라도 로딩 화면이 최소 1.5초
+              동안 표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

@@ -123,8 +123,16 @@ function QACard({ qa }) {
                 background: "#fff",
               }}
             >
-              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 13  }}>{q}</div>
-              <div style={{ color: "#111827", whiteSpace: "pre-wrap", fontSize: 12 }}>
+              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 13 }}>
+                {q}
+              </div>
+              <div
+                style={{
+                  color: "#111827",
+                  whiteSpace: "pre-wrap",
+                  fontSize: 12,
+                }}
+              >
                 {renderText(a)}
               </div>
             </div>
@@ -467,20 +475,68 @@ export default function DiagnosisResult({ onLogout }) {
 
       <main className="diagResult__main">
         <div className="diagResult__container">
-          <div className="diagResult__titleRow">
-            <div>
-              <h1 className="diagResult__title">기업 진단 결과 리포트</h1>
-            </div>
+          <section
+            className="diagResultHero"
+            aria-label="기업 진단 결과 안내 배너"
+          >
+            <div className="diagResultHero__inner">
+              <div className="diagResultHero__left">
+                <h1 className="diagResult__title">기업 진단 결과 리포트</h1>
+                <p className="diagResult__sub">
+                  진단 입력 내용을 기반으로 생성된 AI 리포트입니다. 결과를
+                  확인하고 바로 다음 단계(브랜드 컨설팅)로 이어서 진행할 수
+                  있어요.
+                </p>
 
-            <div className="diagResult__topActions">
-              <button type="button" className="btn ghost" onClick={goHome}>
-                기업진단 홈
-              </button>
-              <button type="button" className="btn" onClick={goInterview}>
-                인터뷰로 돌아가기
-              </button>
+                <div className="diagResultHero__chips">
+                  <span className="diagResultHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagResultHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {requiredDone}/{requiredTotal}
+                    </span>
+                  </span>
+                  <span
+                    className={`diagResultHero__chip state ${hasReport ? "ready" : "pending"}`}
+                  >
+                    {hasReport ? "진단 완료" : "결과 대기"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagResultHero__right">
+                <div
+                  className={`diagResultHero__status ${canContinue ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagResultHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canContinue
+                      ? "브랜드 컨설팅 다음 단계로 진행할 수 있어요"
+                      : "인터뷰 내용을 수정하거나 brandId 확인이 필요해요"}
+                  </span>
+                </div>
+
+                <div className="diagResultHero__actions">
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={goInterview}
+                  >
+                    인터뷰로 돌아가기
+                  </button>
+                  <button type="button" className="btn" onClick={goHome}>
+                    기업진단 홈
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <div className="diagResult__grid">
             {/* ===================== LEFT ===================== */}
@@ -770,6 +826,32 @@ export default function DiagnosisResult({ onLogout }) {
               ) : null}
             </aside>
           </div>
+
+          {hasReport ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                {canContinue ? (
+                  <>
+                    <strong>기업 진단이 완료되었습니다.</strong> 오른쪽 다음
+                    단계 카드의 <b>브랜드 컨설팅 시작하기</b> 버튼으로 이어서
+                    진행할 수 있습니다.
+                  </>
+                ) : (
+                  <>
+                    <strong>결과는 생성되었지만 확인이 더 필요합니다.</strong>{" "}
+                    브랜드 연결(brandId) 상태를 확인한 뒤 다시 진행해 주세요.
+                  </>
+                )}
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
 

@@ -199,9 +199,9 @@ function MultiChips({ value, options, onChange, max = null }) {
               fontWeight: 800,
               padding: "6px 10px",
               borderRadius: 999,
-              background: active ? "rgba(99,102,241,0.12)" : "rgba(0,0,0,0.04)",
+              background: active ? "rgba(37,99,235,0.10)" : "rgba(0,0,0,0.04)",
               border: active
-                ? "1px solid rgba(99,102,241,0.25)"
+                ? "1px solid rgba(37,99,235,0.36)"
                 : "1px solid rgba(0,0,0,0.10)",
               color: "rgba(0,0,0,0.78)",
               cursor: "pointer",
@@ -231,10 +231,10 @@ function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
         padding: "16px 18px",
         borderRadius: 16,
         border: selected
-          ? "1px solid rgba(99,102,241,0.40)"
+          ? "1px solid rgba(37,99,235,0.44)"
           : "1px solid rgba(0,0,0,0.10)",
         background: selected
-          ? "rgba(99,102,241,0.06)"
+          ? "rgba(37,99,235,0.06)"
           : "rgba(255,255,255,0.92)",
         cursor: "pointer",
         display: "block",
@@ -265,8 +265,8 @@ function ChoiceCard({ selected, title, desc, examples = [], onClick }) {
               height: 16,
               borderRadius: 999,
               border: "2px solid rgba(0,0,0,0.35)",
-              background: selected ? "rgba(99,102,241,0.9)" : "transparent",
-              boxShadow: selected ? "0 0 0 3px rgba(99,102,241,0.15)" : "none",
+              background: selected ? "rgba(37,99,235,0.92)" : "transparent",
+              boxShadow: selected ? "0 0 0 3px rgba(37,99,235,0.15)" : "none",
               flex: "0 0 auto",
             }}
           />
@@ -823,15 +823,29 @@ export default function LogoConsultingInterview({ onLogout }) {
   // ✅ 결과(후보/선택) 상태
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
-  const [toast, setToast] = useState({
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
     msg: "",
     variant: "success",
-    muted: false,
-  });
+  };
+
+  const [toast, setToast] = useState(EMPTY_TOAST);
   const toastTimerRef = useRef(null);
-  const toastMsg = toast.msg;
-  const toastMuted = toast.muted;
-  const toastVariant = toast.variant;
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [regenSeed, setRegenSeed] = useState(0);
@@ -883,6 +897,10 @@ export default function LogoConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
   const hasResult = candidates.length > 0;
   const canFinish = Boolean(hasResult && selectedId);
 
@@ -924,23 +942,74 @@ export default function LogoConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const showToast = (msg) => {
-    const text = String(msg || "");
-    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
-    setToast({ msg: text, variant, muted: false });
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
+
     try {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      if (variant === "success") {
-        toastTimerRef.current = window.setTimeout(() => {
-          setToast((prev) =>
-            prev.msg === text ? { ...prev, muted: true } : prev,
-          );
-        }, 3500);
-      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
     } catch {
       // ignore
     }
   };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 분석 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
   useEffect(() => {
@@ -1180,6 +1249,7 @@ export default function LogoConsultingInterview({ onLogout }) {
 
     setAnalyzing(true);
     setAnalyzeError("");
+    let requestStartedAt = null;
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
@@ -1206,6 +1276,7 @@ export default function LogoConsultingInterview({ onLogout }) {
         },
       };
 
+      requestStartedAt = Date.now();
       const res = await apiRequestAI(`/brands/${brandId}/logo`, {
         method: "POST",
         data: payload,
@@ -1226,9 +1297,12 @@ export default function LogoConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      showToast(
-        "✅ 로고 시안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
-      );
+      showToast({
+        icon: "💡",
+        title: "AI 분석 완료",
+        msg: "로고 시안 3개가 도착했어요. 1개를 선택하면 최종 결과 보기로 진행할 수 있어요.",
+        variant: "success",
+      });
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
@@ -1263,6 +1337,7 @@ export default function LogoConsultingInterview({ onLogout }) {
 
       alert(`로고 생성 요청에 실패했습니다: ${msg || "요청 실패"}`);
     } finally {
+      await waitForMinAiLoading(requestStartedAt);
       setAnalyzing(false);
     }
   };
@@ -1270,6 +1345,12 @@ export default function LogoConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+    showToast({
+      icon: "🚀",
+      title: "선택 완료",
+      msg: "시안 1개 선택 완료! 오른쪽 진행 상태 카드에서 최종 결과 보기 버튼으로 진행하세요.",
+      variant: "success",
+    });
 
     // ✅ 선택 즉시 로컬 fallback 저장(brandId -> logoUrl)
     try {
@@ -1506,27 +1587,53 @@ export default function LogoConsultingInterview({ onLogout }) {
 
       <main className="diagInterview__main">
         <div className="diagInterview__container">
-          <div className="diagInterview__titleRow">
-            <div>
-              <h1 className="diagInterview__title">로고 컨설팅 인터뷰</h1>
-              <p className="diagInterview__sub">
-                Step 5 질문지 기준으로 로고
-                형태·모티프·색·스타일·레퍼런스·확장성·비율·사용
-                채널·타이포그래피를
-                <b> 선택 중심</b>으로 입력합니다. (기타/추가 입력란 없음)
-              </p>
-            </div>
+          <section className="diagInterviewHero" aria-label="인터뷰 안내 배너">
+            <div className="diagInterviewHero__inner">
+              <div className="diagInterviewHero__left">
+                <h1 className="diagInterview__title">로고 컨설팅 인터뷰</h1>
+                <p className="diagInterview__sub">
+                  아래 질문에 답하면 로고 시안 3개를 생성합니다. 선택한 1개를
+                  저장하면 브랜드 컨설팅이 완료됩니다.
+                </p>
 
-            <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/brandconsulting")}
-              >
-                브랜드 컨설팅 홈
-              </button>
+                <div className="diagInterviewHero__chips">
+                  <span className="diagInterviewHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagInterviewHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {completedRequired}/{requiredKeys.length}
+                    </span>
+                  </span>
+                  <span
+                    className={`diagInterviewHero__chip state ${canAnalyze ? "ready" : "pending"}`}
+                  >
+                    {canAnalyze
+                      ? "AI 분석 요청 가능"
+                      : `필수 ${remainingRequired}개 남음`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagInterviewHero__right">
+                <div
+                  className={`diagInterviewHero__status ${canAnalyze ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagInterviewHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canAnalyze
+                      ? "모든 필수 입력이 완료되었어요"
+                      : "필수 항목을 입력하면 AI 분석 요청이 활성화돼요"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <ConsultingFlowPanel activeKey="logo" />
 
@@ -1896,13 +2003,19 @@ export default function LogoConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
-              {toastMsg ? (
+              {toast?.show ? (
                 <div
-                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  className={`aiToast ${toast.variant}`}
                   role="status"
                   aria-live="polite"
                 >
-                  {toastMsg}
+                  <div className="aiToast__head">
+                    <span className="aiToast__icon" aria-hidden="true">
+                      {toast.icon}
+                    </span>
+                    <strong>{toast.title}</strong>
+                  </div>
+                  <p className="aiToast__msg">{toast.msg}</p>
                 </div>
               ) : null}
 
@@ -2100,49 +2213,31 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul
-                  style={{
-                    listStyle: "none",
-                    padding: 0,
-                    margin: "8px 0 0",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  {requiredKeys.map((key, idx) => {
-                    const ok = requiredStatus[key];
+                <ul className="checkList checkList--cards">
+                  {requiredKeys.map((key) => {
+                    const ok = Boolean(requiredStatus[key]);
                     const label = requiredLabelMap[key] || key;
+
                     return (
-                      <li
-                        key={key}
-                        style={{
-                          borderRadius: 10,
-                          border: ok
-                            ? "1px solid rgba(34,197,94,.35)"
-                            : "1px solid rgba(239,68,68,.35)",
-                          background: ok
-                            ? "rgba(34,197,94,.10)"
-                            : "rgba(239,68,68,.10)",
-                          padding: "8px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
+                      <li key={key}>
                         <button
                           type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
                           onClick={() => scrollToRequiredField(key)}
                           aria-label={`${label} 항목으로 이동`}
-                          style={{
-                            all: "unset",
-                            width: "100%",
-                            display: "block",
-                            cursor: "pointer",
-                            color: ok
-                              ? "rgba(22,101,52,.95)"
-                              : "rgba(153,27,27,.95)",
-                          }}
                         >
-                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
+                            >
+                              {ok ? "✅" : "❗"}
+                            </span>
+                            <span>{label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
                         </button>
                       </li>
                     );
@@ -2151,11 +2246,18 @@ export default function LogoConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">빠른 작업</h4>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%", marginBottom: 8 }}
+                >
+                  전체 초기화
+                </button>
 
                 <button
                   type="button"
-                  className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
@@ -2166,23 +2268,18 @@ export default function LogoConsultingInterview({ onLogout }) {
                     ? "생성 중..."
                     : hasResult
                       ? "AI 분석 재요청"
-                      : "AI 분석 요청"}
+                      : canAnalyze
+                        ? "AI 분석 요청"
+                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
                 </button>
 
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
+                <p
+                  className={`hint sideActionHint ${canAnalyze ? "ready" : ""}`}
                 >
-                  전체 초기화
-                </button>
-
-                {!canAnalyze ? (
-                  <p className="hint" style={{ marginTop: 10 }}>
-                    * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
-                  </p>
-                ) : null}
+                  {canAnalyze
+                    ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
+                    : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
+                </p>
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
@@ -2211,8 +2308,42 @@ export default function LogoConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
+
+          {canAnalyze ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
+                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
+
+      {analyzing ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 로고 컨설팅 제안을 생성하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
+              표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

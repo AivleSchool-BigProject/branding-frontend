@@ -206,10 +206,10 @@ function MultiChips({ value, options, onChange, max = null }) {
 
         const activeStyle = active
           ? {
-              background: "rgba(34,197,94,0.18)",
-              border: "1px solid rgba(34,197,94,0.55)",
+              background: "rgba(37,99,235,0.10)",
+              border: "1px solid rgba(37,99,235,0.42)",
               color: "rgba(0,0,0,0.9)",
-              boxShadow: "0 0 0 3px rgba(34,197,94,0.14)",
+              boxShadow: "0 0 0 3px rgba(37,99,235,0.14)",
             }
           : {};
 
@@ -357,16 +357,29 @@ export default function ConceptConsultingInterview({ onLogout }) {
   // ✅ 결과
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState("");
-  const [toast, setToast] = useState({
+  const MIN_AI_LOADING_MS = 1500;
+
+  const waitForMinAiLoading = async (startedAt) => {
+    if (!startedAt) return;
+    const elapsed = Date.now() - startedAt;
+    const remaining = MIN_AI_LOADING_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise((resolve) => window.setTimeout(resolve, remaining));
+    }
+  };
+  const TOAST_DURATION = 3200;
+  const EMPTY_TOAST = {
+    show: false,
+    icon: "",
+    title: "",
     msg: "",
     variant: "success",
-    muted: false,
-  });
-  const toastTimerRef = useRef(null);
+  };
 
-  const toastMsg = toast.msg;
-  const toastMuted = toast.muted;
-  const toastVariant = toast.variant;
+  const [toast, setToast] = useState(EMPTY_TOAST);
+  const toastTimerRef = useRef(null);
+  const didMountRef = useRef(false);
+  const prevCanAnalyzeRef = useRef(false);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -414,6 +427,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
 
@@ -452,24 +469,74 @@ export default function ConceptConsultingInterview({ onLogout }) {
     refResult.current.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const showToast = (msg) => {
-    const text = String(msg || "");
-    const variant = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
-    setToast({ msg: text, variant, muted: false });
+  const showToast = (payload) => {
+    const isString = typeof payload === "string";
+    const text = isString
+      ? String(payload || "").trim()
+      : String(payload?.msg || "").trim();
+    if (!text) return;
+
+    const variantFromText = /^\s*(⚠️|❌)/.test(text) ? "warn" : "success";
+    const variant = isString
+      ? variantFromText
+      : payload?.variant || variantFromText;
+    const icon = isString
+      ? variant === "warn"
+        ? "⚠️"
+        : "✅"
+      : payload?.icon || (variant === "warn" ? "⚠️" : "✅");
+    const title = isString
+      ? variant === "warn"
+        ? "요청 실패"
+        : "알림"
+      : String(payload?.title || (variant === "warn" ? "요청 실패" : "알림"));
+
+    setToast({
+      show: true,
+      icon,
+      title,
+      msg: text,
+      variant,
+    });
 
     try {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-      if (variant === "success") {
-        toastTimerRef.current = window.setTimeout(() => {
-          setToast((prev) =>
-            prev.msg === text ? { ...prev, muted: true } : prev,
-          );
-        }, 3500);
-      }
+      toastTimerRef.current = window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, show: false }));
+      }, TOAST_DURATION);
     } catch {
       // ignore
     }
   };
+
+  useEffect(() => {
+    return () => {
+      try {
+        if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevCanAnalyzeRef.current = canAnalyze;
+      return;
+    }
+
+    if (!prevCanAnalyzeRef.current && canAnalyze) {
+      showToast({
+        icon: "✅",
+        title: "필수 입력 완료",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 분석 버튼을 눌러 다음 단계로 진행해 주세요.",
+        variant: "success",
+      });
+    }
+
+    prevCanAnalyzeRef.current = canAnalyze;
+  }, [canAnalyze]);
 
   // ✅ draft 로드 (키 sanitize)
   useEffect(() => {
@@ -646,12 +713,14 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
     setAnalyzing(true);
     setAnalyzeError("");
+    let requestStartedAt = null;
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
       const payload = buildPayloadForAI(mode, nextSeed);
 
+      requestStartedAt = Date.now();
       const res = await apiRequestAI(`/brands/${brandId}/concept`, {
         method: "POST",
         data: payload,
@@ -670,9 +739,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
       setCandidates(nextCandidates);
       setSelectedId(null);
       persistResult(nextCandidates, null, nextSeed);
-      showToast(
-        "✅ 컨셉 컨설팅 제안 3가지가 도착했어요. 아래에서 확인하고 ‘선택’을 눌러주세요.",
-      );
+      showToast({
+        icon: "💡",
+        title: "AI 분석 완료",
+        msg: "컨셉 컨설팅 제안 3개가 도착했어요. 1개를 선택하면 다음 단계로 진행할 수 있어요.",
+        variant: "success",
+      });
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
@@ -693,6 +765,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
       setAnalyzeError(`컨셉 생성에 실패했습니다: ${msg || "요청 실패"}`);
       showToast("⚠️ 생성에 실패했어요. 아래에서 ‘다시 시도’를 눌러주세요.");
     } finally {
+      await waitForMinAiLoading(requestStartedAt);
       setAnalyzing(false);
     }
   };
@@ -700,6 +773,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const handleSelectCandidate = (id) => {
     setSelectedId(id);
     persistResult(candidates, id, regenSeed);
+    showToast({
+      icon: "🚀",
+      title: "선택 완료",
+      msg: "제안 1개 선택 완료! 오른쪽 진행 상태 카드에서 다음 단계 버튼으로 진행하세요.",
+      variant: "success",
+    });
   };
 
   const handleGoNext = async () => {
@@ -790,7 +869,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     setSaveMsg("");
     setLastSaved("-");
     setAnalyzeError("");
-    setToast({ msg: "", variant: "success", muted: false });
+    setToast(EMPTY_TOAST);
   };
 
   const isOtherSelected = (arr) => Array.isArray(arr) && arr.includes("Other");
@@ -817,25 +896,53 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
       <main className="diagInterview__main">
         <div className="diagInterview__container">
-          <div className="diagInterview__titleRow">
-            <div>
-              <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
-              <p className="diagInterview__sub">
-                아래 질문에 답하면 컨셉 제안 3안을 생성합니다. 선택한 1안은 다음
-                단계(스토리) 생성에 사용됩니다.
-              </p>
-            </div>
+          <section className="diagInterviewHero" aria-label="인터뷰 안내 배너">
+            <div className="diagInterviewHero__inner">
+              <div className="diagInterviewHero__left">
+                <h1 className="diagInterview__title">컨셉 컨설팅 인터뷰</h1>
+                <p className="diagInterview__sub">
+                  아래 질문에 답하면 컨셉 제안 3안을 생성합니다. 선택한 1안은
+                  다음 단계(스토리) 생성에 사용됩니다.
+                </p>
 
-            <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/brandconsulting")}
-              >
-                브랜드 컨설팅 홈
-              </button>
+                <div className="diagInterviewHero__chips">
+                  <span className="diagInterviewHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagInterviewHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {completedRequired}/{requiredKeys.length}
+                    </span>
+                  </span>
+                  <span
+                    className={`diagInterviewHero__chip state ${canAnalyze ? "ready" : "pending"}`}
+                  >
+                    {canAnalyze
+                      ? "AI 분석 요청 가능"
+                      : `필수 ${remainingRequired}개 남음`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagInterviewHero__right">
+                <div
+                  className={`diagInterviewHero__status ${canAnalyze ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagInterviewHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canAnalyze
+                      ? "모든 필수 입력이 완료되었어요"
+                      : "필수 항목을 입력하면 AI 분석 요청이 활성화돼요"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <ConsultingFlowPanel activeKey="concept" />
 
@@ -849,7 +956,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   <h2>Brand Concept Consulting</h2>
                   <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
@@ -886,7 +995,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     </div>
                   ) : null}
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
@@ -917,7 +1028,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     </div>
                   ) : null}
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
@@ -929,7 +1042,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: 3일 안에 배송 / 24시간 응대 / 100% 환불"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
@@ -941,7 +1056,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: '당신의 시간을 아껴드립니다'"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
@@ -953,7 +1070,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     placeholder="예: 깨끗하고 미니멀 / 따뜻한 카페 / 활기찬 스타트업"
                   />
                 </div>
+              </div>
 
+              <div className="card questionCard">
                 <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
@@ -989,13 +1108,19 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {/* 결과 anchor */}
               <div ref={refResult} />
 
-              {toastMsg ? (
+              {toast?.show ? (
                 <div
-                  className={`aiToast ${toastVariant}${toastMuted ? " muted" : ""}`}
+                  className={`aiToast ${toast.variant}`}
                   role="status"
                   aria-live="polite"
                 >
-                  {toastMsg}
+                  <div className="aiToast__head">
+                    <span className="aiToast__icon" aria-hidden="true">
+                      {toast.icon}
+                    </span>
+                    <strong>{toast.title}</strong>
+                  </div>
+                  <p className="aiToast__msg">{toast.msg}</p>
                 </div>
               ) : null}
 
@@ -1071,10 +1196,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
                           }}
                           style={{
                             border: isSelected
-                              ? "2px solid rgba(34,197,94,0.65)"
+                              ? "2px solid rgba(37,99,235,0.46)"
                               : undefined,
                             boxShadow: isSelected
-                              ? "0 0 0 3px rgba(34,197,94,0.14)"
+                              ? "0 0 0 3px rgba(37,99,235,0.14)"
                               : undefined,
                           }}
                         >
@@ -1250,49 +1375,31 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul
-                  style={{
-                    listStyle: "none",
-                    padding: 0,
-                    margin: "8px 0 0",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  {requiredKeys.map((key, idx) => {
-                    const ok = requiredStatus[key];
+                <ul className="checkList checkList--cards">
+                  {requiredKeys.map((key) => {
+                    const ok = Boolean(requiredStatus[key]);
                     const label = requiredLabelMap[key] || key;
+
                     return (
-                      <li
-                        key={key}
-                        style={{
-                          borderRadius: 10,
-                          border: ok
-                            ? "1px solid rgba(34,197,94,.35)"
-                            : "1px solid rgba(239,68,68,.35)",
-                          background: ok
-                            ? "rgba(34,197,94,.10)"
-                            : "rgba(239,68,68,.10)",
-                          padding: "8px 10px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                        }}
-                      >
+                      <li key={key}>
                         <button
                           type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
                           onClick={() => scrollToRequiredField(key)}
                           aria-label={`${label} 항목으로 이동`}
-                          style={{
-                            all: "unset",
-                            width: "100%",
-                            display: "block",
-                            cursor: "pointer",
-                            color: ok
-                              ? "rgba(22,101,52,.95)"
-                              : "rgba(153,27,27,.95)",
-                          }}
                         >
-                          {ok ? "✅" : "❗"} {idx + 1}) {label}
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
+                            >
+                              {ok ? "✅" : "❗"}
+                            </span>
+                            <span>{label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
                         </button>
                       </li>
                     );
@@ -1301,11 +1408,18 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">빠른 작업</h4>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%", marginBottom: 8 }}
+                >
+                  전체 초기화
+                </button>
 
                 <button
                   type="button"
-                  className={`btn primary ${canAnalyze && !analyzing ? "" : "disabled"}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
@@ -1316,24 +1430,18 @@ export default function ConceptConsultingInterview({ onLogout }) {
                     ? "생성 중..."
                     : hasResult
                       ? "AI 분석 재요청"
-                      : "AI 분석 요청"}
+                      : canAnalyze
+                        ? "AI 분석 요청"
+                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
                 </button>
 
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
+                <p
+                  className={`hint sideActionHint ${canAnalyze ? "ready" : ""}`}
                 >
-                  전체 초기화
-                </button>
-
-                {!canAnalyze ? (
-                  <p className="hint" style={{ marginTop: 10 }}>
-                    * 필수 항목을 채우면 분석 버튼이 활성화됩니다.
-                    <br />* 핵심 가치는 최소 2개 선택이 필요합니다.
-                  </p>
-                ) : null}
+                  {canAnalyze
+                    ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
+                    : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
+                </p>
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
@@ -1361,8 +1469,42 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
+
+          {canAnalyze ? (
+            <div
+              className="diagBottomReadyNotice"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
+                ✅
+              </span>
+              <p>
+                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
+                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
+              </p>
+            </div>
+          ) : null}
         </div>
       </main>
+
+      {analyzing ? (
+        <div
+          className="aiLoadingOverlay"
+          role="status"
+          aria-live="polite"
+          aria-label="AI 분석 진행 중"
+        >
+          <div className="aiLoadingOverlay__card">
+            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
+            <h3>AI가 컨셉 컨설팅 제안을 생성하고 있어요</h3>
+            <p>
+              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
+              표시됩니다.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

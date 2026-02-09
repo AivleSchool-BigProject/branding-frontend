@@ -90,6 +90,11 @@
   margin-top: 12px;
 }
 
+/* 질문 1개 = 1박스 레이아웃 */
+.diagInterview.consultingInterview .questionCard .field {
+  margin-top: 0;
+}
+
 .diagInterview.consultingInterview .field label {
   font-size: 12px;
   font-weight: 700;
@@ -378,19 +383,19 @@
 
 .diagInterview.consultingInterview .candidateCard:hover {
   transform: translateY(-1px);
-  border-color: rgba(99, 102, 241, 0.25);
+  border-color: rgba(37, 99, 235, 0.34);
   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.1);
 }
 
 .diagInterview.consultingInterview .candidateCard:focus {
   box-shadow:
-    0 0 0 3px rgba(99, 102, 241, 0.18),
+    0 0 0 3px rgba(37, 99, 235, 0.14),
     0 12px 26px rgba(15, 23, 42, 0.1);
 }
 
 .diagInterview.consultingInterview .candidateCard.selected {
-  border-color: rgba(99, 102, 241, 0.45);
-  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.1);
+  border-color: rgba(37, 99, 235, 0.44);
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
 }
 
 .diagInterview.consultingInterview .candidateHead {
@@ -418,9 +423,9 @@
 }
 
 .diagInterview.consultingInterview .candidateCard.selected .candidateBadge {
-  background: rgba(99, 102, 241, 0.12);
-  border-color: rgba(99, 102, 241, 0.25);
-  color: rgba(67, 56, 202, 0.95);
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.34);
+  color: rgba(30, 64, 175, 0.95);
 }
 
 .diagInterview.consultingInterview .candidateActions {
@@ -453,33 +458,53 @@
   padding: 0;
   font-size: 12px;
   font-weight: 800;
-  color: rgba(79, 70, 229, 0.95);
+  color: rgba(29, 78, 216, 0.95);
   cursor: pointer;
 }
 
 .diagInterview.consultingInterview .aiToast {
-  margin-top: 12px;
-  padding: 10px 12px;
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: min(92vw, 760px);
+  margin: 0;
+  padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.18);
-  font-size: 13px;
-  font-weight: 700;
-  transition:
-    background-color 320ms ease,
-    border-color 320ms ease,
-    color 320ms ease;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(15, 23, 42, 0.82);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.26);
+  z-index: 1200;
 }
 
 .diagInterview.consultingInterview .aiToast.warn {
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.18);
+  background: rgba(153, 27, 27, 0.96);
+  border-color: rgba(127, 29, 29, 0.95);
 }
-.diagInterview.consultingInterview .aiToast.muted {
-  background: #fff;
-  border-color: rgba(15, 23, 42, 0.12);
-  color: #0f172a;
+
+.diagInterview.consultingInterview .aiToast__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
 }
+
+.diagInterview.consultingInterview .aiToast__icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.diagInterview.consultingInterview .aiToast__msg {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  opacity: 0.98;
+}
+
 .diagInterview.consultingInterview .aiInlineError {
   padding: 10px 12px;
   border-radius: 14px;
@@ -637,5 +662,172 @@
   }
   70% {
     box-shadow: 0 0 0 10px rgba(225, 29, 72, 0);
+  }
+}
+
+/* ===== Unified Hero + Side checklist + Bottom notice ===== */
+.diagInterview.consultingInterview .diagInterviewHero {
+  margin-bottom: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+.diagInterview.consultingInterview .diagInterviewHero__inner {
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 320px);
+  gap: 16px;
+  align-items: start;
+}
+.diagInterview.consultingInterview .diagInterviewHero__chips {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.diagInterview.consultingInterview .diagInterviewHero__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #334155;
+}
+.diagInterview.consultingInterview .diagInterviewHero__chip b {
+  font-weight: 700;
+  color: #0f172a;
+}
+.diagInterview.consultingInterview .diagInterviewHero__chip.state.ready {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+.diagInterview.consultingInterview .diagInterviewHero__chip.state.pending {
+  border-color: #fcd34d;
+  background: #fff7ed;
+  color: #92400e;
+}
+.diagInterview.consultingInterview .diagInterviewHero__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+}
+.diagInterview.consultingInterview .diagInterviewHero__status.ready {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+.diagInterview.consultingInterview .diagInterviewHero__status.pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+.diagInterview.consultingInterview .diagInterviewHero__statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.diagInterview.consultingInterview .checkList.checkList--cards {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.diagInterview.consultingInterview .checkItemBtn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+.diagInterview.consultingInterview .checkItemBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+.diagInterview.consultingInterview .checkItemBtn.ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.diagInterview.consultingInterview .checkItemBtn.todo {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+.diagInterview.consultingInterview .checkItemLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.diagInterview.consultingInterview .checkStateIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+.diagInterview.consultingInterview .checkItemState {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+.diagInterview.consultingInterview .sideAnalyze {
+  width: 100%;
+  margin-top: 4px;
+}
+.diagInterview.consultingInterview .sideAnalyze.ready {
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.28);
+}
+.diagInterview.consultingInterview .sideAnalyze.pending {
+  opacity: 0.95;
+}
+.diagInterview.consultingInterview .sideActionHint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.diagInterview.consultingInterview .sideActionHint.ready {
+  color: #166534;
+  font-weight: 600;
+}
+.diagInterview.consultingInterview .diagBottomReadyNotice {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  border: 1px solid #86efac;
+  background: #f0fdf4;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #14532d;
+}
+.diagInterview.consultingInterview .diagBottomReadyNotice__icon {
+  font-size: 16px;
+}
+.diagInterview.consultingInterview .diagBottomReadyNotice p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+@media (max-width: 980px) {
+  .diagInterview.consultingInterview .diagInterviewHero__inner {
+    grid-template-columns: 1fr;
   }
 }
