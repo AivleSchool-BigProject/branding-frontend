@@ -2233,7 +2233,14 @@ export default function LogoConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">빠른 작업</h4>
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={handleResetAll}
+                  style={{ width: "100%", marginBottom: 8 }}
+                >
+                  전체 초기화
+                </button>
 
                 <button
                   type="button"
@@ -2260,15 +2267,6 @@ export default function LogoConsultingInterview({ onLogout }) {
                     ? "모든 필수 입력이 완료됐어요. AI 분석 요청을 눌러 다음 진행을 시작하세요."
                     : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 분석 요청 버튼이 활성화돼요.`}
                 </p>
-
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={handleResetAll}
-                  style={{ width: "100%" }}
-                >
-                  전체 초기화
-                </button>
 
                 {analyzeError ? (
                   <div className="aiInlineError" style={{ marginTop: 10 }}>
