@@ -770,3 +770,17 @@
     width: 100%; /* 모바일에서는 터치하기 편하게 꽉 채움 */
   }
 }
+
+.reportTitleBadges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 작은 버튼(이미 쓰고 있으면 생략 가능) */
+.btn.btn-sm {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 10px;
+}
