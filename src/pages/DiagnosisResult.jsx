@@ -118,49 +118,6 @@ function Card({ title, sub, children, footer }) {
   );
 }
 
-function QACard({ qa }) {
-  const entries = isPlainObject(qa) ? Object.entries(qa) : [];
-  return (
-    <Card
-      title="인터뷰 원문(Q&A)"
-      sub="사용자가 작성한 입력을 그대로 정리했습니다."
-    >
-      {entries.length ? (
-        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-          {entries.map(([q, a]) => (
-            <div
-              key={q}
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 14,
-                padding: 12,
-                background: "#fff",
-              }}
-            >
-              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 13 }}>
-                {q}
-              </div>
-              <div
-                style={{
-                  color: "#111827",
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                }}
-              >
-                {renderText(a)}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="block">
-          <div className="block__body">Q&A 데이터가 없습니다.</div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 export default function DiagnosisResult({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -204,7 +161,6 @@ export default function DiagnosisResult({ onLogout }) {
   const flatSummary = report?.summary ?? "";
   const flatAnalysisText = report?.analysis ?? ""; // ✅ 문자열일 수 있음
   const flatKeyInsights = report?.key_insights ?? ""; // ✅ snake_case
-  const flatRawQA = report?.raw_qa ?? {}; // ✅ 우리가 저장해두면 Q&A 표시 가능
 
   // ✅ legacy(이전 코드/백 응답) 구조 fallback
   const legacyInterviewReport =
@@ -751,11 +707,6 @@ export default function DiagnosisResult({ onLogout }) {
                         ))}
                       </div>
                     </Card>
-                  ) : null}
-
-                  {/* Q&A(원문)도 raw_qa가 있을 때만 */}
-                  {isPlainObject(rawQA) && Object.keys(rawQA).length ? (
-                    <QACard qa={rawQA} />
                   ) : null}
                 </>
               )}

@@ -1165,13 +1165,12 @@ export default function NamingConsultingInterview({ onLogout }) {
               {/* (요청 반영) 상단 기업진단 자동입력 카드 제거 */}
 
               {/* INTERVIEW */}
-              <div className="card" ref={refInterview}>
+              <div className="card consultingIntroCard" ref={refInterview}>
                 <div className="card__head">
-                  <h2>Naming Consulting</h2>
-                  <p>
-                    질문 1개당 1개 카드로 정리했습니다. 단일 선택은 드롭다운,
-                    다중 선택은 칩 UI로 선택할 수 있어요.
-                  </p>
+                  <h2>Brand Naming Consulting</h2>
+                  {/* <p>
+                    아래 질문에 답하면, 네이밍 제안 3가지를 생성할 수 있어요.
+                  </p> */}
                 </div>
               </div>
 
@@ -1181,10 +1180,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                     1. 어떤 스타일의 이름을 선호하시나요?{" "}
                     <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    드롭다운에서 1개 선택
-                  </div>
-
                   <div className="selectWrap" style={{ marginTop: 10 }}>
                     <select
                       value={form.namingStyles?.[0] ?? ""}
@@ -1220,10 +1215,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                     2. 이름의 길이는 어느 정도가 적당한가요?{" "}
                     <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    드롭다운에서 1개 선택
-                  </div>
-
                   <div className="selectWrap" style={{ marginTop: 10 }}>
                     <select
                       value={form.nameLength ?? ""}
@@ -1257,10 +1248,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                     3. 어떤 언어 기반이어야 하나요?{" "}
                     <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    드롭다운에서 1개 선택
-                  </div>
-
                   <div className="selectWrap" style={{ marginTop: 10 }}>
                     <select
                       value={form.languagePrefs?.[0] ?? ""}
@@ -1359,10 +1346,6 @@ export default function NamingConsultingInterview({ onLogout }) {
                     6. .com 도메인 확보가 얼마나 중요한가요?{" "}
                     <span className="req">*</span>
                   </label>
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    드롭다운에서 1개 선택
-                  </div>
-
                   <div className="selectWrap" style={{ marginTop: 10 }}>
                     <select
                       value={form.domainConstraint ?? ""}

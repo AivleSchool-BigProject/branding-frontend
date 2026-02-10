@@ -967,10 +967,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {/* ✅ (요청 반영) 1) BASIC 기본정보 카드 제거 */}
 
               {/* 2) Step 3 */}
-              <div className="card" ref={refConcept}>
+              <div className="card consultingIntroCard" ref={refConcept}>
                 <div className="card__head">
                   <h2>Brand Concept Consulting</h2>
-                  <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p>
+                  {/* <p>아래 질문에 답하면, 컨셉 제안 3가지를 생성할 수 있어요.</p> */}
                 </div>
               </div>
 

@@ -136,20 +136,13 @@ function QTag({ n }) {
   return (
     <span
       style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2px 10px",
-        borderRadius: 999,
-        background: "rgba(0,0,0,0.06)",
-        border: "1px solid rgba(0,0,0,0.08)",
-        fontSize: 12,
-        fontWeight: 900,
-        marginRight: 8,
-        transform: "translateY(-1px)",
+        display: "inline",
+        fontSize: "inherit",
+        fontWeight: 800,
+        marginRight: 6,
       }}
     >
-      {n}
+      {`${n}.`}
     </span>
   );
 }
@@ -1501,16 +1494,19 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
             <section className="diagInterview__left">
               {/* ✅ (요청 반영) 1) 기본 정보(자동 반영) 카드 제거 */}
 
-              {/* 2) Q1~Q4 */}
-              <div className="card">
+              {/* 2) Intro */}
+              <div className="card consultingIntroCard">
                 <div className="card__head">
                   <h2>Brand Story Consulting</h2>
-                  <p>
+                  {/* <p>
                     아래 질문에 답하면, 브랜드 스토리 제안 3가지를 생성할 수
                     있어요.
-                  </p>
+                  </p> */}
                 </div>
+              </div>
 
+              {/* 3) Q1~Q4 */}
+              <div className="card questionCard">
                 <div className="field" id="story-q-founding_story">
                   <label>
                     <QTag n="1" />

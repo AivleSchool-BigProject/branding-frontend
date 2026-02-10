@@ -121,9 +121,7 @@ export default function ConsultingFlowPanel({ activeKey = "naming" }) {
     <div className="flowPanel">
       <div className="flowPanel__head">
         <div className="flowPanel__title">브랜드 컨설팅 진행 단계</div>
-        <div className="flowPanel__hint">
-          단계 카드를 눌러 이동할 수 있어요.
-        </div>
+        <div className="flowPanel__hint">.</div>
       </div>
 
       <div className="flowPanel__steps">

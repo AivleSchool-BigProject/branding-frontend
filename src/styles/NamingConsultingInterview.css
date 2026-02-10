@@ -100,8 +100,9 @@
 }
 
 .diagInterview.consultingInterview .field label {
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 800;
   color: #0f172a;
 }
 

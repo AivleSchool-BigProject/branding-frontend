@@ -9,6 +9,8 @@
   border-radius: 18px;
   padding: 16px;
   box-shadow: 0 1px 10px rgba(0, 0, 0, 0.06);
+  /* 인터뷰 질문 시작 카드와 붙어 보이지 않도록 하단 여백 확보 */
+  margin-bottom: 18px;
 }
 
 .flowPanel__head {

@@ -1687,6 +1687,13 @@ export default function LogoConsultingInterview({ onLogout }) {
             <section className="diagInterview__left">
               {/* ✅ 기본 정보(자동반영) 섹션 삭제 */}
 
+              <div className="card consultingIntroCard">
+                <div className="card__head">
+                  <h2>Brand Logo Consulting</h2>
+                  {/* <p>아래 질문에 답하면, 로고 시안 3가지를 생성할 수 있어요.</p> */}
+                </div>
+              </div>
+
               {/* 1) 로고 형태 */}
               <div className="card" ref={refLogo}>
                 <div className="card__head">
