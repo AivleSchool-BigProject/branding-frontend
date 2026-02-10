@@ -31,6 +31,7 @@ import {
   upsertPipeline,
   startBrandFlow,
   setBrandFlowCurrent,
+  ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -39,6 +40,14 @@ import { apiRequest, apiRequestAI } from "../api/client.js";
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_naming_v1";
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.\n진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 /** ======================
  *  ✅ Step 2. Naming Strategy (질문지)
@@ -379,7 +388,7 @@ function normalizeNamingCandidates(raw) {
       oneLiner: safeText(item.oneLiner || item.summary || "", ""),
       keywords: keywords.slice(0, 10),
       style: safeText(item.style || "", ""),
-      samples: samples.slice(0, 10),
+      samples: samples.slice(0, 1),
       rationale: safeText(item.rationale || item.reason || "", ""),
       checks: checks.slice(0, 10),
       avoid: avoid.slice(0, 10),
@@ -439,10 +448,10 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
-  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -607,39 +616,35 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   useEffect(() => {
     if (!analyzing) {
-      setLoadingElapsedSec(0);
+      setLoadingElapsed(0);
       return;
     }
 
     const startedAt = Date.now();
+    setLoadingElapsed(0);
 
-    const tick = () => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      setLoadingElapsedSec(elapsed);
-    };
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
 
-    tick();
-    const timer = window.setInterval(tick, 100);
-
-    return () => {
-      window.clearInterval(timer);
-    };
+    return () => window.clearInterval(timer);
   }, [analyzing]);
 
-  /** ======================
-   *  Strict Flow 가드 + pipeline 준비
-   *  ====================== */
   useEffect(() => {
     try {
       migrateLegacyToPipelineIfNeeded();
 
       const access = ensureStrictStepAccess("naming");
       if (!access?.ok) {
-        if (access?.reason === "no_back") {
-          alert(
-            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
-          );
-        }
+        const msg =
+          access?.reason === "diagnosis_missing"
+            ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+            : access?.reason === "no_back"
+              ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+              : access?.reason === "no_jump"
+                ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                : "허용되지 않는 접근입니다.";
+        alert(msg);
         if (access?.redirectTo) {
           navigate(access.redirectTo, { replace: true });
         }
@@ -653,7 +658,20 @@ export default function NamingConsultingInterview({ onLogout }) {
         p?.brandId ??
         null;
 
-      startBrandFlow({ brandId });
+      const guard = ensureBrandIdConsistency(brandId);
+      if (!guard?.ok) {
+        alertBrandIdMismatchAndStop(guard);
+        navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
+      const started = startBrandFlow({ brandId });
+      if (started?.ok === false && started?.reason === "brand_mismatch") {
+        alertBrandIdMismatchAndStop(started);
+        navigate(started.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
       setBrandFlowCurrent("naming");
     } catch {
       // ignore
@@ -959,7 +977,9 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    navigate("/brand/concept/interview");
+    navigate("/brand/concept/interview", {
+      state: { from: "naming", brandId },
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1399,11 +1419,13 @@ export default function NamingConsultingInterview({ onLogout }) {
                   role="status"
                   aria-live="polite"
                 >
-                  <div className="aiToast__head">
+                  <div className="aiToast__loadingWrap">
                     <span className="aiToast__spinner" aria-hidden="true" />
-                    <strong>AI 제안 생성 중</strong>
+                    <strong>AI 분석 중</strong>
                   </div>
-                  <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
                 </div>
               ) : toast?.show ? (
                 <div
@@ -1447,12 +1469,57 @@ export default function NamingConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>네이밍 제안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                <div
+                  className="card namingLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="namingLoadingCard__glow" aria-hidden="true" />
+
+                  <div className="namingLoadingCard__top">
+                    <span className="namingLoadingCard__pill">
+                      AI 분석 진행 중
+                    </span>
+                    <span className="namingLoadingCard__elapsed">
+                      {loadingElapsed.toFixed(1)}초
+                    </span>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
+
+                  <div className="namingLoadingCard__head">
+                    <span
+                      className="namingLoadingCard__spinner"
+                      aria-hidden="true"
+                    />
+                    <h2>네이밍 제안 생성 중</h2>
+                  </div>
+
+                  <p className="namingLoadingCard__desc">
+                    입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
+                  </p>
+
+                  <div className="namingLoadingCard__steps" aria-hidden="true">
+                    <span className="namingLoadingCard__step is-active">
+                      질문 분석
+                    </span>
+                    <span className="namingLoadingCard__step is-active">
+                      키워드 조합
+                    </span>
+                    <span className="namingLoadingCard__step">후보 정리</span>
+                  </div>
+
+                  <div
+                    className="namingLoadingCard__progress"
+                    aria-hidden="true"
+                  >
+                    <span className="namingLoadingCard__progressFill" />
+                  </div>
+
+                  <div className="namingLoadingCard__wait">
+                    잠시만 기다려주세요
+                    <span
+                      className="namingLoadingCard__dots"
+                      aria-hidden="true"
+                    />
+                  </div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
@@ -1464,8 +1531,18 @@ export default function NamingConsultingInterview({ onLogout }) {
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
+                      const aiNaming = safeText(
+                        (Array.isArray(c.samples)
+                          ? c.samples.find((s) => safeText(s, ""))
+                          : "") ||
+                          c.oneLiner ||
+                          c.name ||
+                          "",
+                        "",
+                      );
+
                       return (
                         <div
                           key={c.id}
@@ -1484,112 +1561,23 @@ export default function NamingConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{c.name}</div>
-                              {c.oneLiner ? (
-                                <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                  {c.oneLiner}
-                                </div>
-                              ) : null}
-                            </div>
+                            <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
-                          {c.keywords?.length ? (
-                            <div style={{ marginTop: 10 }}>
-                              <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                                키워드
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel candidateSectionLabel--ai">
+                                제안된 네이밍
                               </div>
                               <div
-                                style={{
-                                  display: "flex",
-                                  gap: 6,
-                                  flexWrap: "wrap",
-                                }}
+                                className={`candidateAiValue ${isSelected ? "selected" : ""}`}
                               >
-                                {c.keywords.map((kw) => (
-                                  <span
-                                    key={kw}
-                                    style={{
-                                      fontSize: 12,
-                                      fontWeight: 800,
-                                      padding: "4px 10px",
-                                      borderRadius: 999,
-                                      background: "rgba(0,0,0,0.04)",
-                                      border: "1px solid rgba(0,0,0,0.06)",
-                                      color: "rgba(0,0,0,0.75)",
-                                    }}
-                                  >
-                                    #{kw}
-                                  </span>
-                                ))}
+                                {aiNaming || "AI 결과값이 없습니다."}
                               </div>
-                            </div>
-                          ) : null}
-
-                          <div
-                            style={{
-                              marginTop: 10,
-                              fontSize: 13,
-                              opacity: 0.9,
-                            }}
-                          >
-                            {c.style ? (
-                              <div>
-                                <b>스타일</b> · {c.style}
-                              </div>
-                            ) : null}
-
-                            {c.samples?.length ? (
-                              <div style={{ marginTop: 6 }}>
-                                <b>샘플</b>
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 6,
-                                  }}
-                                >
-                                  {c.samples.map((s) => (
-                                    <span
-                                      key={s}
-                                      style={{
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        padding: "4px 10px",
-                                        borderRadius: 999,
-                                        background: "rgba(0,0,0,0.04)",
-                                        border: "1px solid rgba(0,0,0,0.06)",
-                                        color: "rgba(0,0,0,0.75)",
-                                      }}
-                                    >
-                                      {s}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {c.rationale ? (
-                              <div style={{ marginTop: 10, opacity: 0.85 }}>
-                                <b>근거</b> · {c.rationale}
-                              </div>
-                            ) : null}
-
-                            {c.checks?.length ? (
-                              <div style={{ marginTop: 8, opacity: 0.85 }}>
-                                <b>체크</b> · {c.checks.join(" · ")}
-                              </div>
-                            ) : null}
-
-                            {c.avoid?.length ? (
-                              <div style={{ marginTop: 8, opacity: 0.85 }}>
-                                <b>피해야 할 요소</b> · {c.avoid.join(", ")}
-                              </div>
-                            ) : null}
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -1700,20 +1688,25 @@ export default function NamingConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -1750,22 +1743,6 @@ export default function NamingConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
 

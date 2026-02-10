@@ -26,6 +26,7 @@ import {
   clearStepsFrom,
   readPipeline,
   startBrandFlow,
+  ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -35,6 +36,14 @@ const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 const RESULT_KEY = "brandStoryConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_story_v1";
 const NEXT_PATH = "/brand/logo/interview";
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.\n진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
 
@@ -746,25 +755,40 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
       const access = ensureStrictStepAccess("story");
       if (!access?.ok) {
-        if (access?.reason === "no_back") {
-          alert(
-            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
-          );
-        }
-        if (access?.redirectTo) {
-          navigate(access.redirectTo, { replace: true });
-        }
+        const msg =
+          access?.reason === "diagnosis_missing"
+            ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+            : access?.reason === "naming_missing"
+              ? "네이밍 컨설팅 완료 후 접근할 수 있습니다."
+              : access?.reason === "concept_missing"
+                ? "컨셉 컨설팅 완료 후 접근할 수 있습니다."
+                : access?.reason === "no_back"
+                  ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+                  : access?.reason === "no_jump"
+                    ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                    : "허용되지 않는 접근입니다.";
+        window.alert(msg);
+        if (access?.redirectTo) navigate(access.redirectTo, { replace: true });
         return;
       }
 
       const p = readPipeline();
-      const brandId =
-        location?.state?.brandId ??
-        location?.state?.report?.brandId ??
-        p?.brandId ??
-        null;
+      const brandId = location?.state?.brandId ?? p?.brandId ?? null;
 
-      startBrandFlow({ brandId });
+      const guard = ensureBrandIdConsistency(brandId);
+      if (!guard?.ok) {
+        alertBrandIdMismatchAndStop(guard);
+        navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
+      const started = startBrandFlow({ brandId });
+      if (started?.ok === false && started?.reason === "brand_mismatch") {
+        alertBrandIdMismatchAndStop(started);
+        navigate(started.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
       setBrandFlowCurrent("story");
     } catch {
       // ignore
@@ -814,10 +838,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
-  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -987,23 +1011,15 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
   useEffect(() => {
     if (!analyzing) {
-      setLoadingElapsedSec(0);
+      setLoadingElapsed(0);
       return;
     }
-
     const startedAt = Date.now();
-
-    const tick = () => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      setLoadingElapsedSec(elapsed);
-    };
-
-    tick();
-    const timer = window.setInterval(tick, 100);
-
-    return () => {
-      window.clearInterval(timer);
-    };
+    setLoadingElapsed(0);
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+    return () => window.clearInterval(timer);
   }, [analyzing]);
 
   const shouldShowMore = (text) => {
@@ -1355,7 +1371,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    navigate(NEXT_PATH);
+    navigate(NEXT_PATH, {
+      state: { from: "story", brandId },
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1812,11 +1830,13 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   role="status"
                   aria-live="polite"
                 >
-                  <div className="aiToast__head">
+                  <div className="aiToast__loadingWrap">
                     <span className="aiToast__spinner" aria-hidden="true" />
-                    <strong>AI 제안 생성 중</strong>
+                    <strong>AI 분석 중</strong>
                   </div>
-                  <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
                 </div>
               ) : toast?.show ? (
                 <div
@@ -1875,8 +1895,14 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
+                      const aiStory = safeText(
+                        c?.story || c?.raw || c?.oneLiner || "",
+                        "",
+                      );
+                      const canExpand = shouldShowMore(aiStory);
+
                       return (
                         <div
                           key={c.id}
@@ -1895,67 +1921,41 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{c.name}</div>
-                              <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                {c.oneLiner}
-                              </div>
-                              {c.meta ? (
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    opacity: 0.8,
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  {c.meta}
-                                </div>
-                              ) : null}
-                              {c.plot ? (
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    opacity: 0.75,
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  <b>플롯:</b> {c.plot}
-                                  {Array.isArray(c.emotions) &&
-                                  c.emotions.length ? (
-                                    <>
-                                      {" "}
-                                      · <b>감정:</b> {c.emotions.join(" · ")}
-                                    </>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
+                            <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
-                          <div>
-                            <div
-                              className={`candidateBody ${expandedCandidates?.[c.id] ? "expanded" : "clamped"}`}
-                            >
-                              {c.story}
-                            </div>
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel candidateSectionLabel--ai">
+                                AI 제안 스토리
+                              </div>
 
-                            {shouldShowMore(c.story) ? (
-                              <button
-                                type="button"
-                                className="candidateMore"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpanded(c.id);
-                                }}
-                              >
-                                {expandedCandidates?.[c.id]
-                                  ? "접기"
-                                  : "더 보기"}
-                              </button>
-                            ) : null}
+                              <div>
+                                <div
+                                  className={`candidateBody ${expandedCandidates?.[c.id] ? "expanded" : "clamped"}`}
+                                >
+                                  {aiStory || "AI 결과값이 없습니다."}
+                                </div>
+
+                                {canExpand ? (
+                                  <button
+                                    type="button"
+                                    className="candidateMore"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpanded(c.id);
+                                    }}
+                                  >
+                                    {expandedCandidates?.[c.id]
+                                      ? "접기"
+                                      : "더 보기"}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -2068,20 +2068,25 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -2118,22 +2123,6 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
 

@@ -377,10 +377,10 @@ export default function ConceptConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
-  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -434,6 +434,8 @@ export default function ConceptConsultingInterview({ onLogout }) {
   );
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId);
+  const loadingProgress = Math.min(96, Math.max(10, 22 + loadingElapsed * 16));
+  const loadingStep = loadingElapsed < 1.8 ? 1 : loadingElapsed < 3.8 ? 2 : 3;
 
   const requiredLabelMap = {
     core_values: "핵심 가치",
@@ -541,23 +543,15 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
   useEffect(() => {
     if (!analyzing) {
-      setLoadingElapsedSec(0);
+      setLoadingElapsed(0);
       return;
     }
-
     const startedAt = Date.now();
-
-    const tick = () => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      setLoadingElapsedSec(elapsed);
-    };
-
-    tick();
-    const timer = window.setInterval(tick, 100);
-
-    return () => {
-      window.clearInterval(timer);
-    };
+    setLoadingElapsed(0);
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+    return () => window.clearInterval(timer);
   }, [analyzing]);
 
   // ✅ draft 로드 (키 sanitize)
@@ -1136,11 +1130,13 @@ export default function ConceptConsultingInterview({ onLogout }) {
                   role="status"
                   aria-live="polite"
                 >
-                  <div className="aiToast__head">
+                  <div className="aiToast__loadingWrap">
                     <span className="aiToast__spinner" aria-hidden="true" />
-                    <strong>AI 제안 생성 중</strong>
+                    <strong>AI 분석 중</strong>
                   </div>
-                  <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
                 </div>
               ) : toast?.show ? (
                 <div
@@ -1184,12 +1180,69 @@ export default function ConceptConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>컨셉 제안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                <div
+                  className="card conceptLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="conceptLoadingCard__top">
+                    <span className="conceptLoadingCard__pill">
+                      AI 분석 진행 중
+                    </span>
+                    <span className="conceptLoadingCard__elapsed">
+                      진행 시간 {loadingElapsed.toFixed(1)}초
+                    </span>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
+
+                  <div className="conceptLoadingCard__main">
+                    <span
+                      className="conceptLoadingCard__spinner"
+                      aria-hidden="true"
+                    />
+                    <div className="conceptLoadingCard__titleWrap">
+                      <h2>컨셉 제안 생성 중</h2>
+                      <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                    </div>
+                  </div>
+
+                  <ul
+                    className="conceptLoadingCard__stages"
+                    aria-label="컨셉 생성 단계"
+                  >
+                    <li className={loadingStep >= 1 ? "active" : ""}>
+                      입력 내용 분석
+                    </li>
+                    <li className={loadingStep >= 2 ? "active" : ""}>
+                      핵심 메시지 구성
+                    </li>
+                    <li className={loadingStep >= 3 ? "active" : ""}>
+                      제안 3안 정리
+                    </li>
+                  </ul>
+
+                  <div
+                    className="conceptLoadingCard__progress"
+                    aria-hidden="true"
+                  >
+                    <div
+                      className="conceptLoadingCard__progressFill"
+                      style={{ width: `${loadingProgress}%` }}
+                    />
+                  </div>
+
+                  <div
+                    className="conceptLoadingCard__waiting"
+                    aria-live="polite"
+                  >
+                    잠시만 기다려주세요
+                    <span
+                      className="conceptLoadingCard__dots"
+                      aria-hidden="true"
+                    >
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </div>
                 </div>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
@@ -1238,39 +1291,29 @@ export default function ConceptConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
+                            <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
+                            <span className="candidateBadge">
+                              {isSelected ? "선택됨" : "제안"}
+                            </span>
+                          </div>
 
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel">
+                                제안 핵심
+                              </div>
                               {hasText(title) ? (
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    opacity: 0.92,
-                                    whiteSpace: "pre-wrap",
-                                  }}
-                                >
+                                <div className="candidateSectionText">
                                   {title}
                                 </div>
                               ) : null}
                               {hasText(summary) ? (
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    opacity: 0.92,
-                                    whiteSpace: "pre-wrap",
-                                  }}
-                                >
+                                <div className="candidateSectionText">
                                   {summary}
                                 </div>
                               ) : null}
                               {hasText(oneLine) ? (
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    opacity: 0.9,
-                                    whiteSpace: "pre-wrap",
-                                  }}
-                                >
+                                <div className="candidateSectionText">
                                   {oneLine}
                                 </div>
                               ) : null}
@@ -1286,18 +1329,16 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   “{slogan}”
                                 </div>
                               ) : null}
+
                               {hasText(tone) ? (
                                 <div
-                                  style={{
-                                    marginTop: 10,
-                                    fontSize: 12,
-                                    opacity: 0.85,
-                                    whiteSpace: "pre-wrap",
-                                  }}
+                                  className="candidateDetailItem"
+                                  style={{ marginTop: 10 }}
                                 >
-                                  말투/톤: {tone}
+                                  <b>톤</b> · {tone}
                                 </div>
                               ) : null}
+
                               {keywords.length ? (
                                 <div
                                   style={{
@@ -1325,23 +1366,16 @@ export default function ConceptConsultingInterview({ onLogout }) {
                                   ))}
                                 </div>
                               ) : null}
+
                               {hasText(note) ? (
                                 <div
-                                  style={{
-                                    marginTop: 10,
-                                    fontSize: 12,
-                                    opacity: 0.8,
-                                    whiteSpace: "pre-wrap",
-                                  }}
+                                  className="candidateDetailItem"
+                                  style={{ marginTop: 10 }}
                                 >
                                   {note}
                                 </div>
                               ) : null}
-                            </div>
-
-                            <span className="candidateBadge">
-                              {isSelected ? "선택됨" : "제안"}
-                            </span>
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -1453,20 +1487,25 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -1503,22 +1542,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
 

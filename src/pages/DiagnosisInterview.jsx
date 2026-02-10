@@ -340,10 +340,10 @@ export default function DiagnosisInterview({ onLogout }) {
     variant: "success",
   };
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
-  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const refBasic = useRef(null);
 
@@ -555,6 +555,24 @@ export default function DiagnosisInterview({ onLogout }) {
   }, []);
 
   useEffect(() => {
+    if (!isSubmitting) {
+      setLoadingElapsed(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setLoadingElapsed(0);
+
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSubmitting]);
+
+  useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
       prevCanAnalyzeRef.current = canAnalyze;
@@ -572,27 +590,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
-
-  useEffect(() => {
-    if (!isSubmitting) {
-      setLoadingElapsedSec(0);
-      return;
-    }
-
-    const startedAt = Date.now();
-
-    const tick = () => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      setLoadingElapsedSec(elapsed);
-    };
-
-    tick();
-    const timer = window.setInterval(tick, 100);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [isSubmitting]);
 
   const getFirstIncompleteRef = () => {
     for (const q of STEP_1.questions) {
@@ -1339,12 +1336,19 @@ export default function DiagnosisInterview({ onLogout }) {
             </aside>
           </div>
           {isSubmitting ? (
-            <div className="aiToast loading" role="status" aria-live="polite">
-              <div className="aiToast__head">
+            <div
+              className="aiToast loading"
+              role="status"
+              aria-live="polite"
+              aria-label="AI 진단 분석 진행 중"
+            >
+              <div className="aiToast__loadingWrap">
                 <span className="aiToast__spinner" aria-hidden="true" />
                 <strong>AI 분석 중</strong>
               </div>
-              <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+              <p className="aiToast__timer">
+                진행 시간 {loadingElapsed.toFixed(1)}초
+              </p>
             </div>
           ) : toast?.show ? (
             <div
