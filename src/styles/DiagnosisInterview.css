@@ -515,6 +515,50 @@
   background: rgba(153, 27, 27, 0.96);
   border-color: rgba(127, 29, 29, 0.95);
 }
+
+.diagInterview .aiToast.loading {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 64, 175, 0.97),
+    rgba(14, 116, 144, 0.97)
+  );
+  border-color: rgba(191, 219, 254, 0.62);
+  box-shadow: 0 10px 28px rgba(30, 64, 175, 0.35);
+}
+
+.diagInterview .aiToast.loading .aiToast__msg {
+  font-variant-numeric: tabular-nums;
+}
+
+.diagInterview .aiToast.loading {
+  text-align: center;
+}
+
+.diagInterview .aiToast.loading .aiToast__head {
+  justify-content: center;
+}
+
+.diagInterview .aiToast.loading .aiToast__msg {
+  text-align: center;
+}
+
+.diagInterview .aiToast__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-top-color: #ffffff;
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: aiToastSpin 0.85s linear infinite;
+}
+
+@keyframes aiToastSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .diagInterview .aiToast__head {
   display: flex;
   align-items: center;

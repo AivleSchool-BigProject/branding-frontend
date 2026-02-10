@@ -380,6 +380,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
+  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const [candidates, setCandidates] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -537,6 +538,27 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
+
+  useEffect(() => {
+    if (!analyzing) {
+      setLoadingElapsedSec(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+
+    const tick = () => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      setLoadingElapsedSec(elapsed);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 100);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [analyzing]);
 
   // ✅ draft 로드 (키 sanitize)
   useEffect(() => {
@@ -1108,7 +1130,19 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {/* 결과 anchor */}
               <div ref={refResult} />
 
-              {toast?.show ? (
+              {analyzing ? (
+                <div
+                  className="aiToast loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="aiToast__head">
+                    <span className="aiToast__spinner" aria-hidden="true" />
+                    <strong>AI 제안 생성 중</strong>
+                  </div>
+                  <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+                </div>
+              ) : toast?.show ? (
                 <div
                   className={`aiToast ${toast.variant}`}
                   role="status"
@@ -1487,24 +1521,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
-
-      {analyzing ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 컨셉 컨설팅 제안을 생성하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
-              표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

@@ -343,6 +343,7 @@ export default function DiagnosisInterview({ onLogout }) {
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
+  const [loadingElapsedSec, setLoadingElapsedSec] = useState(0);
 
   const refBasic = useRef(null);
 
@@ -571,6 +572,27 @@ export default function DiagnosisInterview({ onLogout }) {
 
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
+
+  useEffect(() => {
+    if (!isSubmitting) {
+      setLoadingElapsedSec(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+
+    const tick = () => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      setLoadingElapsedSec(elapsed);
+    };
+
+    tick();
+    const timer = window.setInterval(tick, 100);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSubmitting]);
 
   const getFirstIncompleteRef = () => {
     for (const q of STEP_1.questions) {
@@ -1316,7 +1338,15 @@ export default function DiagnosisInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-          {toast?.show ? (
+          {isSubmitting ? (
+            <div className="aiToast loading" role="status" aria-live="polite">
+              <div className="aiToast__head">
+                <span className="aiToast__spinner" aria-hidden="true" />
+                <strong>AI 분석 중</strong>
+              </div>
+              <p className="aiToast__msg">{`진행 시간 ${loadingElapsedSec.toFixed(1)}초`}</p>
+            </div>
+          ) : toast?.show ? (
             <div
               className={`aiToast ${toast.variant}`}
               role="status"
@@ -1333,24 +1363,6 @@ export default function DiagnosisInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
-
-      {isSubmitting ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 진단 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 기업 진단 결과를 정리하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 분석 응답이 빨라도 로딩 화면이 최소 1.5초
-              동안 표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>
