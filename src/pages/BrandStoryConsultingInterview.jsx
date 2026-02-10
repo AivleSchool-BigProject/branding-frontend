@@ -133,18 +133,7 @@ function isFilled(v) {
 }
 
 function QTag({ n }) {
-  return (
-    <span
-      style={{
-        display: "inline",
-        fontSize: "inherit",
-        fontWeight: 800,
-        marginRight: 6,
-      }}
-    >
-      {`${n}.`}
-    </span>
-  );
+  return <span className="questionNumber">{n}.</span>;
 }
 
 /** ✅ multiple 선택용 칩 UI (value는 배열) */
@@ -801,6 +790,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   }, []);
 
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   const [form, setForm] = useState(INITIAL_FORM);
@@ -1210,6 +1203,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setTimeout(() => scrollToResult?.(), 30);
     setAnalyzeError("");
     let requestStartedAt = null;
 

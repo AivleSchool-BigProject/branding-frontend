@@ -493,6 +493,10 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   // ✅ 폼 상태
@@ -885,6 +889,7 @@ export default function NamingConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setTimeout(() => scrollToResult?.(), 30);
     setAnalyzeError("");
     let requestStartedAt = null;
 
