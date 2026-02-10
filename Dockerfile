@@ -8,6 +8,10 @@
     
     # 소스 복사 후 빌드
     COPY . .
+
+    ARG VITE_API_BASE_URL
+    ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
     RUN npm run build
     
     
