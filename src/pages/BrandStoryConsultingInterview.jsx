@@ -1880,13 +1880,94 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>스토리 제안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                <>
+                  <div
+                    className="card namingLoadingCard"
+                    style={{ marginTop: 14 }}
+                  >
+                    <div
+                      className="namingLoadingCard__glow"
+                      aria-hidden="true"
+                    />
+
+                    <div className="namingLoadingCard__top">
+                      <span className="namingLoadingCard__pill">
+                        AI 분석 진행 중
+                      </span>
+                      <span className="namingLoadingCard__elapsed">
+                        {loadingElapsed.toFixed(1)}초
+                      </span>
+                    </div>
+
+                    <div className="namingLoadingCard__head">
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                      <h2>스토리 제안 생성 중</h2>
+                    </div>
+
+                    <p className="namingLoadingCard__desc">
+                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
+                    </p>
+
+                    <div
+                      className="namingLoadingCard__steps"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__step is-active">
+                        스토리 구조화
+                      </span>
+                      <span className="namingLoadingCard__step is-active">
+                        톤 정제
+                      </span>
+                      <span className="namingLoadingCard__step">후보 정리</span>
+                    </div>
+
+                    <div
+                      className="namingLoadingCard__progress"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__progressFill" />
+                    </div>
+
+                    <div className="namingLoadingCard__wait">
+                      잠시만 기다려주세요
+                      <span
+                        className="namingLoadingCard__dots"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
-                </div>
+
+                  <div
+                    className="candidateList candidateList--loading"
+                    aria-hidden="true"
+                  >
+                    {[1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="candidateCard candidateCard--loading"
+                      >
+                        <div className="candidateHead">
+                          <div className="candidateTitle">{`컨설팅 제안 ${n}`}</div>
+                          <span className="candidateBadge">생성 중</span>
+                        </div>
+                        <div className="candidateSections single">
+                          <section className="candidateSection candidateSection--content">
+                            <div className="candidateSectionLabel candidateSectionLabel--ai">
+                              AI 제안 스토리
+                            </div>
+                            <div className="candidateLoadingLine lg" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine sm" />
+                          </section>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">

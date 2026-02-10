@@ -1180,70 +1180,104 @@ export default function ConceptConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div
-                  className="card conceptLoadingCard"
-                  style={{ marginTop: 14 }}
-                >
-                  <div className="conceptLoadingCard__top">
-                    <span className="conceptLoadingCard__pill">
-                      AI 분석 진행 중
-                    </span>
-                    <span className="conceptLoadingCard__elapsed">
-                      진행 시간 {loadingElapsed.toFixed(1)}초
-                    </span>
-                  </div>
-
-                  <div className="conceptLoadingCard__main">
-                    <span
-                      className="conceptLoadingCard__spinner"
+                <>
+                  <div
+                    className="card namingLoadingCard"
+                    style={{ marginTop: 14 }}
+                  >
+                    <div
+                      className="namingLoadingCard__glow"
                       aria-hidden="true"
                     />
-                    <div className="conceptLoadingCard__titleWrap">
+
+                    <div className="namingLoadingCard__top">
+                      <span className="namingLoadingCard__pill">
+                        AI 분석 진행 중
+                      </span>
+                      <span className="namingLoadingCard__elapsed">
+                        {loadingElapsed.toFixed(1)}초
+                      </span>
+                    </div>
+
+                    <div className="namingLoadingCard__head">
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
                       <h2>컨셉 제안 생성 중</h2>
-                      <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                    </div>
+
+                    <p className="namingLoadingCard__desc">
+                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
+                    </p>
+
+                    <div
+                      className="namingLoadingCard__steps"
+                      aria-hidden="true"
+                    >
+                      <span
+                        className={`namingLoadingCard__step ${loadingStep >= 1 ? "is-active" : ""}`}
+                      >
+                        입력 분석
+                      </span>
+                      <span
+                        className={`namingLoadingCard__step ${loadingStep >= 2 ? "is-active" : ""}`}
+                      >
+                        메시지 조합
+                      </span>
+                      <span
+                        className={`namingLoadingCard__step ${loadingStep >= 3 ? "is-active" : ""}`}
+                      >
+                        후보 정리
+                      </span>
+                    </div>
+
+                    <div
+                      className="namingLoadingCard__progress"
+                      aria-hidden="true"
+                    >
+                      <span
+                        className="namingLoadingCard__progressFill"
+                        style={{ width: `${loadingProgress}%` }}
+                      />
+                    </div>
+
+                    <div className="namingLoadingCard__wait">
+                      잠시만 기다려주세요
+                      <span
+                        className="namingLoadingCard__dots"
+                        aria-hidden="true"
+                      />
                     </div>
                   </div>
 
-                  <ul
-                    className="conceptLoadingCard__stages"
-                    aria-label="컨셉 생성 단계"
-                  >
-                    <li className={loadingStep >= 1 ? "active" : ""}>
-                      입력 내용 분석
-                    </li>
-                    <li className={loadingStep >= 2 ? "active" : ""}>
-                      핵심 메시지 구성
-                    </li>
-                    <li className={loadingStep >= 3 ? "active" : ""}>
-                      제안 3안 정리
-                    </li>
-                  </ul>
-
                   <div
-                    className="conceptLoadingCard__progress"
+                    className="candidateList candidateList--loading"
                     aria-hidden="true"
                   >
-                    <div
-                      className="conceptLoadingCard__progressFill"
-                      style={{ width: `${loadingProgress}%` }}
-                    />
+                    {[1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="candidateCard candidateCard--loading"
+                      >
+                        <div className="candidateHead">
+                          <div className="candidateTitle">{`컨설팅 제안 ${n}`}</div>
+                          <span className="candidateBadge">생성 중</span>
+                        </div>
+                        <div className="candidateSections single">
+                          <section className="candidateSection candidateSection--content">
+                            <div className="candidateSectionLabel candidateSectionLabel--ai">
+                              제안 핵심
+                            </div>
+                            <div className="candidateLoadingLine lg" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine sm" />
+                          </section>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  <div
-                    className="conceptLoadingCard__waiting"
-                    aria-live="polite"
-                  >
-                    잠시만 기다려주세요
-                    <span
-                      className="conceptLoadingCard__dots"
-                      aria-hidden="true"
-                    >
-                      <span>.</span>
-                      <span>.</span>
-                      <span>.</span>
-                    </span>
-                  </div>
-                </div>
+                </>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
