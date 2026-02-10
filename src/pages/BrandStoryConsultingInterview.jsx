@@ -26,6 +26,7 @@ import {
   clearStepsFrom,
   readPipeline,
   startBrandFlow,
+  ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -35,6 +36,14 @@ const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 const RESULT_KEY = "brandStoryConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_story_v1";
 const NEXT_PATH = "/brand/logo/interview";
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.\n진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 const DIAG_KEYS = ["diagnosisInterviewDraft_v1", "diagnosisInterviewDraft"];
 
@@ -124,25 +133,7 @@ function isFilled(v) {
 }
 
 function QTag({ n }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2px 10px",
-        borderRadius: 999,
-        background: "rgba(0,0,0,0.06)",
-        border: "1px solid rgba(0,0,0,0.08)",
-        fontSize: 12,
-        fontWeight: 900,
-        marginRight: 8,
-        transform: "translateY(-1px)",
-      }}
-    >
-      {n}
-    </span>
-  );
+  return <span className="questionNumber">{n}.</span>;
 }
 
 /** ✅ multiple 선택용 칩 UI (value는 배열) */
@@ -746,25 +737,40 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
       const access = ensureStrictStepAccess("story");
       if (!access?.ok) {
-        if (access?.reason === "no_back") {
-          alert(
-            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
-          );
-        }
-        if (access?.redirectTo) {
-          navigate(access.redirectTo, { replace: true });
-        }
+        const msg =
+          access?.reason === "diagnosis_missing"
+            ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+            : access?.reason === "naming_missing"
+              ? "네이밍 컨설팅 완료 후 접근할 수 있습니다."
+              : access?.reason === "concept_missing"
+                ? "컨셉 컨설팅 완료 후 접근할 수 있습니다."
+                : access?.reason === "no_back"
+                  ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+                  : access?.reason === "no_jump"
+                    ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                    : "허용되지 않는 접근입니다.";
+        window.alert(msg);
+        if (access?.redirectTo) navigate(access.redirectTo, { replace: true });
         return;
       }
 
       const p = readPipeline();
-      const brandId =
-        location?.state?.brandId ??
-        location?.state?.report?.brandId ??
-        p?.brandId ??
-        null;
+      const brandId = location?.state?.brandId ?? p?.brandId ?? null;
 
-      startBrandFlow({ brandId });
+      const guard = ensureBrandIdConsistency(brandId);
+      if (!guard?.ok) {
+        alertBrandIdMismatchAndStop(guard);
+        navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
+      const started = startBrandFlow({ brandId });
+      if (started?.ok === false && started?.reason === "brand_mismatch") {
+        alertBrandIdMismatchAndStop(started);
+        navigate(started.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
       setBrandFlowCurrent("story");
     } catch {
       // ignore
@@ -784,6 +790,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   }, []);
 
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   const [form, setForm] = useState(INITIAL_FORM);
@@ -814,6 +824,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
@@ -983,6 +994,19 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
+
+  useEffect(() => {
+    if (!analyzing) {
+      setLoadingElapsed(0);
+      return;
+    }
+    const startedAt = Date.now();
+    setLoadingElapsed(0);
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [analyzing]);
 
   const shouldShowMore = (text) => {
     const t = String(text || "").trim();
@@ -1179,6 +1203,7 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setTimeout(() => scrollToResult?.(), 30);
     setAnalyzeError("");
     let requestStartedAt = null;
 
@@ -1333,7 +1358,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    navigate(NEXT_PATH);
+    navigate(NEXT_PATH, {
+      state: { from: "story", brandId },
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1461,16 +1488,19 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
             <section className="diagInterview__left">
               {/* ✅ (요청 반영) 1) 기본 정보(자동 반영) 카드 제거 */}
 
-              {/* 2) Q1~Q4 */}
-              <div className="card">
+              {/* 2) Intro */}
+              <div className="card consultingIntroCard">
                 <div className="card__head">
                   <h2>Brand Story Consulting</h2>
-                  <p>
+                  {/* <p>
                     아래 질문에 답하면, 브랜드 스토리 제안 3가지를 생성할 수
                     있어요.
-                  </p>
+                  </p> */}
                 </div>
+              </div>
 
+              {/* 3) Q1~Q4 */}
+              <div className="card questionCard">
                 <div className="field" id="story-q-founding_story">
                   <label>
                     <QTag n="1" />
@@ -1784,7 +1814,21 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
               <div ref={refResult} />
 
-              {toast?.show ? (
+              {analyzing ? (
+                <div
+                  className="aiToast loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="aiToast__loadingWrap">
+                    <span className="aiToast__spinner" aria-hidden="true" />
+                    <strong>AI 분석 중</strong>
+                  </div>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
+                </div>
+              ) : toast?.show ? (
                 <div
                   className={`aiToast ${toast.variant}`}
                   role="status"
@@ -1826,13 +1870,94 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>스토리 제안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                <>
+                  <div
+                    className="card namingLoadingCard"
+                    style={{ marginTop: 14 }}
+                  >
+                    <div
+                      className="namingLoadingCard__glow"
+                      aria-hidden="true"
+                    />
+
+                    <div className="namingLoadingCard__top">
+                      <span className="namingLoadingCard__pill">
+                        AI 분석 진행 중
+                      </span>
+                      <span className="namingLoadingCard__elapsed">
+                        {loadingElapsed.toFixed(1)}초
+                      </span>
+                    </div>
+
+                    <div className="namingLoadingCard__head">
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                      <h2>스토리 제안 생성 중</h2>
+                    </div>
+
+                    <p className="namingLoadingCard__desc">
+                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
+                    </p>
+
+                    <div
+                      className="namingLoadingCard__steps"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__step is-active">
+                        스토리 구조화
+                      </span>
+                      <span className="namingLoadingCard__step is-active">
+                        톤 정제
+                      </span>
+                      <span className="namingLoadingCard__step">후보 정리</span>
+                    </div>
+
+                    <div
+                      className="namingLoadingCard__progress"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__progressFill" />
+                    </div>
+
+                    <div className="namingLoadingCard__wait">
+                      잠시만 기다려주세요
+                      <span
+                        className="namingLoadingCard__dots"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
-                </div>
+
+                  <div
+                    className="candidateList candidateList--loading"
+                    aria-hidden="true"
+                  >
+                    {[1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="candidateCard candidateCard--loading"
+                      >
+                        <div className="candidateHead">
+                          <div className="candidateTitle">{`컨설팅 제안 ${n}`}</div>
+                          <span className="candidateBadge">생성 중</span>
+                        </div>
+                        <div className="candidateSections single">
+                          <section className="candidateSection candidateSection--content">
+                            <div className="candidateSectionLabel candidateSectionLabel--ai">
+                              AI 제안 스토리
+                            </div>
+                            <div className="candidateLoadingLine lg" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine sm" />
+                          </section>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -1841,8 +1966,14 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
+                      const aiStory = safeText(
+                        c?.story || c?.raw || c?.oneLiner || "",
+                        "",
+                      );
+                      const canExpand = shouldShowMore(aiStory);
+
                       return (
                         <div
                           key={c.id}
@@ -1861,67 +1992,41 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{c.name}</div>
-                              <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                {c.oneLiner}
-                              </div>
-                              {c.meta ? (
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    opacity: 0.8,
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  {c.meta}
-                                </div>
-                              ) : null}
-                              {c.plot ? (
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    opacity: 0.75,
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  <b>플롯:</b> {c.plot}
-                                  {Array.isArray(c.emotions) &&
-                                  c.emotions.length ? (
-                                    <>
-                                      {" "}
-                                      · <b>감정:</b> {c.emotions.join(" · ")}
-                                    </>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </div>
+                            <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
-                          <div>
-                            <div
-                              className={`candidateBody ${expandedCandidates?.[c.id] ? "expanded" : "clamped"}`}
-                            >
-                              {c.story}
-                            </div>
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel candidateSectionLabel--ai">
+                                AI 제안 스토리
+                              </div>
 
-                            {shouldShowMore(c.story) ? (
-                              <button
-                                type="button"
-                                className="candidateMore"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpanded(c.id);
-                                }}
-                              >
-                                {expandedCandidates?.[c.id]
-                                  ? "접기"
-                                  : "더 보기"}
-                              </button>
-                            ) : null}
+                              <div>
+                                <div
+                                  className={`candidateBody ${expandedCandidates?.[c.id] ? "expanded" : "clamped"}`}
+                                >
+                                  {aiStory || "AI 결과값이 없습니다."}
+                                </div>
+
+                                {canExpand ? (
+                                  <button
+                                    type="button"
+                                    className="candidateMore"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpanded(c.id);
+                                    }}
+                                  >
+                                    {expandedCandidates?.[c.id]
+                                      ? "접기"
+                                      : "더 보기"}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -2034,20 +2139,25 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -2084,42 +2194,8 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
-
-      {analyzing ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 스토리 컨설팅 제안을 생성하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
-              표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

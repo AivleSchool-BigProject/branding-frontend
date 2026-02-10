@@ -1,5 +1,5 @@
 // src/pages/DiagnosisResult.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
@@ -10,6 +10,12 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import {
+  upsertPipeline,
+  startBrandFlow,
+  setBrandFlowCurrent,
+  ensureBrandIdConsistency,
+} from "../utils/brandPipelineStorage.js";
 
 const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
 const DIAGNOSIS_RESULT_KEY_LEGACY = "diagnosisResult_v1_global";
@@ -17,6 +23,14 @@ const DIAGNOSIS_DRAFT_KEYS = [
   "diagnosisInterviewDraft_v1",
   "diagnosisInterviewDraft",
 ];
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.\n진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 function safeParse(raw) {
   try {
@@ -104,49 +118,6 @@ function Card({ title, sub, children, footer }) {
   );
 }
 
-function QACard({ qa }) {
-  const entries = isPlainObject(qa) ? Object.entries(qa) : [];
-  return (
-    <Card
-      title="인터뷰 원문(Q&A)"
-      sub="사용자가 작성한 입력을 그대로 정리했습니다."
-    >
-      {entries.length ? (
-        <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-          {entries.map(([q, a]) => (
-            <div
-              key={q}
-              style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 14,
-                padding: 12,
-                background: "#fff",
-              }}
-            >
-              <div style={{ fontWeight: 900, marginBottom: 6, fontSize: 13 }}>
-                {q}
-              </div>
-              <div
-                style={{
-                  color: "#111827",
-                  whiteSpace: "pre-wrap",
-                  fontSize: 12,
-                }}
-              >
-                {renderText(a)}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="block">
-          <div className="block__body">Q&A 데이터가 없습니다.</div>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 export default function DiagnosisResult({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -190,7 +161,6 @@ export default function DiagnosisResult({ onLogout }) {
   const flatSummary = report?.summary ?? "";
   const flatAnalysisText = report?.analysis ?? ""; // ✅ 문자열일 수 있음
   const flatKeyInsights = report?.key_insights ?? ""; // ✅ snake_case
-  const flatRawQA = report?.raw_qa ?? {}; // ✅ 우리가 저장해두면 Q&A 표시 가능
 
   // ✅ legacy(이전 코드/백 응답) 구조 fallback
   const legacyInterviewReport =
@@ -299,6 +269,51 @@ export default function DiagnosisResult({ onLogout }) {
     return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
   }, [report]);
 
+  const pipelineSyncRef = useRef("");
+
+  useEffect(() => {
+    if (!report) return;
+
+    const syncKey = `${brandId || "none"}::${String(uiSummary || "").trim()}`;
+    if (pipelineSyncRef.current === syncKey) return;
+    pipelineSyncRef.current = syncKey;
+
+    const guard = ensureBrandIdConsistency(brandId);
+    if (!guard?.ok) {
+      alertBrandIdMismatchAndStop(guard);
+      navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+      return;
+    }
+
+    const diagnosisSummaryPayload = {
+      shortText: uiSummary || "기업진단 요약",
+      companyName:
+        rawQAFields?.companyName ||
+        rawQAFields?.name ||
+        report?.companyName ||
+        "",
+      oneLine:
+        rawQAFields?.serviceDefinition || rawQAFields?.oneLineDefinition || "",
+      industry: rawQAFields?.industry || rawQAFields?.businessCategory || "",
+      targetPersona: rawQAFields?.targetCustomer || rawQAFields?.target || "",
+    };
+
+    upsertPipeline({
+      brandId: brandId ?? null,
+      diagnosisSummary: diagnosisSummaryPayload,
+      updatedAt: Date.now(),
+    });
+
+    const started = startBrandFlow({ brandId });
+    if (started?.ok === false && started?.reason === "brand_mismatch") {
+      alertBrandIdMismatchAndStop(started);
+      navigate(started.redirectTo || "/brandconsulting", { replace: true });
+      return;
+    }
+
+    setBrandFlowCurrent("naming");
+  }, [report, brandId, uiSummary, rawQAFields, navigate]);
+
   const goInterview = () =>
     navigate("/diagnosisinterview", { state: { mode: "resume" } });
   const goHome = () => navigate("/brandconsulting");
@@ -310,7 +325,9 @@ export default function DiagnosisResult({ onLogout }) {
       );
       return;
     }
-    navigate("/brand/naming/interview");
+    navigate("/brand/naming/interview", {
+      state: { report, brandId, fromDiagnosis: true },
+    });
   };
 
   const handleReset = () => {
@@ -319,7 +336,7 @@ export default function DiagnosisResult({ onLogout }) {
     userRemoveItem(DIAGNOSIS_RESULT_KEY_LEGACY);
     localStorage.removeItem(DIAGNOSIS_RESULT_KEY);
     alert("기업진단 입력/결과 데이터를 초기화했습니다.");
-    navigate("/diagnosisinterview", { state: { mode: "start" } });
+    navigate("/diagnosisinterview?mode=start", { state: { mode: "start" } });
   };
 
   // 입력 요약 카드: 필드형(raw_qa_fields) 우선 → 질문/답변 맵(raw_qa)에서 유추 fallback
@@ -690,11 +707,6 @@ export default function DiagnosisResult({ onLogout }) {
                         ))}
                       </div>
                     </Card>
-                  ) : null}
-
-                  {/* Q&A(원문)도 raw_qa가 있을 때만 */}
-                  {isPlainObject(rawQA) && Object.keys(rawQA).length ? (
-                    <QACard qa={rawQA} />
                   ) : null}
                 </>
               )}
