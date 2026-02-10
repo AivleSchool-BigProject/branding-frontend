@@ -90,6 +90,15 @@
   margin-top: 12px;
 }
 
+/* 질문 1개 = 1카드 */
+.diagInterview.consultingInterview .questionCard .field {
+  margin-top: 0;
+}
+
+.diagInterview.consultingInterview .questionCard {
+  padding: 14px 16px;
+}
+
 .diagInterview.consultingInterview .field label {
   font-size: 12px;
   font-weight: 700;
@@ -112,6 +121,30 @@
   outline: none;
   background: #fff;
   color: #0f172a;
+}
+
+.diagInterview.consultingInterview .selectWrap {
+  position: relative;
+}
+
+.diagInterview.consultingInterview .selectWrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(71, 85, 105, 0.9);
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.diagInterview.consultingInterview .selectWrap select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 34px;
+  background: #fff;
 }
 
 .diagInterview.consultingInterview .field textarea {
