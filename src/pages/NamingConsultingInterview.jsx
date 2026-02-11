@@ -564,6 +564,33 @@ export default function NamingConsultingInterview({ onLogout }) {
     return status;
   }, [form, requiredKeys]);
 
+  const questionComplete = useMemo(
+    () => ({
+      namingStyles:
+        isFilled(form?.namingStyles) &&
+        (form?.namingStyles?.[0] !== "Other" ||
+          isFilled(form?.namingStyleOther)),
+      nameLength:
+        isFilled(form?.nameLength) &&
+        (form?.nameLength !== "Other" || isFilled(form?.nameLengthOther)),
+      languagePrefs:
+        isFilled(form?.languagePrefs) &&
+        (form?.languagePrefs?.[0] !== "Other" || isFilled(form?.languageOther)),
+      brandVibe:
+        isFilled(form?.brandVibe) &&
+        (!Array.isArray(form?.brandVibe) ||
+          !form.brandVibe.includes("Other") ||
+          isFilled(form?.brandVibeOther)),
+      avoidStyle: Boolean(requiredStatus.avoidStyle),
+      domainConstraint:
+        isFilled(form?.domainConstraint) &&
+        (form?.domainConstraint !== "Other" || isFilled(form?.domainOther)),
+      targetEmotion: Boolean(requiredStatus.targetEmotion),
+      currentName: isFilled(form?.currentName),
+    }),
+    [form, requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
     [requiredKeys, requiredStatus],
@@ -1189,7 +1216,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.namingStyles ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-namingStyles">
                   <label>
                     1. 어떤 스타일의 이름을 선호하시나요?{" "}
@@ -1224,7 +1253,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.nameLength ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-nameLength">
                   <label>
                     2. 이름의 길이는 어느 정도가 적당한가요?{" "}
@@ -1257,7 +1288,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.languagePrefs ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-languagePrefs">
                   <label>
                     3. 어떤 언어 기반이어야 하나요?{" "}
@@ -1292,7 +1325,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brandVibe ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-brandVibe">
                   <label>
                     4. 이름에서 느껴져야 할 첫인상은 무엇인가요? (최대 2개 선택){" "}
@@ -1341,7 +1376,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.avoidStyle ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-avoidStyle">
                   <label>
                     5. "이런 느낌만은 피해주세요" 하는 것이 있나요?{" "}
@@ -1355,7 +1392,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.domainConstraint ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-domainConstraint">
                   <label>
                     6. .com 도메인 확보가 얼마나 중요한가요?{" "}
@@ -1388,7 +1427,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.targetEmotion ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-targetEmotion">
                   <label>
                     7. 고객이 이름을 듣자마자 느꼈으면 하는 딱 하나의 감정은
@@ -1402,7 +1443,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.currentName ? "is-complete" : ""}`}
+              >
                 <div className="field">
                   <label>
                     8. 현재 사용 중인 브랜드 이름이 있다면 무엇인가요? (선택)

@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
-import ConsultingFlowMini from "../components/ConsultingFlowMini.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
@@ -828,10 +827,50 @@ export default function DiagnosisInterview({ onLogout }) {
     return parts.join(" | ");
   };
 
+  const isQuestionCompleted = (q) => {
+    if (!q || typeof q !== "object") return false;
+
+    const ck = q.context_key;
+    if (!ck) return false;
+
+    const otherKey = otherKeyOf(ck);
+    const value = getValue(ck);
+
+    if (
+      q.question_type === "short_answer" ||
+      q.question_type === "long_answer"
+    ) {
+      return isFilled(value);
+    }
+
+    if (q.question_type === "single_choice") {
+      const selected = String(value ?? "").trim();
+      if (!selected) return false;
+
+      const selectedOpt = (q.options || []).find((o) => o.value === selected);
+      if (selected === "Other" && selectedOpt?.has_text_input) {
+        return isFilled(getValue(otherKey));
+      }
+      return true;
+    }
+
+    if (q.question_type === "multiple_choice") {
+      const arr = Array.isArray(value) ? value : [];
+      if (arr.length === 0) return false;
+      if (arr.includes("Other")) {
+        return isFilled(getValue(otherKey));
+      }
+      return true;
+    }
+
+    return isFilled(value);
+  };
+
   const renderQuestion = (q) => {
     const ck = q.context_key;
     const otherKey = otherKeyOf(ck);
     const value = getValue(ck);
+    const isComplete = isQuestionCompleted(q);
 
     const label = (
       <label>
@@ -841,7 +880,9 @@ export default function DiagnosisInterview({ onLogout }) {
 
     if (q.question_type === "short_answer") {
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
           <input
             value={String(value ?? "")}
@@ -854,7 +895,9 @@ export default function DiagnosisInterview({ onLogout }) {
 
     if (q.question_type === "long_answer") {
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
           <textarea
             value={String(value ?? "")}
@@ -875,7 +918,9 @@ export default function DiagnosisInterview({ onLogout }) {
         selectedOpt?.has_text_input && selected === "Other";
 
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
 
           <select
@@ -919,7 +964,9 @@ export default function DiagnosisInterview({ onLogout }) {
       const otherOpt = opts.find((o) => o.value === "Other");
 
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
 
           <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
@@ -981,7 +1028,7 @@ export default function DiagnosisInterview({ onLogout }) {
     }
 
     return (
-      <div className="field">
+      <div className={`field questionField ${isComplete ? "is-complete" : ""}`}>
         <p className="hint">지원하지 않는 질문 타입: {q.question_type}</p>
       </div>
     );
@@ -1230,7 +1277,9 @@ export default function DiagnosisInterview({ onLogout }) {
                 </div>
 
                 <div className="formGrid">
-                  <div className="field">
+                  <div
+                    className={`field questionField ${isComplete ? "is-complete" : ""}`}
+                  >
                     <label>회사/프로젝트명 (선택)</label>
                     <input
                       value={form.companyName}
@@ -1239,7 +1288,9 @@ export default function DiagnosisInterview({ onLogout }) {
                     />
                   </div>
 
-                  <div className="field">
+                  <div
+                    className={`field questionField ${isComplete ? "is-complete" : ""}`}
+                  >
                     <label>웹사이트/소개 링크 (선택)</label>
                     <input
                       value={form.website}
@@ -1270,8 +1321,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
             <aside className="diagInterview__right">
               <div className="sideCard">
-                <ConsultingFlowMini activeKey="diagnosis" />
-
                 <div className="sideCard__titleRow">
                   <h3>진행 상태</h3>
                   <span className="badge">{progress}%</span>
@@ -1292,6 +1341,10 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <div className="sideMeta">
                   <div className="sideMeta__row">
+                    <span className="k">현재 단계</span>
+                    <span className="v">{currentSectionLabel}</span>
+                  </div>
+                  <div className="sideMeta__row">
                     <span className="k">필수 완료</span>
                     <span className="v">
                       {completedRequired}/{requiredKeys.length}
@@ -1307,53 +1360,36 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                {analysisReady ? (
-                  <div
-                    className="sideCompactDone"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
-                      입력 상태
-                    </h4>
-                    <p className="hint" style={{ marginTop: 6 }}>
-                      필수 입력 완료 · AI 진단 분석 완료
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <h4 className="sideSubTitle">필수 입력 체크</h4>
-                    <ul className="checkList checkList--cards">
-                      {requiredItems.map((item) => {
-                        const ok = Boolean(requiredStatus[item.key]);
+                <h4 className="sideSubTitle">필수 입력 체크</h4>
+                <ul className="checkList checkList--cards">
+                  {requiredItems.map((item) => {
+                    const ok = Boolean(requiredStatus[item.key]);
 
-                        return (
-                          <li key={item.key}>
-                            <button
-                              type="button"
-                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                              onClick={() => scrollToRequiredField(item.key)}
-                              aria-label={`${item.label} 항목으로 이동`}
+                    return (
+                      <li key={item.key}>
+                        <button
+                          type="button"
+                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                          onClick={() => scrollToRequiredField(item.key)}
+                          aria-label={`${item.label} 항목으로 이동`}
+                        >
+                          <span className="checkItemLeft">
+                            <span
+                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                              aria-hidden="true"
                             >
-                              <span className="checkItemLeft">
-                                <span
-                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                                  aria-hidden="true"
-                                >
-                                  {ok ? "✅" : "❗"}
-                                </span>
-                                <span>{item.label}</span>
-                              </span>
-                              <span className="checkItemState">
-                                {ok ? "완료" : "필수"}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                )}
+                              {ok ? "✅" : "❗"}
+                            </span>
+                            <span>{item.label}</span>
+                          </span>
+                          <span className="checkItemState">
+                            {ok ? "완료" : "필수"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
 
                 <button
                   type="button"

@@ -872,6 +872,22 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
     return status;
   }, [form, requiredKeys]);
 
+  const questionComplete = useMemo(
+    () => ({
+      founding_story: Boolean(requiredStatus.founding_story),
+      customer_transformation: Boolean(requiredStatus.customer_transformation),
+      aha_moment: Boolean(requiredStatus.aha_moment),
+      brand_mission: Boolean(requiredStatus.brand_mission),
+      story_plot: Boolean(requiredStatus.story_plot),
+      customer_conflict: Boolean(requiredStatus.customer_conflict),
+      story_emotion: Boolean(requiredStatus.story_emotion),
+      ultimate_goal: Boolean(requiredStatus.ultimate_goal),
+      founder_personality: isFilled(form?.founder_personality),
+      flagship_case: isFilled(form?.flagship_case),
+    }),
+    [form, requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
     [requiredKeys, requiredStatus],
@@ -1507,7 +1523,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
 
               {/* 3) Q1~Q4 */}
               <div className="card questionCard">
-                <div className="field" id="story-q-founding_story">
+                <div
+                  className={`field questionField ${questionComplete.founding_story ? "is-complete" : ""}`}
+                  id="story-q-founding_story"
+                >
                   <label>
                     <QTag n="1" />
                     창업자가 이 사업을 시작하게 된 결정적인 ‘계기’나 ‘사건’은
@@ -1521,7 +1540,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field" id="story-q-customer_problem">
+                <div
+                  className={`field questionField ${questionComplete.customer_transformation ? "is-complete" : ""}`}
+                  id="story-q-customer_problem"
+                >
                   <label>
                     <QTag n="2" />
                     우리 서비스를 이용하기 전과 후, 고객의 삶은 어떻게
@@ -1537,7 +1559,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field" id="story-q-solution_essence">
+                <div
+                  className={`field questionField ${questionComplete.aha_moment ? "is-complete" : ""}`}
+                  id="story-q-solution_essence"
+                >
                   <label>
                     <QTag n="3" />
                     고객이 우리만의 서비스를 이용하면서 감탄하는 순간은
@@ -1551,7 +1576,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field" id="story-q-emotional_hook">
+                <div
+                  className={`field questionField ${questionComplete.brand_mission ? "is-complete" : ""}`}
+                  id="story-q-emotional_hook"
+                >
                   <label>
                     <QTag n="4" />
                     수익 창출 외에, 우리가 세상에 기여하고자 하는 것은
@@ -1573,7 +1601,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <p>질문지(step_4) 기준: 1개 선택 (기타 선택 시 직접 입력)</p>
                 </div>
 
-                <div className="field" id="story-q-brand_persona">
+                <div
+                  className={`field questionField ${questionComplete.story_plot ? "is-complete" : ""}`}
+                  id="story-q-brand_persona"
+                >
                   <label>
                     <QTag n="5" />
                     어떤 스타일의 스토리텔링을 원하나요?{" "}
@@ -1686,7 +1717,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="story-q-credibility_basis">
+                <div
+                  className={`field questionField ${questionComplete.customer_conflict ? "is-complete" : ""}`}
+                  id="story-q-credibility_basis"
+                >
                   <label>
                     <QTag n="6" />
                     고객이 현재 겪고 있는 가장 큰 결핍이나 방해물은 무엇인가요?{" "}
@@ -1712,7 +1746,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="story-q-story_emotion">
+                <div
+                  className={`field questionField ${questionComplete.story_emotion ? "is-complete" : ""}`}
+                  id="story-q-story_emotion"
+                >
                   <label>
                     <QTag n="7" />
                     스토리를 통해 고객의 어떤 감정을 자극하고 싶나요? (최대 2개){" "}
@@ -1765,7 +1802,10 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <p>브랜드가 도달하고 싶은 “세상”을 그려주세요.</p>
                 </div>
 
-                <div className="field" id="story-q-ultimate_goal">
+                <div
+                  className={`field questionField ${questionComplete.ultimate_goal ? "is-complete" : ""}`}
+                  id="story-q-ultimate_goal"
+                >
                   <label>
                     <QTag n="8" />
                     브랜드가 궁극적으로 만들고자 하는 세상의 모습은 무엇인가요?{" "}
@@ -1787,7 +1827,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   <p>가능하면 적어주면 좋아요. 결과 퀄리티가 올라갑니다.</p>
                 </div>
 
-                <div className="field">
+                <div
+                  className={`field questionField ${questionComplete.founder_personality ? "is-complete" : ""}`}
+                >
                   <label>
                     <QTag n="9" />
                     창업자(또는 팀)의 성격이나 스타일을 한 문장으로 표현한다면
@@ -1803,7 +1845,9 @@ export default function BrandStoryConsultingInterview({ onLogout }) {
                   />
                 </div>
 
-                <div className="field">
+                <div
+                  className={`field questionField ${questionComplete.flagship_case ? "is-complete" : ""}`}
+                >
                   <label>
                     <QTag n="10" />
                     기억에 남는 고객 사례가 있다면 하나만 구체적으로

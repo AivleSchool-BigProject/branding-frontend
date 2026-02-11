@@ -923,6 +923,21 @@ export default function LogoConsultingInterview({ onLogout }) {
     return status;
   }, [form, requiredKeys]);
 
+  const questionComplete = useMemo(
+    () => ({
+      logo_structure: Boolean(requiredStatus.logo_structure),
+      visual_motif: Boolean(requiredStatus.visual_motif),
+      brand_color: Boolean(requiredStatus.brand_color),
+      design_style: Boolean(requiredStatus.design_style),
+      design_reference: Boolean(requiredStatus.design_reference),
+      logo_flexibility: Boolean(requiredStatus.logo_flexibility),
+      visual_text_ratio: Boolean(requiredStatus.visual_text_ratio),
+      main_usage_channels: Boolean(requiredStatus.main_usage_channels),
+      typography_style: Boolean(requiredStatus.typography_style),
+    }),
+    [requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
     [requiredKeys, requiredStatus],
@@ -1712,7 +1727,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>어떤 형태의 로고를 원하시나요? (Step 5)</p>
                 </div>
 
-                <div className="field" id="logo-q-logo_structure">
+                <div
+                  className={`field questionField ${questionComplete.logo_structure ? "is-complete" : ""}`}
+                  id="logo-q-logo_structure"
+                >
                   <label>
                     로고 형태 선택 <span className="req">*</span>
                   </label>
@@ -1743,7 +1761,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>로고에 담고 싶은 이미지는 무엇인가요? (선택형)</p>
                 </div>
 
-                <div className="field" id="logo-q-visual_motif">
+                <div
+                  className={`field questionField ${questionComplete.visual_motif ? "is-complete" : ""}`}
+                  id="logo-q-visual_motif"
+                >
                   <label>
                     비주얼 모티프 선택 <span className="req">*</span>
                   </label>
@@ -1772,7 +1793,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <h2>3. 대표 색상</h2>
                   <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
                 </div>
-                <div className="field" id="logo-q-brand_color">
+                <div
+                  className={`field questionField ${questionComplete.brand_color ? "is-complete" : ""}`}
+                  id="logo-q-brand_color"
+                >
                   <label>
                     색상 선택(최대 2개) <span className="req">*</span>
                   </label>
@@ -1884,7 +1908,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>선호하는 디자인 스타일은 무엇인가요? (Step 5)</p>
                 </div>
 
-                <div className="field" id="logo-q-design_style">
+                <div
+                  className={`field questionField ${questionComplete.design_style ? "is-complete" : ""}`}
+                  id="logo-q-design_style"
+                >
                   <label>
                     스타일 선택 <span className="req">*</span>
                   </label>
@@ -1919,7 +1946,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-design_reference">
+                <div
+                  className={`field questionField ${questionComplete.design_reference ? "is-complete" : ""}`}
+                  id="logo-q-design_reference"
+                >
                   <label>
                     레퍼런스(필수) <span className="req">*</span>
                   </label>
@@ -1945,7 +1975,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-logo_flexibility">
+                <div
+                  className={`field questionField ${questionComplete.logo_flexibility ? "is-complete" : ""}`}
+                  id="logo-q-logo_flexibility"
+                >
                   <label>
                     중요 특성(최대 2개) <span className="req">*</span>
                   </label>
@@ -1975,7 +2008,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>이미지와 텍스트 중 무엇이 더 중요한가요?</p>
                 </div>
 
-                <div className="field" id="logo-q-visual_text_ratio">
+                <div
+                  className={`field questionField ${questionComplete.visual_text_ratio ? "is-complete" : ""}`}
+                  id="logo-q-visual_text_ratio"
+                >
                   <label>
                     비율 선택 <span className="req">*</span>
                   </label>
@@ -2006,7 +2042,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-main_usage_channels">
+                <div
+                  className={`field questionField ${questionComplete.main_usage_channels ? "is-complete" : ""}`}
+                  id="logo-q-main_usage_channels"
+                >
                   <label>
                     사용 채널(최대 2개) <span className="req">*</span>
                   </label>
@@ -2042,7 +2081,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>브랜드 로고에 어울리는 폰트 스타일은 무엇인가요?</p>
                 </div>
 
-                <div className="field" id="logo-q-typography_style">
+                <div
+                  className={`field questionField ${questionComplete.typography_style ? "is-complete" : ""}`}
+                  id="logo-q-typography_style"
+                >
                   <label>
                     폰트 스타일 선택 <span className="req">*</span>
                   </label>

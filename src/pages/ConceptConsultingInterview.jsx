@@ -421,6 +421,34 @@ export default function ConceptConsultingInterview({ onLogout }) {
     return status;
   }, [form]);
 
+  const questionComplete = useMemo(
+    () => ({
+      core_values:
+        Boolean(requiredStatus.core_values) &&
+        (!(
+          Array.isArray(form?.core_values) && form.core_values.includes("Other")
+        ) ||
+          hasText(form?.core_values_other)),
+      brand_voice:
+        Boolean(requiredStatus.brand_voice) &&
+        (!(
+          Array.isArray(form?.brand_voice) && form.brand_voice.includes("Other")
+        ) ||
+          hasText(form?.brand_voice_other)),
+      brand_promise: Boolean(requiredStatus.brand_promise),
+      key_message: Boolean(requiredStatus.key_message),
+      concept_vibe: Boolean(requiredStatus.concept_vibe),
+      positioning_axes:
+        Boolean(requiredStatus.positioning_axes) &&
+        (!(
+          Array.isArray(form?.positioning_axes) &&
+          form.positioning_axes.includes("Other")
+        ) ||
+          hasText(form?.positioning_axes_other)),
+    }),
+    [form, requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => Boolean(requiredStatus[k])).length,
     [requiredKeys, requiredStatus],
@@ -985,7 +1013,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.core_values ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
@@ -1024,7 +1054,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brand_voice ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
@@ -1057,7 +1089,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brand_promise ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
@@ -1071,7 +1105,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.key_message ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
@@ -1085,7 +1121,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.concept_vibe ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
@@ -1099,7 +1137,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.positioning_axes ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
