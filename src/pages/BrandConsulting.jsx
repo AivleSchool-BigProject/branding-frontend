@@ -3,13 +3,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import bannerImage from "../Image/banner_image/Banner_B.png";
+// import bannerImage from "../Image/banner_image/Banner_brand_gray.png";
 
 // ✅ 기업진단 단계(추가)
-import diagnosisImg from "../Image/main_image/companyanalyze.png";
-import Logocon from "../Image/brandcon_image/LOGO.png";
-import namecon from "../Image/brandcon_image/NAME.png";
-import conceptcon from "../Image/brandcon_image/CONCEPT.png";
-import storycon from "../Image/brandcon_image/STORY.png";
+import diagnosisImg from "../Image/brandcon_image/diagnosis.png";
+import Logocon from "../Image/brandcon_image/logo_consulting.png";
+import namecon from "../Image/brandcon_image/naming.png";
+import conceptcon from "../Image/brandcon_image/concept_consulting.png";
+import storycon from "../Image/brandcon_image/brand_story.png";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";

@@ -251,6 +251,52 @@ function extractOneLineText(r) {
   );
 }
 
+// 2026-02-10
+// 로고 다운로드
+function safeFilename(name) {
+  return String(name || "brand")
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .slice(0, 60);
+}
+
+function guessExt(url) {
+  const clean = String(url || "").split("?")[0];
+  const m = clean.match(/\.([a-zA-Z0-9]+)$/);
+  return m ? m[1].toLowerCase() : "jpg";
+}
+
+function openInNewTab(url) {
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// ✅ “파일 저장” 시도 → 실패하면 새 탭(사용자 저장 가능)
+async function downloadFromUrl(url, filenameBase) {
+  if (!url) return;
+
+  const ext = guessExt(url);
+  const filename = `${safeFilename(filenameBase)}_logo.${ext}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("download failed");
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(blobUrl);
+  } catch {
+    openInNewTab(url);
+  }
+}
+
 export default function MyPage({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -913,6 +959,26 @@ export default function MyPage({ onLogout }) {
                                   >
                                     {progressStatus}
                                   </span>
+
+                                  {/* 2026-02-10 로고 다운로드 추가 */}
+                                  <button
+                                    type="button"
+                                    className="btn ghost btn-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const nameBase =
+                                        company || r?.title || "brand";
+                                      downloadFromUrl(logoUrl, nameBase);
+                                    }}
+                                    disabled={!logoUrl}
+                                    title={
+                                      !logoUrl
+                                        ? "선택된 로고가 없습니다."
+                                        : "로고를 다운로드합니다."
+                                    }
+                                  >
+                                    로고 원본 보기
+                                  </button>
 
                                   <button
                                     type="button"
