@@ -167,7 +167,7 @@ function extractLogoUrl(r) {
   if (!raw) return "";
 
   // ✅ 상대경로(/uploads/.., logos/..)면 API_BASE/ASSET_BASE를 붙여서 표시
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
   const ASSET_BASE =
     import.meta.env.VITE_ASSET_BASE_URL ||
     import.meta.env.VITE_S3_BASE_URL ||

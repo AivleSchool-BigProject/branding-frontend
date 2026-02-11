@@ -2,7 +2,7 @@ import axios from "axios";
 
 // ✅ 기본값: 로컬 백엔드(환경변수 없을 때)
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080"
+  import.meta.env.VITE_API_BASE_URL || "/api"
 ).replace(/\/+$/, "");
 
 // ✅ 표준 토큰 키
