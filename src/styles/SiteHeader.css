@@ -85,6 +85,11 @@
 .nav-dropdown__chev {
   font-size: 12px;
   opacity: 0.8;
+  transition: transform 0.18s ease;
+}
+
+.nav-dropdown.is-open .nav-dropdown__chev {
+  transform: rotate(180deg);
 }
 
 .nav-dropdown__panel {
@@ -99,13 +104,26 @@
   padding: 8px;
   box-shadow: var(--ui-shadow-lg, 0 18px 44px rgba(15, 23, 42, 0.12));
 
-  display: none;
+  display: grid;
+  gap: 6px;
   z-index: 50;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(4px) scale(0.98);
+  transform-origin: top left;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    visibility 0.16s ease;
 }
 
 .nav-dropdown.is-open .nav-dropdown__panel {
-  display: grid;
-  gap: 6px;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
 }
 
 .nav-dropdown__item {
@@ -120,21 +138,29 @@
   color: var(--ui-ink, #0f172a);
   transition:
     background 0.12s ease,
-    border-color 0.12s ease;
+    border-color 0.12s ease,
+    transform 0.08s ease,
+    box-shadow 0.12s ease;
 }
 
 .nav-dropdown__item:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+
+.nav-dropdown__item:active {
+  transform: translateY(0);
 }
 
 .nav-dropdown__hint,
 .nav-dropdown__section-title {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
   color: rgba(15, 23, 42, 0.55);
-  padding: 6px 10px 2px;
-  letter-spacing: 0.02em;
+  padding: 6px 10px 4px;
+  letter-spacing: 0.03em;
 }
 
 .nav-dropdown__divider {
@@ -147,28 +173,43 @@
 .nav-dropdown__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
   padding: 2px;
 }
 
 .nav-dropdown__item--mini {
-  padding: 9px 10px;
+  padding: 10px 10px;
   font-size: 12px;
   text-align: center;
   background: rgba(15, 23, 42, 0.03);
   border-color: rgba(15, 23, 42, 0.08);
+  line-height: 1.25;
 }
 
 .nav-dropdown__item--mini:hover {
-  background: rgba(37, 99, 235, 0.06);
-  border-color: rgba(37, 99, 235, 0.18);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.22);
 }
 
+/* 홍보물 드롭다운 전용 톤 */
+.nav-dropdown__panel--promo {
+  min-width: 300px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(135deg, rgba(0, 31, 102, 0.16), rgba(37, 99, 235, 0.1))
+      border-box;
+}
+
+.nav-dropdown__panel--promo .nav-dropdown__section-title {
+  margin: 2px 2px 0;
+  padding: 8px 10px 4px;
+}
 /* =========================================================
    ✅ Brand Dropdown: "프로세스 안내(비클릭)" + CTA만 클릭
    ========================================================= */
 .nav-dropdown__panel--brand {
-  min-width: 340px;
+  min-width: 360px;
   padding: 0;
 
   border: 1px solid transparent;
@@ -228,11 +269,15 @@
 /* ✅ 단계는 "설명용"이라 마우스 반응 자체를 제거 */
 .brand-dd__process {
   position: relative;
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
 
-  background: rgba(15, 23, 42, 0.02);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.05) 0%,
+    rgba(15, 23, 42, 0.02) 100%
+  );
+  border: 1px solid rgba(15, 23, 42, 0.09);
 }
 
 /* 단계 영역 전체 비인터랙션 */
@@ -242,56 +287,84 @@
   cursor: default;
 }
 
-.brand-dd__rail {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(0, 31, 102, 0.12);
+.brand-dd__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 7px;
 }
 
-.brand-dd__chips {
+.brand-dd__step {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-start;
-}
-
-.brand-dd__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  gap: 10px;
 
   padding: 8px 10px;
-  border-radius: 999px;
+  border-radius: 12px;
 
-  font-size: 12px;
-  font-weight: 900;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
-  color: rgba(15, 23, 42, 0.9);
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 23, 42, 0.1);
-
-  /* 클릭 가능 느낌 방지 */
   user-select: none;
 }
 
-.brand-dd__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(0, 31, 102, 0.35);
+.brand-dd__step:first-child {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 31, 102, 0.08) 0%,
+    rgba(255, 255, 255, 0.95) 64%
+  );
+  border-color: rgba(0, 31, 102, 0.14);
 }
 
-.brand-dd__arrow {
+.brand-dd__step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 24px;
+  min-width: 32px;
+  padding: 0 8px;
+  border-radius: 999px;
+
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+
+  color: rgba(255, 255, 255, 0.98);
+  background: linear-gradient(135deg, #001f66 0%, #2563eb 100%);
+  box-shadow: 0 6px 12px rgba(0, 31, 102, 0.2);
+}
+
+.brand-dd__step-name {
+  font-size: 13px;
+  font-weight: 900;
+  color: rgba(15, 23, 42, 0.9);
+  letter-spacing: -0.01em;
+}
+
+.brand-dd__step-arrow {
   font-size: 12px;
   font-weight: 900;
   color: rgba(15, 23, 42, 0.35);
+}
+
+.brand-dd__step-done {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  color: rgba(0, 31, 102, 0.88);
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+}
+
+.brand-dd__step--last .brand-dd__step-name {
+  color: rgba(0, 31, 102, 0.95);
 }
 
 /* Note */

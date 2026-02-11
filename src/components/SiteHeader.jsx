@@ -27,12 +27,6 @@ const PROMO_INTERVIEW_ROUTES = {
   poster: "/promotion/poster/interview",
 };
 
-// ✅ 홍보물 컨설팅: 소개/리포트 라우트
-const PROMO_ROUTES = {
-  home: "/promotion",
-  report: "/mypage/promotion-results",
-};
-
 export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -162,14 +156,6 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     if (typeof onBrandPick === "function") onBrandPick("diagnosis");
   };
 
-  // ✅ 홍보물 컨설팅: 공용 네비게이션(소개/리포트)
-  const handlePromoNavigate = (to, pickKey) => {
-    closeAllMenus();
-    if (!to) return;
-    navigate(to);
-    if (typeof onPromoPick === "function" && pickKey) onPromoPick(pickKey);
-  };
-
   const handlePromoClick = () => {
     setBrandOpen(false);
     setPromoOpen(false);
@@ -284,41 +270,43 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
                 className="brand-dd__process"
                 aria-label="브랜드 컨설팅 진행 순서"
               >
-                <div className="brand-dd__rail" aria-hidden="true" />
-                <div className="brand-dd__chips">
-                  <span className="brand-dd__chip">
-                    <span className="brand-dd__dot" aria-hidden="true" />
-                    기업진단
-                  </span>
-                  <span className="brand-dd__arrow" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="brand-dd__chip">
-                    <span className="brand-dd__dot" aria-hidden="true" />
-                    네이밍
-                  </span>
-                  <span className="brand-dd__arrow" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="brand-dd__chip">
-                    <span className="brand-dd__dot" aria-hidden="true" />
-                    컨셉
-                  </span>
-                  <span className="brand-dd__arrow" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="brand-dd__chip">
-                    <span className="brand-dd__dot" aria-hidden="true" />
-                    스토리
-                  </span>
-                  <span className="brand-dd__arrow" aria-hidden="true">
-                    →
-                  </span>
-                  <span className="brand-dd__chip">
-                    <span className="brand-dd__dot" aria-hidden="true" />
-                    로고
-                  </span>
-                </div>
+                <ol className="brand-dd__steps">
+                  <li className="brand-dd__step">
+                    <span className="brand-dd__step-no">01</span>
+                    <span className="brand-dd__step-name">기업진단</span>
+                    <span className="brand-dd__step-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </li>
+                  <li className="brand-dd__step">
+                    <span className="brand-dd__step-no">02</span>
+                    <span className="brand-dd__step-name">네이밍</span>
+                    <span className="brand-dd__step-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </li>
+                  <li className="brand-dd__step">
+                    <span className="brand-dd__step-no">03</span>
+                    <span className="brand-dd__step-name">컨셉</span>
+                    <span className="brand-dd__step-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </li>
+                  <li className="brand-dd__step">
+                    <span className="brand-dd__step-no">04</span>
+                    <span className="brand-dd__step-name">스토리</span>
+                    <span className="brand-dd__step-arrow" aria-hidden="true">
+                      →
+                    </span>
+                  </li>
+                  <li className="brand-dd__step brand-dd__step--last">
+                    <span className="brand-dd__step-no">05</span>
+                    <span className="brand-dd__step-name">로고</span>
+                    <span className="brand-dd__step-done" aria-hidden="true">
+                      완료
+                    </span>
+                  </li>
+                </ol>
               </div>
 
               <div className="brand-dd__note">
@@ -367,31 +355,13 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
           </button>
 
           <div
-            className="nav-dropdown__panel"
+            className="nav-dropdown__panel nav-dropdown__panel--promo"
             role="menu"
             aria-label="홍보물 컨설팅 메뉴"
             onMouseEnter={openPromoMenu}
             onMouseLeave={() => closePromoMenu(220)}
           >
-            <button
-              type="button"
-              className="nav-dropdown__item"
-              onClick={() => handlePromoNavigate(PROMO_ROUTES.home, "home")}
-            >
-              홍보물 컨설팅 소개 및 홈
-            </button>
-
-            <button
-              type="button"
-              className="nav-dropdown__item"
-              onClick={() => handlePromoNavigate(PROMO_ROUTES.report, "report")}
-            >
-              내 리포트
-            </button>
-
-            <div className="nav-dropdown__divider" aria-hidden="true" />
-
-            <div className="nav-dropdown__section-title">서비스 바로가기</div>
+            <div className="nav-dropdown__section-title">홍보물 컨설팅 4종</div>
             <div className="nav-dropdown__grid" role="none">
               <button
                 type="button"
