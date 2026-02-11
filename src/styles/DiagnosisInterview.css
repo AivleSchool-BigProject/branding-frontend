@@ -266,6 +266,13 @@
   color: #0f172a;
 }
 
+.diagInterview .sideCompactDone {
+  border: 1px solid #dbeafe;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
 .diagInterview .checkList {
   list-style: none;
   padding: 0;

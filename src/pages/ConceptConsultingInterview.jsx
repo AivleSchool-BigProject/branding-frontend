@@ -421,6 +421,34 @@ export default function ConceptConsultingInterview({ onLogout }) {
     return status;
   }, [form]);
 
+  const questionComplete = useMemo(
+    () => ({
+      core_values:
+        Boolean(requiredStatus.core_values) &&
+        (!(
+          Array.isArray(form?.core_values) && form.core_values.includes("Other")
+        ) ||
+          hasText(form?.core_values_other)),
+      brand_voice:
+        Boolean(requiredStatus.brand_voice) &&
+        (!(
+          Array.isArray(form?.brand_voice) && form.brand_voice.includes("Other")
+        ) ||
+          hasText(form?.brand_voice_other)),
+      brand_promise: Boolean(requiredStatus.brand_promise),
+      key_message: Boolean(requiredStatus.key_message),
+      concept_vibe: Boolean(requiredStatus.concept_vibe),
+      positioning_axes:
+        Boolean(requiredStatus.positioning_axes) &&
+        (!(
+          Array.isArray(form?.positioning_axes) &&
+          form.positioning_axes.includes("Other")
+        ) ||
+          hasText(form?.positioning_axes_other)),
+    }),
+    [form, requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => Boolean(requiredStatus[k])).length,
     [requiredKeys, requiredStatus],
@@ -437,7 +465,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     0,
   );
   const hasResult = candidates.length > 0;
-  const canGoNext = Boolean(hasResult && selectedId);
+  const canGoNext = Boolean(hasResult && selectedId && !analyzing);
   const loadingProgress = Math.min(96, Math.max(10, 22 + loadingElapsed * 16));
   const loadingStep = loadingElapsed < 1.8 ? 1 : loadingElapsed < 3.8 ? 2 : 3;
 
@@ -739,6 +767,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
+      if (mode === "regen") {
+        // 재분석 시작 시 기존 선택을 해제해 다음 단계 버튼을 비활성화
+        setSelectedId(null);
+        persistResult(candidates, null, nextSeed);
+      }
+
       const payload = buildPayloadForAI(mode, nextSeed);
 
       requestStartedAt = Date.now();
@@ -979,7 +1013,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.core_values ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-core_values">
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
@@ -1018,7 +1054,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brand_voice ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-brand_voice">
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
@@ -1051,7 +1089,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brand_promise ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-brand_promise">
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
@@ -1065,7 +1105,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.key_message ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-key_message">
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
@@ -1079,7 +1121,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.concept_vibe ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-concept_vibe">
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
@@ -1093,7 +1137,9 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.positioning_axes ? "is-complete" : ""}`}
+              >
                 <div className="field" id="concept-q-positioning_axes">
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
@@ -1128,6 +1174,87 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
               {/* 결과 anchor */}
               <div ref={refResult} />
+
+              {analyzing || hasResult ? (
+                <div
+                  className="card namingLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="namingLoadingCard__glow" aria-hidden="true" />
+
+                  <div className="namingLoadingCard__top">
+                    <span className="namingLoadingCard__pill">
+                      {analyzing ? "AI 분석 진행 중" : "AI 분석 완료"}
+                    </span>
+                    <span className="namingLoadingCard__elapsed">
+                      {analyzing ? `${loadingElapsed.toFixed(1)}초` : "완료"}
+                    </span>
+                  </div>
+
+                  <div className="namingLoadingCard__head">
+                    {analyzing ? (
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className="namingLoadingCard__done"
+                        aria-hidden="true"
+                      >
+                        ✓
+                      </span>
+                    )}
+                    <h2>
+                      {analyzing ? "컨셉 제안 생성 중" : "컨셉 제안 생성 완료"}
+                    </h2>
+                  </div>
+
+                  <p className="namingLoadingCard__desc">
+                    {analyzing
+                      ? "입력 내용을 바탕으로 제안 3가지를 만들고 있어요."
+                      : "AI 분석이 완료되었습니다. 아래 제안을 확인하고 1개를 선택해 주세요."}
+                  </p>
+
+                  {analyzing ? (
+                    <>
+                      <div
+                        className="namingLoadingCard__steps"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__step is-active">
+                          질문 분석
+                        </span>
+                        <span className="namingLoadingCard__step is-active">
+                          키워드 조합
+                        </span>
+                        <span className="namingLoadingCard__step">
+                          후보 정리
+                        </span>
+                      </div>
+
+                      <div
+                        className="namingLoadingCard__progress"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__progressFill" />
+                      </div>
+
+                      <div className="namingLoadingCard__wait">
+                        잠시만 기다려주세요
+                        <span
+                          className="namingLoadingCard__dots"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="namingLoadingCard__wait is-done">
+                      제안이 준비되었습니다
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {analyzing ? (
                 <div
@@ -1186,76 +1313,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
               {analyzing ? (
                 <>
-                  <div
-                    className="card namingLoadingCard"
-                    style={{ marginTop: 14 }}
-                  >
-                    <div
-                      className="namingLoadingCard__glow"
-                      aria-hidden="true"
-                    />
-
-                    <div className="namingLoadingCard__top">
-                      <span className="namingLoadingCard__pill">
-                        AI 분석 진행 중
-                      </span>
-                      <span className="namingLoadingCard__elapsed">
-                        {loadingElapsed.toFixed(1)}초
-                      </span>
-                    </div>
-
-                    <div className="namingLoadingCard__head">
-                      <span
-                        className="namingLoadingCard__spinner"
-                        aria-hidden="true"
-                      />
-                      <h2>컨셉 제안 생성 중</h2>
-                    </div>
-
-                    <p className="namingLoadingCard__desc">
-                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
-                    </p>
-
-                    <div
-                      className="namingLoadingCard__steps"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 1 ? "is-active" : ""}`}
-                      >
-                        입력 분석
-                      </span>
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 2 ? "is-active" : ""}`}
-                      >
-                        메시지 조합
-                      </span>
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 3 ? "is-active" : ""}`}
-                      >
-                        후보 정리
-                      </span>
-                    </div>
-
-                    <div
-                      className="namingLoadingCard__progress"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className="namingLoadingCard__progressFill"
-                        style={{ width: `${loadingProgress}%` }}
-                      />
-                    </div>
-
-                    <div className="namingLoadingCard__wait">
-                      잠시만 기다려주세요
-                      <span
-                        className="namingLoadingCard__dots"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-
                   <div
                     className="candidateList candidateList--loading"
                     aria-hidden="true"
@@ -1481,37 +1538,54 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredKeys.map((key) => {
-                    const ok = Boolean(requiredStatus[key]);
-                    const label = requiredLabelMap[key] || key;
+                {hasResult ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 제안 수신 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredKeys.map((key) => {
+                        const ok = Boolean(requiredStatus[key]);
+                        const label = requiredLabelMap[key] || key;
 
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(key)}
-                          aria-label={`${label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(key)}
+                              aria-label={`${label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <div className="divider" />
 
@@ -1564,18 +1638,26 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">다음 단계</h4>
-                {canGoNext ? (
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={handleGoNext}
-                    style={{ width: "100%" }}
-                  >
-                    스토리 단계로 이동
-                  </button>
+                {hasResult ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn primary ${canGoNext ? "" : "disabled"}`}
+                      onClick={handleGoNext}
+                      disabled={!canGoNext}
+                      style={{ width: "100%" }}
+                    >
+                      스토리 단계로 이동
+                    </button>
+                    {!canGoNext ? (
+                      <p className="hint" style={{ marginTop: 10 }}>
+                        * 제안 1개를 선택하면 다음 단계 버튼이 활성화됩니다.
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * AI 제안이 도착하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

@@ -564,6 +564,33 @@ export default function NamingConsultingInterview({ onLogout }) {
     return status;
   }, [form, requiredKeys]);
 
+  const questionComplete = useMemo(
+    () => ({
+      namingStyles:
+        isFilled(form?.namingStyles) &&
+        (form?.namingStyles?.[0] !== "Other" ||
+          isFilled(form?.namingStyleOther)),
+      nameLength:
+        isFilled(form?.nameLength) &&
+        (form?.nameLength !== "Other" || isFilled(form?.nameLengthOther)),
+      languagePrefs:
+        isFilled(form?.languagePrefs) &&
+        (form?.languagePrefs?.[0] !== "Other" || isFilled(form?.languageOther)),
+      brandVibe:
+        isFilled(form?.brandVibe) &&
+        (!Array.isArray(form?.brandVibe) ||
+          !form.brandVibe.includes("Other") ||
+          isFilled(form?.brandVibeOther)),
+      avoidStyle: Boolean(requiredStatus.avoidStyle),
+      domainConstraint:
+        isFilled(form?.domainConstraint) &&
+        (form?.domainConstraint !== "Other" || isFilled(form?.domainOther)),
+      targetEmotion: Boolean(requiredStatus.targetEmotion),
+      currentName: isFilled(form?.currentName),
+    }),
+    [form, requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
     [requiredKeys, requiredStatus],
@@ -580,7 +607,11 @@ export default function NamingConsultingInterview({ onLogout }) {
     0,
   );
   const hasResult = candidates.length > 0;
-  const canGoNext = Boolean(hasResult && selectedId);
+  const canGoNext = Boolean(hasResult && selectedId && !analyzing);
+  const nextStepDisabledHint =
+    analyzing && hasResult
+      ? "재분석 중입니다. 새 제안 도착 후 1개를 다시 선택하세요."
+      : "제안 1개를 선택하면 다음 단계 버튼이 활성화됩니다.";
 
   const requiredLabelMap = {
     namingStyles: "원하는 네이밍 스타일",
@@ -897,6 +928,12 @@ export default function NamingConsultingInterview({ onLogout }) {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
 
+      if (mode === "regen") {
+        // 재분석 시작 시 기존 선택을 해제해 다음 단계 버튼을 비활성화
+        setSelectedId(null);
+        persistResult(candidates, null, nextSeed);
+      }
+
       const p = readPipeline();
 
       // ✅ 기업진단 요약(내부 전달용)
@@ -1179,7 +1216,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.namingStyles ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-namingStyles">
                   <label>
                     1. 어떤 스타일의 이름을 선호하시나요?{" "}
@@ -1214,7 +1253,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.nameLength ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-nameLength">
                   <label>
                     2. 이름의 길이는 어느 정도가 적당한가요?{" "}
@@ -1247,7 +1288,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.languagePrefs ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-languagePrefs">
                   <label>
                     3. 어떤 언어 기반이어야 하나요?{" "}
@@ -1282,7 +1325,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.brandVibe ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-brandVibe">
                   <label>
                     4. 이름에서 느껴져야 할 첫인상은 무엇인가요? (최대 2개 선택){" "}
@@ -1331,7 +1376,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.avoidStyle ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-avoidStyle">
                   <label>
                     5. "이런 느낌만은 피해주세요" 하는 것이 있나요?{" "}
@@ -1345,7 +1392,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.domainConstraint ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-domainConstraint">
                   <label>
                     6. .com 도메인 확보가 얼마나 중요한가요?{" "}
@@ -1378,7 +1427,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.targetEmotion ? "is-complete" : ""}`}
+              >
                 <div className="field" id="naming-q-targetEmotion">
                   <label>
                     7. 고객이 이름을 듣자마자 느꼈으면 하는 딱 하나의 감정은
@@ -1392,7 +1443,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div className="card questionCard">
+              <div
+                className={`card questionCard ${questionComplete.currentName ? "is-complete" : ""}`}
+              >
                 <div className="field">
                   <label>
                     8. 현재 사용 중인 브랜드 이름이 있다면 무엇인가요? (선택)
@@ -1405,6 +1458,89 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
               <div ref={refResult} />
+
+              {analyzing || hasResult ? (
+                <div
+                  className="card namingLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="namingLoadingCard__glow" aria-hidden="true" />
+
+                  <div className="namingLoadingCard__top">
+                    <span className="namingLoadingCard__pill">
+                      {analyzing ? "AI 분석 진행 중" : "AI 분석 완료"}
+                    </span>
+                    <span className="namingLoadingCard__elapsed">
+                      {analyzing ? `${loadingElapsed.toFixed(1)}초` : "완료"}
+                    </span>
+                  </div>
+
+                  <div className="namingLoadingCard__head">
+                    {analyzing ? (
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className="namingLoadingCard__done"
+                        aria-hidden="true"
+                      >
+                        ✓
+                      </span>
+                    )}
+                    <h2>
+                      {analyzing
+                        ? "네이밍 제안 생성 중"
+                        : "네이밍 제안 생성 완료"}
+                    </h2>
+                  </div>
+
+                  <p className="namingLoadingCard__desc">
+                    {analyzing
+                      ? "입력 내용을 바탕으로 제안 3가지를 만들고 있어요."
+                      : "AI 분석이 완료되었습니다. 아래 제안을 확인하고 1개를 선택해 주세요."}
+                  </p>
+
+                  {analyzing ? (
+                    <>
+                      <div
+                        className="namingLoadingCard__steps"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__step is-active">
+                          질문 분석
+                        </span>
+                        <span className="namingLoadingCard__step is-active">
+                          키워드 조합
+                        </span>
+                        <span className="namingLoadingCard__step">
+                          후보 정리
+                        </span>
+                      </div>
+
+                      <div
+                        className="namingLoadingCard__progress"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__progressFill" />
+                      </div>
+
+                      <div className="namingLoadingCard__wait">
+                        잠시만 기다려주세요
+                        <span
+                          className="namingLoadingCard__dots"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="namingLoadingCard__wait is-done">
+                      제안이 준비되었습니다
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {analyzing ? (
                 <div
@@ -1463,65 +1599,6 @@ export default function NamingConsultingInterview({ onLogout }) {
 
               {analyzing ? (
                 <>
-                  <div
-                    className="card namingLoadingCard"
-                    style={{ marginTop: 14 }}
-                  >
-                    <div
-                      className="namingLoadingCard__glow"
-                      aria-hidden="true"
-                    />
-
-                    <div className="namingLoadingCard__top">
-                      <span className="namingLoadingCard__pill">
-                        AI 분석 진행 중
-                      </span>
-                      <span className="namingLoadingCard__elapsed">
-                        {loadingElapsed.toFixed(1)}초
-                      </span>
-                    </div>
-
-                    <div className="namingLoadingCard__head">
-                      <span
-                        className="namingLoadingCard__spinner"
-                        aria-hidden="true"
-                      />
-                      <h2>네이밍 제안 생성 중</h2>
-                    </div>
-
-                    <p className="namingLoadingCard__desc">
-                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
-                    </p>
-
-                    <div
-                      className="namingLoadingCard__steps"
-                      aria-hidden="true"
-                    >
-                      <span className="namingLoadingCard__step is-active">
-                        질문 분석
-                      </span>
-                      <span className="namingLoadingCard__step is-active">
-                        키워드 조합
-                      </span>
-                      <span className="namingLoadingCard__step">후보 정리</span>
-                    </div>
-
-                    <div
-                      className="namingLoadingCard__progress"
-                      aria-hidden="true"
-                    >
-                      <span className="namingLoadingCard__progressFill" />
-                    </div>
-
-                    <div className="namingLoadingCard__wait">
-                      잠시만 기다려주세요
-                      <span
-                        className="namingLoadingCard__dots"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-
                   <div
                     className="candidateList candidateList--loading"
                     aria-hidden="true"
@@ -1626,7 +1703,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘컨셉 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : `* ${nextStepDisabledHint}`}
                   </div>
                 </div>
               ) : null}
@@ -1671,37 +1748,54 @@ export default function NamingConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredKeys.map((key) => {
-                    const ok = Boolean(requiredStatus[key]);
-                    const label = requiredLabelMap[key] || key;
+                {hasResult ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 제안 수신 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredKeys.map((key) => {
+                        const ok = Boolean(requiredStatus[key]);
+                        const label = requiredLabelMap[key] || key;
 
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(key)}
-                          aria-label={`${label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(key)}
+                              aria-label={`${label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <div className="divider" />
 
@@ -1754,18 +1848,26 @@ export default function NamingConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">다음 단계</h4>
-                {canGoNext ? (
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={handleGoNext}
-                    style={{ width: "100%" }}
-                  >
-                    컨셉 단계로 이동
-                  </button>
+                {hasResult ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn primary ${canGoNext ? "" : "disabled"}`}
+                      onClick={handleGoNext}
+                      disabled={!canGoNext}
+                      style={{ width: "100%" }}
+                    >
+                      컨셉 단계로 이동
+                    </button>
+                    {!canGoNext ? (
+                      <p className="hint" style={{ marginTop: 10 }}>
+                        * {nextStepDisabledHint}
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * AI 제안이 도착하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>
