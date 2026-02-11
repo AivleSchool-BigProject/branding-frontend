@@ -44,7 +44,6 @@ import InvestmentPostCreate from "./pages/InvestmentPostCreate.jsx";
 import InvestmentPostDetail from "./pages/InvestmentPostDetail.jsx";
 import InvestmentPostEdit from "./pages/InvestmentPostEdit.jsx";
 
-import ChatbotWidget from "./components/ChatbotWidget.jsx";
 import CurrentUserWidget from "./components/CurrentUserWidget.jsx";
 
 import {
@@ -82,7 +81,7 @@ export default function App() {
   }, [pathname, navigate]);
 
   // ✅ 로그인/회원가입 관련 페이지에서는 숨김
-  const hideChatbotPaths = [
+  const hideWidgetPaths = [
     "/",
     "/login",
     "/signup",
@@ -90,10 +89,7 @@ export default function App() {
     "/findpw",
     "/easylogin",
   ];
-  const shouldHideChatbot = hideChatbotPaths.includes(pathname);
-
-  // ✅ 우측 상단 유저 위젯도 로그인/회원가입 관련 페이지에서는 숨김
-  const shouldHideUserWidget = hideChatbotPaths.includes(pathname);
+  const shouldHideUserWidget = hideWidgetPaths.includes(pathname);
 
   return (
     <>
@@ -218,13 +214,8 @@ export default function App() {
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
 
-      {/* ✅ 우측 상단 유저 위젯(현재 로그인 계정) */}
+      {/* ✅ 우측 하단 유저 위젯(현재 로그인 계정) */}
       {!shouldHideUserWidget && <CurrentUserWidget />}
-
-      {/* ✅ 챗봇은 라우트 아래에 떠 있게 */}
-      {!shouldHideChatbot && (
-        <ChatbotWidget title="AI 도우미" subtitle="무엇을 도와드릴까요?" />
-      )}
     </>
   );
 }

@@ -1129,6 +1129,87 @@ export default function ConceptConsultingInterview({ onLogout }) {
               {/* 결과 anchor */}
               <div ref={refResult} />
 
+              {analyzing || hasResult ? (
+                <div
+                  className="card namingLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="namingLoadingCard__glow" aria-hidden="true" />
+
+                  <div className="namingLoadingCard__top">
+                    <span className="namingLoadingCard__pill">
+                      {analyzing ? "AI 분석 진행 중" : "AI 분석 완료"}
+                    </span>
+                    <span className="namingLoadingCard__elapsed">
+                      {analyzing ? `${loadingElapsed.toFixed(1)}초` : "완료"}
+                    </span>
+                  </div>
+
+                  <div className="namingLoadingCard__head">
+                    {analyzing ? (
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className="namingLoadingCard__done"
+                        aria-hidden="true"
+                      >
+                        ✓
+                      </span>
+                    )}
+                    <h2>
+                      {analyzing ? "컨셉 제안 생성 중" : "컨셉 제안 생성 완료"}
+                    </h2>
+                  </div>
+
+                  <p className="namingLoadingCard__desc">
+                    {analyzing
+                      ? "입력 내용을 바탕으로 제안 3가지를 만들고 있어요."
+                      : "AI 분석이 완료되었습니다. 아래 제안을 확인하고 1개를 선택해 주세요."}
+                  </p>
+
+                  {analyzing ? (
+                    <>
+                      <div
+                        className="namingLoadingCard__steps"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__step is-active">
+                          질문 분석
+                        </span>
+                        <span className="namingLoadingCard__step is-active">
+                          키워드 조합
+                        </span>
+                        <span className="namingLoadingCard__step">
+                          후보 정리
+                        </span>
+                      </div>
+
+                      <div
+                        className="namingLoadingCard__progress"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__progressFill" />
+                      </div>
+
+                      <div className="namingLoadingCard__wait">
+                        잠시만 기다려주세요
+                        <span
+                          className="namingLoadingCard__dots"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="namingLoadingCard__wait is-done">
+                      제안이 준비되었습니다
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               {analyzing ? (
                 <div
                   className="aiToast loading"
@@ -1186,76 +1267,6 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
               {analyzing ? (
                 <>
-                  <div
-                    className="card namingLoadingCard"
-                    style={{ marginTop: 14 }}
-                  >
-                    <div
-                      className="namingLoadingCard__glow"
-                      aria-hidden="true"
-                    />
-
-                    <div className="namingLoadingCard__top">
-                      <span className="namingLoadingCard__pill">
-                        AI 분석 진행 중
-                      </span>
-                      <span className="namingLoadingCard__elapsed">
-                        {loadingElapsed.toFixed(1)}초
-                      </span>
-                    </div>
-
-                    <div className="namingLoadingCard__head">
-                      <span
-                        className="namingLoadingCard__spinner"
-                        aria-hidden="true"
-                      />
-                      <h2>컨셉 제안 생성 중</h2>
-                    </div>
-
-                    <p className="namingLoadingCard__desc">
-                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
-                    </p>
-
-                    <div
-                      className="namingLoadingCard__steps"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 1 ? "is-active" : ""}`}
-                      >
-                        입력 분석
-                      </span>
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 2 ? "is-active" : ""}`}
-                      >
-                        메시지 조합
-                      </span>
-                      <span
-                        className={`namingLoadingCard__step ${loadingStep >= 3 ? "is-active" : ""}`}
-                      >
-                        후보 정리
-                      </span>
-                    </div>
-
-                    <div
-                      className="namingLoadingCard__progress"
-                      aria-hidden="true"
-                    >
-                      <span
-                        className="namingLoadingCard__progressFill"
-                        style={{ width: `${loadingProgress}%` }}
-                      />
-                    </div>
-
-                    <div className="namingLoadingCard__wait">
-                      잠시만 기다려주세요
-                      <span
-                        className="namingLoadingCard__dots"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-
                   <div
                     className="candidateList candidateList--loading"
                     aria-hidden="true"
