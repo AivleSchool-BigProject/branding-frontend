@@ -1,6 +1,6 @@
 // src/pages/Promotion.jsx
 import React, { useMemo, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import bannerImage from "../Image/banner_image/Banner_P.png";
 import iconImage from "../Image/promotion_image/ProductIcon.png";
@@ -13,9 +13,9 @@ import SiteFooter from "../components/SiteFooter.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
+import { notifyPromoInterviewComingSoon } from "../utils/promoComingSoon.js";
 
 export default function PromotionPage({ onLogout }) {
-  const navigate = useNavigate(); // ✅ 이게 없어서 이동이 안 됐음
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
@@ -31,10 +31,14 @@ export default function PromotionPage({ onLogout }) {
   }, [searchParams, location.state]);
 
   // ✅ 카드 클릭 이동
-  const handleIcon = () => navigate("/promotion/icon/interview");
-  const handleAICut = () => navigate("/promotion/aicut/interview");
-  const handleStaging = () => navigate("/promotion/staging/interview");
-  const handlePoster = () => navigate("/promotion/poster/interview");
+  const blockPromoInterviewEntry = () => {
+    notifyPromoInterviewComingSoon();
+  };
+
+  const handleIcon = () => blockPromoInterviewEntry();
+  const handleAICut = () => blockPromoInterviewEntry();
+  const handleStaging = () => blockPromoInterviewEntry();
+  const handlePoster = () => blockPromoInterviewEntry();
 
   const onPromoPick = (action) => {
     // 필요하면 여기서 추가 동작 가능 (지금은 알럿만 유지)

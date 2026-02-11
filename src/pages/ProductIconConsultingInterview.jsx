@@ -223,6 +223,10 @@ export default function ProductIconConsultingInterview({ onLogout }) {
   }, [completedRequired, requiredKeys.length]);
 
   const canAnalyze = completedRequired === requiredKeys.length;
+  const remainingRequired = Math.max(
+    requiredKeys.length - completedRequired,
+    0,
+  );
 
   const currentSectionLabel = useMemo(() => {
     if (!form.productName.trim() || !form.productCategory.trim())
@@ -288,43 +292,9 @@ export default function ProductIconConsultingInterview({ onLogout }) {
   };
 
   const handleAnalyze = () => {
-    // 🔌 BACKEND 연동 포인트 (홍보물: 제품 아이콘 컨설팅)
-    // - 현재: 후보 3안 생성(프론트) → 사용자가 1안 선택 → 결과 페이지
-    // - 백엔드 연동 시:
-    //   A) 인터뷰 저장: POST /promotions/interview
-    //   B) 아이콘 컨설팅 생성: POST /promotions/icon
-    //      → 결과 조회: GET /promotions/icon
-    if (!canAnalyze) {
-      alert("필수 항목을 모두 입력하면 요청이 가능합니다.");
-      return;
-    }
-    const nextCandidates = makeCandidates(form);
-    setCandidates(nextCandidates);
-    setSelectedId("");
-
-    const resultPayload = {
-      service: "icon",
-      form,
-      candidates: nextCandidates,
-      selectedId: "",
-      updatedAt: Date.now(),
-    };
-    userSetItem(RESULT_KEY, JSON.stringify(resultPayload));
-
-    // (히스토리/마이페이지 표시용)
-    userSetItem(
-      LEGACY_KEY,
-      JSON.stringify({
-        updatedAt: resultPayload.updatedAt,
-        selectedId: "",
-        summary: {
-          title: form.productName || form.brandName,
-          subtitle: "제품 아이콘 컨설팅",
-        },
-      }),
+    alert(
+      "AI 분석 기능은 추후 개발 예정입니다.\n현재는 인터뷰 입력/저장만 가능합니다.",
     );
-
-    scrollToSection(refResult);
   };
 
   const handleGoResult = () => {
@@ -428,36 +398,90 @@ export default function ProductIconConsultingInterview({ onLogout }) {
 
       <main className="diagInterview__main">
         <div className="diagInterview__container">
-          <div className="diagInterview__titleRow">
-            <div>
-              <h1 className="diagInterview__title">
-                제품 아이콘 컨설팅 인터뷰
-              </h1>
-              <p className="diagInterview__sub">
-                제품/브랜드에 맞는 아이콘 방향(후보 3안)과 생성 프롬프트를
-                정리합니다.
-              </p>
-            </div>
+          <section
+            className="diagInterviewHero"
+            aria-label="홍보물 인터뷰 안내 배너"
+          >
+            <div className="diagInterviewHero__inner">
+              <div className="diagInterviewHero__left">
+                <h1 className="diagInterview__title">
+                  제품 아이콘 컨설팅 인터뷰
+                </h1>
+                <p className="diagInterview__sub">
+                  브랜드 컨설팅 인터뷰와 동일한 구성으로 질문을 작성하고, 아이콘
+                  방향을 체계적으로 정리하세요.
+                </p>
 
-            <div className="diagInterview__topActions">
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => navigate("/promotion")}
-              >
-                홍보물 컨설팅으로
-              </button>
-              <button type="button" className="btn" onClick={handleTempSave}>
-                임시저장
-              </button>
+                <div className="diagInterviewHero__chips">
+                  <span className="diagInterviewHero__chip">
+                    <b>진행률</b>
+                    <span>{progress}%</span>
+                  </span>
+                  <span className="diagInterviewHero__chip">
+                    <b>필수 완료</b>
+                    <span>
+                      {completedRequired}/{requiredKeys.length}
+                    </span>
+                  </span>
+                  <span className="diagInterviewHero__chip state ready">
+                    독립 서비스
+                  </span>
+                </div>
+              </div>
+
+              <div className="diagInterviewHero__right">
+                <div
+                  className={`diagInterviewHero__status ${canAnalyze ? "ready" : "pending"}`}
+                >
+                  <span
+                    className="diagInterviewHero__statusDot"
+                    aria-hidden="true"
+                  />
+                  <span>
+                    {canAnalyze
+                      ? "필수 입력이 완료되었습니다."
+                      : `필수 항목 ${remainingRequired}개가 남아있습니다.`}
+                  </span>
+                </div>
+
+                <div
+                  className="diagInterview__topActions"
+                  style={{ marginTop: 10 }}
+                >
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => navigate("/promotion")}
+                  >
+                    홍보물 컨설팅으로
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={handleTempSave}
+                  >
+                    임시저장
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           <PromotionServicePanel activeKey="icon" />
 
           <div className="diagInterview__grid">
             {/* ✅ 왼쪽: 폼 */}
+
             <section className="diagInterview__left">
+              <div className="card consultingIntroCard">
+                <div className="card__head">
+                  <h2>Product Icon Consulting Interview</h2>
+                  <p>
+                    홍보물 컨설팅은 4개의 독립 서비스로 운영됩니다. 다른 서비스
+                    완료 여부와 무관하게 바로 진행할 수 있습니다.
+                  </p>
+                </div>
+              </div>
               {/* 1) BASIC */}
               <div className="card" ref={refBasic}>
                 <div className="card__head">
@@ -667,16 +691,16 @@ export default function ProductIconConsultingInterview({ onLogout }) {
                 <div className="card__head">
                   <h2>후보 3안</h2>
                   <p>
-                    “AI 분석 요청”을 누르면 후보 3안이 생성됩니다. 마음에 드는
-                    1안을 선택해 결과를 확인하세요.
+                    AI 분석 기능은 준비 중입니다. 현재는 인터뷰 입력/저장 UI만
+                    제공되며, 분석 결과 생성은 추후 업데이트에서 지원됩니다.
                   </p>
                 </div>
 
                 {candidates.length === 0 ? (
                   <div className="emptyHint">
                     <p style={{ margin: 0, color: "#6b7280" }}>
-                      아직 후보가 없습니다. 필수 항목을 채운 뒤 “AI 분석 요청”을
-                      눌러 주세요.
+                      AI 분석 기능은 추후 개발 예정입니다. 현재는 인터뷰 작성 및
+                      임시저장만 가능합니다.
                     </p>
                   </div>
                 ) : (
@@ -790,11 +814,10 @@ export default function ProductIconConsultingInterview({ onLogout }) {
                 </button>
                 <button
                   type="button"
-                  className={`btn primary ${canAnalyze ? "" : "disabled"}`}
+                  className="btn primary"
                   onClick={handleAnalyze}
-                  disabled={!canAnalyze}
                 >
-                  AI 분석 요청
+                  AI 분석 (준비중)
                 </button>
               </div>
             </section>
@@ -880,18 +903,13 @@ export default function ProductIconConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "" : "disabled"}`}
+                  className="btn primary sideAnalyze"
                   onClick={handleAnalyze}
-                  disabled={!canAnalyze}
                 >
-                  AI 분석 요청
+                  AI 분석 (준비중)
                 </button>
 
-                {!canAnalyze ? (
-                  <p className="hint">
-                    * 필수 항목을 모두 입력하면 분석 버튼이 활성화됩니다.
-                  </p>
-                ) : null}
+                <p className="hint">* AI 분석 기능은 추후 개발 예정입니다.</p>
               </div>
             </aside>
           </div>

@@ -840,7 +840,7 @@ export default function DiagnosisInterview({ onLogout }) {
       q.question_type === "short_answer" ||
       q.question_type === "long_answer"
     ) {
-      return isFilled(value);
+      return hasText(value);
     }
 
     if (q.question_type === "single_choice") {
@@ -849,7 +849,7 @@ export default function DiagnosisInterview({ onLogout }) {
 
       const selectedOpt = (q.options || []).find((o) => o.value === selected);
       if (selected === "Other" && selectedOpt?.has_text_input) {
-        return isFilled(getValue(otherKey));
+        return hasText(getValue(otherKey));
       }
       return true;
     }
@@ -858,12 +858,12 @@ export default function DiagnosisInterview({ onLogout }) {
       const arr = Array.isArray(value) ? value : [];
       if (arr.length === 0) return false;
       if (arr.includes("Other")) {
-        return isFilled(getValue(otherKey));
+        return hasText(getValue(otherKey));
       }
       return true;
     }
 
-    return isFilled(value);
+    return hasText(value);
   };
 
   const renderQuestion = (q) => {
@@ -1268,39 +1268,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>기본 정보 (선택)</h2>
-                  <p>
-                    AI 질문지에는 포함되지 않지만, 작성하면 분석에 도움이 돼요.
-                  </p>
-                </div>
-
-                <div className="formGrid">
-                  <div
-                    className={`field questionField ${isComplete ? "is-complete" : ""}`}
-                  >
-                    <label>회사/프로젝트명 (선택)</label>
-                    <input
-                      value={form.companyName}
-                      onChange={(e) => setValue("companyName", e.target.value)}
-                      placeholder="예) BRANDPILOT"
-                    />
-                  </div>
-
-                  <div
-                    className={`field questionField ${isComplete ? "is-complete" : ""}`}
-                  >
-                    <label>웹사이트/소개 링크 (선택)</label>
-                    <input
-                      value={form.website}
-                      onChange={(e) => setValue("website", e.target.value)}
-                      placeholder="예) https://... 또는 노션/구글독 링크"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {categoriesOrdered.map((cat, idx) => (
                 <div key={cat} className="card" ref={categoryRefs[cat]}>
                   <div className="card__head">
