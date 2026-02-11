@@ -437,7 +437,7 @@ export default function ConceptConsultingInterview({ onLogout }) {
     0,
   );
   const hasResult = candidates.length > 0;
-  const canGoNext = Boolean(hasResult && selectedId);
+  const canGoNext = Boolean(hasResult && selectedId && !analyzing);
   const loadingProgress = Math.min(96, Math.max(10, 22 + loadingElapsed * 16));
   const loadingStep = loadingElapsed < 1.8 ? 1 : loadingElapsed < 3.8 ? 2 : 3;
 
@@ -738,6 +738,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
+
+      if (mode === "regen") {
+        // 재분석 시작 시 기존 선택을 해제해 다음 단계 버튼을 비활성화
+        setSelectedId(null);
+        persistResult(candidates, null, nextSeed);
+      }
 
       const payload = buildPayloadForAI(mode, nextSeed);
 
@@ -1492,37 +1498,54 @@ export default function ConceptConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredKeys.map((key) => {
-                    const ok = Boolean(requiredStatus[key]);
-                    const label = requiredLabelMap[key] || key;
+                {hasResult ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 제안 수신 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredKeys.map((key) => {
+                        const ok = Boolean(requiredStatus[key]);
+                        const label = requiredLabelMap[key] || key;
 
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(key)}
-                          aria-label={`${label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(key)}
+                              aria-label={`${label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <div className="divider" />
 
@@ -1575,18 +1598,26 @@ export default function ConceptConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">다음 단계</h4>
-                {canGoNext ? (
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={handleGoNext}
-                    style={{ width: "100%" }}
-                  >
-                    스토리 단계로 이동
-                  </button>
+                {hasResult ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn primary ${canGoNext ? "" : "disabled"}`}
+                      onClick={handleGoNext}
+                      disabled={!canGoNext}
+                      style={{ width: "100%" }}
+                    >
+                      스토리 단계로 이동
+                    </button>
+                    {!canGoNext ? (
+                      <p className="hint" style={{ marginTop: 10 }}>
+                        * 제안 1개를 선택하면 다음 단계 버튼이 활성화됩니다.
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 제안 1개를 선택하면 다음 단계 버튼이 표시됩니다.
+                    * AI 제안이 도착하면 다음 단계 버튼이 표시됩니다.
                   </p>
                 )}
               </div>

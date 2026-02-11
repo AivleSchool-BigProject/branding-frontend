@@ -939,7 +939,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     0,
   );
   const hasResult = candidates.length > 0;
-  const canFinish = Boolean(hasResult && selectedId);
+  const canFinish = Boolean(hasResult && selectedId && !analyzing);
 
   const requiredLabelMap = {
     logo_structure: "로고 형태",
@@ -1304,6 +1304,12 @@ export default function LogoConsultingInterview({ onLogout }) {
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
+
+      if (mode === "regen") {
+        // 재분석 시작 시 기존 선택을 해제해 완료 버튼을 비활성화
+        setSelectedId(null);
+        persistResult(candidates, null, nextSeed);
+      }
 
       const diagnosisSummary = p?.diagnosisSummary || null;
       const selections = {
@@ -2357,37 +2363,54 @@ export default function LogoConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredKeys.map((key) => {
-                    const ok = Boolean(requiredStatus[key]);
-                    const label = requiredLabelMap[key] || key;
+                {hasResult ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 제안 수신 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredKeys.map((key) => {
+                        const ok = Boolean(requiredStatus[key]);
+                        const label = requiredLabelMap[key] || key;
 
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(key)}
-                          aria-label={`${label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(key)}
+                              aria-label={`${label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <div className="divider" />
 
@@ -2440,19 +2463,26 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">마무리</h4>
-                {canFinish ? (
-                  <button
-                    type="button"
-                    className={`btn primary ${finishing ? "disabled" : ""}`}
-                    onClick={handleFinish}
-                    disabled={finishing}
-                    style={{ width: "100%" }}
-                  >
-                    {finishing ? "저장 중..." : "완료(히스토리로)"}
-                  </button>
+                {hasResult ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn primary ${!canFinish || finishing ? "disabled" : ""}`}
+                      onClick={handleFinish}
+                      disabled={!canFinish || finishing}
+                      style={{ width: "100%" }}
+                    >
+                      {finishing ? "저장 중..." : "완료(히스토리로)"}
+                    </button>
+                    {!canFinish ? (
+                      <p className="hint" style={{ marginTop: 10 }}>
+                        * 시안 1개를 선택하면 완료 버튼이 활성화됩니다.
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 시안 1개를 선택하면 완료 버튼이 표시됩니다.
+                    * AI 시안이 도착하면 완료 버튼이 표시됩니다.
                   </p>
                 )}
               </div>
