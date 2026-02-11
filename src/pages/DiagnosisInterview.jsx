@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
+import ConsultingFlowMini from "../components/ConsultingFlowMini.jsx";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
@@ -1269,6 +1270,8 @@ export default function DiagnosisInterview({ onLogout }) {
 
             <aside className="diagInterview__right">
               <div className="sideCard">
+                <ConsultingFlowMini activeKey="diagnosis" />
+
                 <div className="sideCard__titleRow">
                   <h3>진행 상태</h3>
                   <span className="badge">{progress}%</span>
@@ -1289,10 +1292,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <div className="sideMeta">
                   <div className="sideMeta__row">
-                    <span className="k">현재 단계</span>
-                    <span className="v">{currentSectionLabel}</span>
-                  </div>
-                  <div className="sideMeta__row">
                     <span className="k">필수 완료</span>
                     <span className="v">
                       {completedRequired}/{requiredKeys.length}
@@ -1308,36 +1307,53 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredItems.map((item) => {
-                    const ok = Boolean(requiredStatus[item.key]);
+                {analysisReady ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 진단 분석 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredItems.map((item) => {
+                        const ok = Boolean(requiredStatus[item.key]);
 
-                    return (
-                      <li key={item.key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(item.key)}
-                          aria-label={`${item.label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={item.key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(item.key)}
+                              aria-label={`${item.label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{item.label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{item.label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <button
                   type="button"

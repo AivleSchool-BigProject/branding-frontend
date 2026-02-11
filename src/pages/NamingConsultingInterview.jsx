@@ -581,6 +581,10 @@ export default function NamingConsultingInterview({ onLogout }) {
   );
   const hasResult = candidates.length > 0;
   const canGoNext = Boolean(hasResult && selectedId && !analyzing);
+  const nextStepDisabledHint =
+    analyzing && hasResult
+      ? "재분석 중입니다. 새 제안 도착 후 1개를 다시 선택하세요."
+      : "제안 1개를 선택하면 다음 단계 버튼이 활성화됩니다.";
 
   const requiredLabelMap = {
     namingStyles: "원하는 네이밍 스타일",
@@ -1656,7 +1660,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                   <div style={{ marginTop: 12, fontSize: 12, opacity: 0.75 }}>
                     {canGoNext
                       ? "✅ 사이드 카드에서 ‘컨셉 단계로 이동’ 버튼을 눌러주세요."
-                      : "* 제안 1개를 선택하면 사이드 카드에 다음 단계 버튼이 표시됩니다."}
+                      : `* ${nextStepDisabledHint}`}
                   </div>
                 </div>
               ) : null}
@@ -1814,7 +1818,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                     </button>
                     {!canGoNext ? (
                       <p className="hint" style={{ marginTop: 10 }}>
-                        * 제안 1개를 선택하면 다음 단계 버튼이 활성화됩니다.
+                        * {nextStepDisabledHint}
                       </p>
                     ) : null}
                   </>
