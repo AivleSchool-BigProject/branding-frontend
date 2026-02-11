@@ -20,6 +20,8 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import {
   migrateLegacyToPipelineIfNeeded,
   readPipeline,
+  ensureStrictStepAccess,
+  setBrandFlowCurrent,
 } from "../utils/brandPipelineStorage.js";
 
 export default function BrandConsulting({ onLogout }) {
@@ -88,6 +90,9 @@ export default function BrandConsulting({ onLogout }) {
 
   const status = useMemo(() => {
     const hasDiagnosis = Boolean(
+      (typeof pipeline?.diagnosisSummary === "string" &&
+        pipeline.diagnosisSummary.trim()) ||
+      pipeline?.diagnosisSummary?.shortText ||
       pipeline?.diagnosisSummary?.companyName ||
       pipeline?.diagnosisSummary?.oneLine,
     );
@@ -106,6 +111,7 @@ export default function BrandConsulting({ onLogout }) {
 
     return { hasDiagnosis, hasNaming, hasConcept, hasStory, hasLogo };
   }, [pipeline]);
+  const pipelineBrandId = pipeline?.brandId ?? null;
 
   const unlocked = useMemo(() => {
     const naming = status.hasDiagnosis;
@@ -158,10 +164,35 @@ export default function BrandConsulting({ onLogout }) {
       alert(
         "브랜드 컨설팅은 기업진단 요약을 기반으로 진행됩니다. 기업진단을 먼저 완료해주세요.",
       );
-      navigate("/diagnosisinterview", { state: { mode: "start" } });
+      navigate("/diagnosisinterview?mode=start", { state: { mode: "start" } });
       return;
     }
-    navigate(nextRoute, { state: { flow: "brand" } });
+
+    const access = ensureStrictStepAccess(nextStep);
+    if (!access?.ok) {
+      const msg =
+        access?.reason === "diagnosis_missing"
+          ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+          : access?.reason === "naming_missing"
+            ? "네이밍 컨설팅 완료 후 접근할 수 있습니다."
+            : access?.reason === "concept_missing"
+              ? "컨셉 컨설팅 완료 후 접근할 수 있습니다."
+              : access?.reason === "story_missing"
+                ? "브랜드 스토리 컨설팅 완료 후 접근할 수 있습니다."
+                : access?.reason === "no_back"
+                  ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+                  : access?.reason === "no_jump"
+                    ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                    : "허용되지 않는 접근입니다.";
+      alert(msg);
+      navigate(access?.redirectTo || "/brandconsulting", { replace: true });
+      return;
+    }
+
+    setBrandFlowCurrent(nextStep);
+    navigate(nextRoute, {
+      state: { flow: "brand", brandId: pipelineBrandId ?? undefined },
+    });
   };
 
   const handleViewFinalReport = () => {
@@ -308,7 +339,54 @@ export default function BrandConsulting({ onLogout }) {
                             type="button"
                             className={`btn ghost ${stepUnlocked ? "" : "disabled"}`}
                             disabled={!stepUnlocked}
-                            onClick={() => navigate(s.route)}
+                            onClick={() => {
+                              const access = ensureStrictStepAccess(s.key);
+                              if (isDiagnosisStep && access?.ok) {
+                                if (status.hasDiagnosis) {
+                                  navigate(s.route, {
+                                    state: { mode: "resume" },
+                                  });
+                                } else {
+                                  navigate("/diagnosisinterview?mode=start", {
+                                    state: { mode: "start" },
+                                  });
+                                }
+                                return;
+                              }
+
+                              if (!access?.ok) {
+                                const msg =
+                                  access?.reason === "diagnosis_missing"
+                                    ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+                                    : access?.reason === "naming_missing"
+                                      ? "네이밍 컨설팅 완료 후 접근할 수 있습니다."
+                                      : access?.reason === "concept_missing"
+                                        ? "컨셉 컨설팅 완료 후 접근할 수 있습니다."
+                                        : access?.reason === "story_missing"
+                                          ? "브랜드 스토리 컨설팅 완료 후 접근할 수 있습니다."
+                                          : access?.reason === "no_back"
+                                            ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+                                            : access?.reason === "no_jump"
+                                              ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                                              : "허용되지 않는 접근입니다.";
+                                alert(msg);
+                                navigate(
+                                  access?.redirectTo || "/brandconsulting",
+                                  {
+                                    replace: true,
+                                  },
+                                );
+                                return;
+                              }
+
+                              setBrandFlowCurrent(s.key);
+                              navigate(s.route, {
+                                state: {
+                                  flow: "brand",
+                                  brandId: pipelineBrandId ?? undefined,
+                                },
+                              });
+                            }}
                           >
                             {isDiagnosisStep
                               ? stepDone

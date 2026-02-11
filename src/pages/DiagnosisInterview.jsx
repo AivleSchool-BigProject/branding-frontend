@@ -307,6 +307,10 @@ export default function DiagnosisInterview({ onLogout }) {
   const location = useLocation();
 
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   const [form, setForm] = useState({
@@ -340,6 +344,9 @@ export default function DiagnosisInterview({ onLogout }) {
     variant: "success",
   };
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
+  const [analysisReady, setAnalysisReady] = useState(false);
+  const [resultNavigateState, setResultNavigateState] = useState(null);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
@@ -554,6 +561,24 @@ export default function DiagnosisInterview({ onLogout }) {
   }, []);
 
   useEffect(() => {
+    if (!isSubmitting) {
+      setLoadingElapsed(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setLoadingElapsed(0);
+
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isSubmitting]);
+
+  useEffect(() => {
     if (!didMountRef.current) {
       didMountRef.current = true;
       prevCanAnalyzeRef.current = canAnalyze;
@@ -564,7 +589,7 @@ export default function DiagnosisInterview({ onLogout }) {
       showToast({
         icon: "✅",
         title: "필수 입력 완료",
-        msg: "모든 필수 입력이 완료됐어요. 이제 AI 요약 결과 보기 버튼을 눌러 다음 단계로 진행해 주세요.",
+        msg: "모든 필수 입력이 완료됐어요. 이제 AI 요약 분석 요청 버튼을 눌러주세요.",
         variant: "success",
       });
     }
@@ -961,7 +986,8 @@ export default function DiagnosisInterview({ onLogout }) {
     );
   };
 
-  const handleViewResult = async () => {
+  const handleRequestAnalysis = async () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
     if (!canAnalyze) {
       alert("필수 항목을 모두 입력하면 AI 요약 결과를 볼 수 있어요.");
       return;
@@ -983,6 +1009,8 @@ export default function DiagnosisInterview({ onLogout }) {
       return;
     }
 
+    setAnalysisReady(false);
+    setResultNavigateState(null);
     setIsSubmitting(true);
     let requestStartedAt = null;
 
@@ -1077,13 +1105,21 @@ export default function DiagnosisInterview({ onLogout }) {
 
       await waitForMinAiLoading(requestStartedAt);
 
-      navigate("/diagnosis/result", {
-        state: {
-          from: "diagnosisInterview",
-          next: "/brandconsulting",
-          brandId: extractedBrandId,
-          report: resultPayload,
-        },
+      const nextState = {
+        from: "diagnosisInterview",
+        next: "/brandconsulting",
+        brandId: extractedBrandId,
+        report: resultPayload,
+      };
+
+      setResultNavigateState(nextState);
+      setAnalysisReady(true);
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      showToast({
+        icon: "✅",
+        title: "AI 분석 완료",
+        msg: "AI 분석이 완료됐어요. 아래 결과 보기 버튼을 눌러 결과 페이지로 이동하세요.",
+        variant: "success",
       });
     } catch (err) {
       const msg =
@@ -1092,11 +1128,21 @@ export default function DiagnosisInterview({ onLogout }) {
         err?.message ||
         "요청 실패";
       await waitForMinAiLoading(requestStartedAt);
-      alert(msg);
+      showToast({
+        icon: "⚠️",
+        title: "AI 분석 실패",
+        msg,
+        variant: "warn",
+      });
     } finally {
       setIsSubmitting(false);
       submitOnceRef.current = false;
     }
+  };
+
+  const handleGoToResult = () => {
+    if (!analysisReady || !resultNavigateState) return;
+    navigate("/diagnosis/result", { state: resultNavigateState });
   };
 
   return (
@@ -1295,28 +1341,49 @@ export default function DiagnosisInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"}`}
-                  onClick={handleViewResult}
-                  disabled={!canAnalyze || isSubmitting}
+                  className={`btn primary sideAnalyze ${analysisReady || canAnalyze ? "ready" : "pending"}`}
+                  onClick={
+                    analysisReady ? handleGoToResult : handleRequestAnalysis
+                  }
+                  disabled={(!canAnalyze && !analysisReady) || isSubmitting}
                 >
                   {isSubmitting
-                    ? "요청 중..."
-                    : canAnalyze
-                      ? "AI 요약 결과 보기"
-                      : `AI 요약 결과 보기 (${remainingRequired}개 남음)`}
+                    ? "AI 분석 중..."
+                    : analysisReady
+                      ? "결과 보기"
+                      : canAnalyze
+                        ? "AI 요약 분석 요청"
+                        : `AI 요약 분석 요청 (${remainingRequired}개 남음)`}
                 </button>
 
                 <p
-                  className={`hint sideActionHint ${canAnalyze ? "ready" : ""}`}
+                  className={`hint sideActionHint ${analysisReady || canAnalyze ? "ready" : ""}`}
                 >
-                  {canAnalyze
-                    ? "모든 필수 입력이 완료됐어요. AI 요약 결과 보기를 눌러주세요."
-                    : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 요약 결과 보기 버튼이 활성화돼요.`}
+                  {analysisReady
+                    ? "AI 분석이 완료됐어요. 결과 보기 버튼을 눌러 결과 페이지로 이동하세요."
+                    : canAnalyze
+                      ? "모든 필수 입력이 완료됐어요. AI 요약 분석 요청을 눌러주세요."
+                      : `필수 항목 ${remainingRequired}개를 모두 입력하면 AI 요약 분석 요청 버튼이 활성화돼요.`}
                 </p>
               </div>
             </aside>
           </div>
-          {toast?.show ? (
+          {isSubmitting ? (
+            <div
+              className="aiToast loading"
+              role="status"
+              aria-live="polite"
+              aria-label="AI 진단 분석 진행 중"
+            >
+              <div className="aiToast__loadingWrap">
+                <span className="aiToast__spinner" aria-hidden="true" />
+                <strong>AI 분석 중</strong>
+              </div>
+              <p className="aiToast__timer">
+                진행 시간 {loadingElapsed.toFixed(1)}초
+              </p>
+            </div>
+          ) : toast?.show ? (
             <div
               className={`aiToast ${toast.variant}`}
               role="status"
@@ -1333,24 +1400,6 @@ export default function DiagnosisInterview({ onLogout }) {
           ) : null}
         </div>
       </main>
-
-      {isSubmitting ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 진단 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 기업 진단 결과를 정리하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 분석 응답이 빨라도 로딩 화면이 최소 1.5초
-              동안 표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

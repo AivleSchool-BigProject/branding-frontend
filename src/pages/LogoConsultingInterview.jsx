@@ -29,6 +29,7 @@ import {
   setBrandFlowCurrent,
   startBrandFlow,
   completeBrandFlow,
+  ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -50,6 +51,15 @@ import exSnapchat from "../Image/logo_example_image/logo_snapchat.png";
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_logo_v1";
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.
+진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 // ✅ 마이페이지 로고 표시 fallback용(백 저장이 지연/누락될 때)
 const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
@@ -784,14 +794,22 @@ export default function LogoConsultingInterview({ onLogout }) {
 
       const access = ensureStrictStepAccess("logo");
       if (!access?.ok) {
-        if (access?.reason === "no_back") {
-          alert(
-            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
-          );
-        }
-        if (access?.redirectTo) {
-          navigate(access.redirectTo, { replace: true });
-        }
+        const msg =
+          access?.reason === "diagnosis_missing"
+            ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+            : access?.reason === "naming_missing"
+              ? "네이밍 단계가 완료되지 않았습니다. 네이밍부터 진행해주세요."
+              : access?.reason === "concept_missing"
+                ? "컨셉 단계가 완료되지 않았습니다. 컨셉부터 진행해주세요."
+                : access?.reason === "story_missing"
+                  ? "스토리 단계가 완료되지 않았습니다. 스토리부터 진행해주세요."
+                  : access?.reason === "no_back"
+                    ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+                    : access?.reason === "no_jump"
+                      ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                      : "허용되지 않는 접근입니다.";
+        alert(msg);
+        navigate(access?.redirectTo || "/brandconsulting", { replace: true });
         return;
       }
 
@@ -801,7 +819,21 @@ export default function LogoConsultingInterview({ onLogout }) {
         location?.state?.report?.brandId ??
         p?.brandId ??
         null;
-      startBrandFlow({ brandId });
+
+      const guard = ensureBrandIdConsistency(brandId);
+      if (!guard?.ok) {
+        alertBrandIdMismatchAndStop(guard);
+        navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
+      const started = startBrandFlow({ brandId });
+      if (started?.ok === false && started?.reason === "brand_mismatch") {
+        alertBrandIdMismatchAndStop(started);
+        navigate(started.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
       setBrandFlowCurrent("logo");
     } catch {
       // ignore
@@ -811,6 +843,10 @@ export default function LogoConsultingInterview({ onLogout }) {
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   // ✅ 폼 상태
@@ -843,6 +879,7 @@ export default function LogoConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
@@ -1010,6 +1047,19 @@ export default function LogoConsultingInterview({ onLogout }) {
 
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
+
+  useEffect(() => {
+    if (!analyzing) {
+      setLoadingElapsed(0);
+      return;
+    }
+    const startedAt = Date.now();
+    setLoadingElapsed(0);
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [analyzing]);
 
   // ✅ draft 로드 (+ 구버전 최소 마이그레이션)
   useEffect(() => {
@@ -1248,6 +1298,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setTimeout(() => scrollToResult?.(), 30);
     setAnalyzeError("");
     let requestStartedAt = null;
     try {
@@ -1641,6 +1692,13 @@ export default function LogoConsultingInterview({ onLogout }) {
             <section className="diagInterview__left">
               {/* ✅ 기본 정보(자동반영) 섹션 삭제 */}
 
+              <div className="card consultingIntroCard">
+                <div className="card__head">
+                  <h2>Brand Logo Consulting</h2>
+                  {/* <p>아래 질문에 답하면, 로고 시안 3가지를 생성할 수 있어요.</p> */}
+                </div>
+              </div>
+
               {/* 1) 로고 형태 */}
               <div className="card" ref={refLogo}>
                 <div className="card__head">
@@ -2003,7 +2061,21 @@ export default function LogoConsultingInterview({ onLogout }) {
               {/* 결과 영역 */}
               <div ref={refResult} />
 
-              {toast?.show ? (
+              {analyzing ? (
+                <div
+                  className="aiToast loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="aiToast__loadingWrap">
+                    <span className="aiToast__spinner" aria-hidden="true" />
+                    <strong>AI 분석 중</strong>
+                  </div>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
+                </div>
+              ) : toast?.show ? (
                 <div
                   className={`aiToast ${toast.variant}`}
                   role="status"
@@ -2045,13 +2117,95 @@ export default function LogoConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>로고 시안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 시안 3가지를 만들고 있어요.</p>
+                <>
+                  <div
+                    className="card namingLoadingCard"
+                    style={{ marginTop: 14 }}
+                  >
+                    <div
+                      className="namingLoadingCard__glow"
+                      aria-hidden="true"
+                    />
+
+                    <div className="namingLoadingCard__top">
+                      <span className="namingLoadingCard__pill">
+                        AI 분석 진행 중
+                      </span>
+                      <span className="namingLoadingCard__elapsed">
+                        {loadingElapsed.toFixed(1)}초
+                      </span>
+                    </div>
+
+                    <div className="namingLoadingCard__head">
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                      <h2>로고 시안 생성 중</h2>
+                    </div>
+
+                    <p className="namingLoadingCard__desc">
+                      입력 내용을 바탕으로 시안 3가지를 만들고 있어요.
+                    </p>
+
+                    <div
+                      className="namingLoadingCard__steps"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__step is-active">
+                        스타일 분석
+                      </span>
+                      <span className="namingLoadingCard__step is-active">
+                        시안 렌더링
+                      </span>
+                      <span className="namingLoadingCard__step">후보 정리</span>
+                    </div>
+
+                    <div
+                      className="namingLoadingCard__progress"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__progressFill" />
+                    </div>
+
+                    <div className="namingLoadingCard__wait">
+                      잠시만 기다려주세요
+                      <span
+                        className="namingLoadingCard__dots"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
-                </div>
+
+                  <div
+                    className="candidateList candidateList--loading"
+                    aria-hidden="true"
+                  >
+                    {[1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="candidateCard candidateCard--loading"
+                      >
+                        <div className="candidateHead">
+                          <div className="candidateTitle">{`시안 ${n}`}</div>
+                          <span className="candidateBadge">생성 중</span>
+                        </div>
+                        <div className="candidateSections single">
+                          <section className="candidateSection candidateSection--content">
+                            <div className="candidateSectionLabel candidateSectionLabel--ai">
+                              AI 생성 시안
+                            </div>
+                            <div className="candidateLoadingImage" />
+                            <div
+                              className="candidateLoadingLine sm"
+                              style={{ marginTop: 10 }}
+                            />
+                          </section>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -2060,8 +2214,13 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
+                      const aiLogoUrl = safeText(
+                        c?.imageUrl || c?.url || c?.logoUrl || "",
+                        "",
+                      );
+
                       return (
                         <div
                           key={c.id}
@@ -2080,68 +2239,32 @@ export default function LogoConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{c.name}</div>
-                              <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                {c.summary}
-                              </div>
-                            </div>
+                            <div className="candidateTitle">{`시안 ${idx + 1}`}</div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "시안"}
                             </span>
                           </div>
 
-                          {/* ✅ 로고 이미지 미리보기 */}
-                          <div style={{ marginTop: 12 }}>
-                            <div
-                              style={{
-                                width: "100%",
-                                borderRadius: 14,
-                                border: "1px solid rgba(0,0,0,0.08)",
-                                background: "rgba(255,255,255,0.75)",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: "100%",
-                                  height: 220,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: 12,
-                                }}
-                              >
-                                {c?.imageUrl ? (
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel candidateSectionLabel--ai">
+                                AI 생성 시안
+                              </div>
+
+                              {aiLogoUrl ? (
+                                <div className="candidateAiImageWrap">
                                   <img
-                                    src={c.imageUrl}
-                                    alt={c.name}
-                                    style={{
-                                      maxWidth: "100%",
-                                      maxHeight: "100%",
-                                      objectFit: "contain",
-                                      borderRadius: 10,
-                                    }}
+                                    src={aiLogoUrl}
+                                    alt={`로고 시안 ${idx + 1}`}
+                                    className="candidateAiImage"
                                   />
-                                ) : (
-                                  <div style={{ fontSize: 13, opacity: 0.7 }}>
-                                    이미지를 표시할 수 없습니다.
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            {c?.imageUrl ? (
-                              <div
-                                style={{
-                                  marginTop: 8,
-                                  fontSize: 12,
-                                  opacity: 0.75,
-                                  wordBreak: "break-all",
-                                }}
-                              >
-                                <b>URL</b> · {c.imageUrl}
-                              </div>
-                            ) : null}
+                                </div>
+                              ) : (
+                                <div className="candidateAiValue">
+                                  AI 결과값이 없습니다.
+                                </div>
+                              )}
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -2257,20 +2380,25 @@ export default function LogoConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -2308,42 +2436,8 @@ export default function LogoConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
-
-      {analyzing ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 로고 컨설팅 제안을 생성하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
-              표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

@@ -31,6 +31,7 @@ import {
   upsertPipeline,
   startBrandFlow,
   setBrandFlowCurrent,
+  ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
@@ -39,6 +40,14 @@ import { apiRequest, apiRequestAI } from "../api/client.js";
 const STORAGE_KEY = "namingConsultingInterviewDraft_v1";
 const RESULT_KEY = "namingConsultingInterviewResult_v1";
 const LEGACY_KEY = "brandInterview_naming_v1";
+
+function alertBrandIdMismatchAndStop(info) {
+  const expected = info?.expectedBrandId ?? "-";
+  const incoming = info?.incomingBrandId ?? "-";
+  window.alert(
+    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.\n진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+  );
+}
 
 /** ======================
  *  ✅ Step 2. Naming Strategy (질문지)
@@ -103,6 +112,83 @@ function safeText(v, fallback = "") {
 function isFilled(v) {
   if (Array.isArray(v)) return v.length > 0;
   return Boolean(String(v ?? "").trim());
+}
+
+/** ✅ 다중 선택 칩 UI (컨셉/스토리 페이지 톤 맞춤) */
+function MultiChips({ value, options, onChange, max = null }) {
+  const current = Array.isArray(value) ? value : [];
+
+  const normalized = (Array.isArray(options) ? options : []).map((opt) => {
+    if (typeof opt === "string") return { value: opt, label: opt };
+    const o = opt && typeof opt === "object" ? opt : {};
+    return {
+      value: String(o.value ?? ""),
+      label: String(o.label ?? o.value ?? ""),
+    };
+  });
+
+  const toggle = (optValue) => {
+    const exists = current.includes(optValue);
+
+    let next = exists
+      ? current.filter((x) => x !== optValue)
+      : [...current, optValue];
+
+    if (typeof max === "number" && max > 0 && next.length > max) {
+      next = next.slice(next.length - max);
+    }
+
+    onChange(next);
+  };
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {normalized.map((opt) => {
+        const active = current.includes(opt.value);
+
+        const baseStyle = {
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(0,0,0,0.14)",
+          background: "transparent",
+          color: "rgba(0,0,0,0.85)",
+          fontSize: 13,
+          fontWeight: 800,
+          lineHeight: 1,
+          cursor: "pointer",
+          transition:
+            "transform 120ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, color 160ms ease",
+          userSelect: "none",
+          outline: "none",
+        };
+
+        const activeStyle = active
+          ? {
+              background: "rgba(37,99,235,0.10)",
+              border: "1px solid rgba(37,99,235,0.42)",
+              color: "rgba(0,0,0,0.9)",
+              boxShadow: "0 0 0 3px rgba(37,99,235,0.14)",
+            }
+          : {};
+
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => toggle(opt.value)}
+            className={`chip ${active ? "active" : ""}`}
+            aria-pressed={active}
+            style={{ ...baseStyle, ...activeStyle }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /** ======================
@@ -379,7 +465,7 @@ function normalizeNamingCandidates(raw) {
       oneLiner: safeText(item.oneLiner || item.summary || "", ""),
       keywords: keywords.slice(0, 10),
       style: safeText(item.style || "", ""),
-      samples: samples.slice(0, 10),
+      samples: samples.slice(0, 1),
       rationale: safeText(item.rationale || item.reason || "", ""),
       checks: checks.slice(0, 10),
       avoid: avoid.slice(0, 10),
@@ -407,6 +493,10 @@ export default function NamingConsultingInterview({ onLogout }) {
 
   // ✅ 약관/방침 모달
   const [openType, setOpenType] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
   const closeModal = () => setOpenType(null);
 
   // ✅ 폼 상태
@@ -439,6 +529,7 @@ export default function NamingConsultingInterview({ onLogout }) {
   };
 
   const [toast, setToast] = useState(EMPTY_TOAST);
+  const [loadingElapsed, setLoadingElapsed] = useState(0);
   const toastTimerRef = useRef(null);
   const didMountRef = useRef(false);
   const prevCanAnalyzeRef = useRef(false);
@@ -604,20 +695,37 @@ export default function NamingConsultingInterview({ onLogout }) {
     prevCanAnalyzeRef.current = canAnalyze;
   }, [canAnalyze]);
 
-  /** ======================
-   *  Strict Flow 가드 + pipeline 준비
-   *  ====================== */
+  useEffect(() => {
+    if (!analyzing) {
+      setLoadingElapsed(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setLoadingElapsed(0);
+
+    const timer = window.setInterval(() => {
+      setLoadingElapsed((Date.now() - startedAt) / 1000);
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [analyzing]);
+
   useEffect(() => {
     try {
       migrateLegacyToPipelineIfNeeded();
 
       const access = ensureStrictStepAccess("naming");
       if (!access?.ok) {
-        if (access?.reason === "no_back") {
-          alert(
-            "이전 단계로는 돌아갈 수 없습니다. 현재 단계에서 계속 진행해주세요.",
-          );
-        }
+        const msg =
+          access?.reason === "diagnosis_missing"
+            ? "기업진단이 완료되지 않았습니다. 기업진단부터 진행해주세요."
+            : access?.reason === "no_back"
+              ? "진행 중에는 이전 단계로 돌아갈 수 없습니다."
+              : access?.reason === "no_jump"
+                ? "단계를 건너뛸 수 없습니다. 현재 진행 단계부터 이어서 진행해주세요."
+                : "허용되지 않는 접근입니다.";
+        alert(msg);
         if (access?.redirectTo) {
           navigate(access.redirectTo, { replace: true });
         }
@@ -631,7 +739,20 @@ export default function NamingConsultingInterview({ onLogout }) {
         p?.brandId ??
         null;
 
-      startBrandFlow({ brandId });
+      const guard = ensureBrandIdConsistency(brandId);
+      if (!guard?.ok) {
+        alertBrandIdMismatchAndStop(guard);
+        navigate(guard.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
+      const started = startBrandFlow({ brandId });
+      if (started?.ok === false && started?.reason === "brand_mismatch") {
+        alertBrandIdMismatchAndStop(started);
+        navigate(started.redirectTo || "/brandconsulting", { replace: true });
+        return;
+      }
+
       setBrandFlowCurrent("naming");
     } catch {
       // ignore
@@ -768,6 +889,7 @@ export default function NamingConsultingInterview({ onLogout }) {
     }
 
     setAnalyzing(true);
+    setTimeout(() => scrollToResult?.(), 30);
     setAnalyzeError("");
     let requestStartedAt = null;
 
@@ -937,7 +1059,9 @@ export default function NamingConsultingInterview({ onLogout }) {
       // ignore
     }
 
-    navigate("/brand/concept/interview");
+    navigate("/brand/concept/interview", {
+      state: { from: "naming", brandId },
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -1046,52 +1170,35 @@ export default function NamingConsultingInterview({ onLogout }) {
               {/* (요청 반영) 상단 기업진단 자동입력 카드 제거 */}
 
               {/* INTERVIEW */}
-              <div className="card" ref={refInterview}>
+              <div className="card consultingIntroCard" ref={refInterview}>
                 <div className="card__head">
-                  <h2>Naming Consulting</h2>
-                  <p>
-                    아래 항목을 입력하면 네이밍 컨설팅 제안 3가지를 생성할 수
-                    있어요.
-                  </p>
+                  <h2>Brand Naming Consulting</h2>
+                  {/* <p>
+                    아래 질문에 답하면, 네이밍 제안 3가지를 생성할 수 있어요.
+                  </p> */}
                 </div>
+              </div>
 
-                {/* 1) naming style */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-namingStyles">
                   <label>
                     1. 어떤 스타일의 이름을 선호하시나요?{" "}
                     <span className="req">*</span>
                   </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {NAMING_STYLE_OPTIONS.map((opt) => {
-                      const checked =
-                        (form.namingStyles?.[0] ?? "") === opt.value;
-
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="naming_style"
-                            value={opt.value}
-                            checked={checked}
-                            onChange={(e) =>
-                              setSingleArrayValue(
-                                "namingStyles",
-                                e.target.value,
-                              )
-                            }
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="selectWrap" style={{ marginTop: 10 }}>
+                    <select
+                      value={form.namingStyles?.[0] ?? ""}
+                      onChange={(e) =>
+                        setSingleArrayValue("namingStyles", e.target.value)
+                      }
+                    >
+                      <option value="">선택해주세요</option>
+                      {NAMING_STYLE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {(form.namingStyles?.[0] ?? "") === "Other" ? (
@@ -1101,43 +1208,30 @@ export default function NamingConsultingInterview({ onLogout }) {
                         setValue("namingStyleOther", e.target.value)
                       }
                       placeholder="원하는 네이밍 스타일을 설명해주세요"
-                      style={{ marginTop: 8 }}
+                      style={{ marginTop: 10 }}
                     />
                   ) : null}
                 </div>
+              </div>
 
-                {/* 2) name length */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-nameLength">
                   <label>
                     2. 이름의 길이는 어느 정도가 적당한가요?{" "}
                     <span className="req">*</span>
                   </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {NAME_LENGTH_OPTIONS.map((opt) => {
-                      const checked = (form.nameLength ?? "") === opt.value;
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="name_length"
-                            value={opt.value}
-                            checked={checked}
-                            onChange={(e) =>
-                              setValue("nameLength", e.target.value)
-                            }
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="selectWrap" style={{ marginTop: 10 }}>
+                    <select
+                      value={form.nameLength ?? ""}
+                      onChange={(e) => setValue("nameLength", e.target.value)}
+                    >
+                      <option value="">선택해주세요</option>
+                      {NAME_LENGTH_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {(form.nameLength ?? "") === "Other" ? (
@@ -1147,48 +1241,32 @@ export default function NamingConsultingInterview({ onLogout }) {
                         setValue("nameLengthOther", e.target.value)
                       }
                       placeholder="선호하는 길이를 자유롭게 설명해주세요"
-                      style={{ marginTop: 8 }}
+                      style={{ marginTop: 10 }}
                     />
                   ) : null}
                 </div>
+              </div>
 
-                {/* 3) language */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-languagePrefs">
                   <label>
                     3. 어떤 언어 기반이어야 하나요?{" "}
                     <span className="req">*</span>
                   </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {LANGUAGE_OPTIONS.map((opt) => {
-                      const checked =
-                        (form.languagePrefs?.[0] ?? "") === opt.value;
-
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="language_pref"
-                            value={opt.value}
-                            checked={checked}
-                            onChange={(e) =>
-                              setSingleArrayValue(
-                                "languagePrefs",
-                                e.target.value,
-                              )
-                            }
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="selectWrap" style={{ marginTop: 10 }}>
+                    <select
+                      value={form.languagePrefs?.[0] ?? ""}
+                      onChange={(e) =>
+                        setSingleArrayValue("languagePrefs", e.target.value)
+                      }
+                    >
+                      <option value="">선택해주세요</option>
+                      {LANGUAGE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {(form.languagePrefs?.[0] ?? "") === "Other" ? (
@@ -1198,81 +1276,46 @@ export default function NamingConsultingInterview({ onLogout }) {
                         setValue("languageOther", e.target.value)
                       }
                       placeholder="선호하는 언어나 조합을 설명해주세요"
-                      style={{ marginTop: 8 }}
+                      style={{ marginTop: 10 }}
                     />
                   ) : null}
                 </div>
+              </div>
 
-                {/* 4) vibe max 2 */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-brandVibe">
                   <label>
                     4. 이름에서 느껴져야 할 첫인상은 무엇인가요? (최대 2개 선택){" "}
                     <span className="req">*</span>
                   </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {VIBE_OPTIONS.map((opt) => {
-                      const checked =
-                        Array.isArray(form.brandVibe) &&
-                        form.brandVibe.includes(opt.value);
-
-                      const disabled =
-                        !checked &&
-                        Array.isArray(form.brandVibe) &&
-                        form.brandVibe.length >= 2;
-
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                            opacity: disabled ? 0.5 : 1,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            name="brand_vibe"
-                            value={opt.value}
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => {
-                              setForm((prev) => {
-                                const cur = Array.isArray(prev.brandVibe)
-                                  ? prev.brandVibe
-                                  : [];
-                                const exists = cur.includes(opt.value);
-
-                                let next = cur;
-
-                                if (exists) {
-                                  next = cur.filter((v) => v !== opt.value);
-                                } else {
-                                  if (cur.length >= 2) {
-                                    alert("최대 2개까지 선택할 수 있어요.");
-                                    return prev;
-                                  }
-                                  next = [...cur, opt.value];
-                                }
-
-                                const nextOther = next.includes("Other")
-                                  ? prev.brandVibeOther
-                                  : "";
-
-                                return {
-                                  ...prev,
-                                  brandVibe: next,
-                                  brandVibeOther: nextOther,
-                                };
-                              });
-                            }}
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    컨셉/스토리 인터뷰와 같은 칩 선택 UI · 최대 2개
                   </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <MultiChips
+                      value={form.brandVibe}
+                      options={VIBE_OPTIONS}
+                      max={2}
+                      onChange={(next) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          brandVibe: Array.isArray(next) ? next : [],
+                          brandVibeOther: Array.isArray(next)
+                            ? next.includes("Other")
+                              ? prev.brandVibeOther
+                              : ""
+                            : "",
+                        }))
+                      }
+                    />
+                  </div>
+
+                  {!requiredStatus.brandVibe ? (
+                    <div className="hint" style={{ marginTop: 8 }}>
+                      * 첫인상 키워드를 1개 이상 선택해주세요.
+                    </div>
+                  ) : null}
 
                   {Array.isArray(form.brandVibe) &&
                   form.brandVibe.includes("Other") ? (
@@ -1282,12 +1325,13 @@ export default function NamingConsultingInterview({ onLogout }) {
                         setValue("brandVibeOther", e.target.value)
                       }
                       placeholder="원하는 느낌을 구체적으로 설명해주세요"
-                      style={{ marginTop: 8 }}
+                      style={{ marginTop: 10 }}
                     />
                   ) : null}
                 </div>
+              </div>
 
-                {/* 5) avoid required */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-avoidStyle">
                   <label>
                     5. "이런 느낌만은 피해주세요" 하는 것이 있나요?{" "}
@@ -1299,38 +1343,28 @@ export default function NamingConsultingInterview({ onLogout }) {
                     placeholder="예: 너무 유치한 느낌, 어려운 한자어, 발음하기 어려운 것 등"
                   />
                 </div>
+              </div>
 
-                {/* 6) domain importance */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-domainConstraint">
                   <label>
                     6. .com 도메인 확보가 얼마나 중요한가요?{" "}
                     <span className="req">*</span>
                   </label>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {DOMAIN_OPTIONS.map((opt) => {
-                      const checked = form.domainConstraint === opt.value;
-                      return (
-                        <label
-                          key={opt.value}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name="domain_constraint"
-                            value={opt.value}
-                            checked={checked}
-                            onChange={(e) =>
-                              setValue("domainConstraint", e.target.value)
-                            }
-                          />
-                          <span>{opt.label}</span>
-                        </label>
-                      );
-                    })}
+                  <div className="selectWrap" style={{ marginTop: 10 }}>
+                    <select
+                      value={form.domainConstraint ?? ""}
+                      onChange={(e) =>
+                        setValue("domainConstraint", e.target.value)
+                      }
+                    >
+                      <option value="">선택해주세요</option>
+                      {DOMAIN_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {(form.domainConstraint ?? "") === "Other" ? (
@@ -1338,12 +1372,13 @@ export default function NamingConsultingInterview({ onLogout }) {
                       value={form.domainOther}
                       onChange={(e) => setValue("domainOther", e.target.value)}
                       placeholder="도메인 관련 요구사항을 설명해주세요"
-                      style={{ marginTop: 8 }}
+                      style={{ marginTop: 10 }}
                     />
                   ) : null}
                 </div>
+              </div>
 
-                {/* 7) target emotion */}
+              <div className="card questionCard">
                 <div className="field" id="naming-q-targetEmotion">
                   <label>
                     7. 고객이 이름을 듣자마자 느꼈으면 하는 딱 하나의 감정은
@@ -1355,8 +1390,9 @@ export default function NamingConsultingInterview({ onLogout }) {
                     placeholder="예: 호기심, 안심, 설렘, 편안함, 신뢰 등"
                   />
                 </div>
+              </div>
 
-                {/* 8) current name optional */}
+              <div className="card questionCard">
                 <div className="field">
                   <label>
                     8. 현재 사용 중인 브랜드 이름이 있다면 무엇인가요? (선택)
@@ -1368,10 +1404,23 @@ export default function NamingConsultingInterview({ onLogout }) {
                   />
                 </div>
               </div>
-
               <div ref={refResult} />
 
-              {toast?.show ? (
+              {analyzing ? (
+                <div
+                  className="aiToast loading"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="aiToast__loadingWrap">
+                    <span className="aiToast__spinner" aria-hidden="true" />
+                    <strong>AI 분석 중</strong>
+                  </div>
+                  <p className="aiToast__timer">
+                    진행 시간 {loadingElapsed.toFixed(1)}초
+                  </p>
+                </div>
+              ) : toast?.show ? (
                 <div
                   className={`aiToast ${toast.variant}`}
                   role="status"
@@ -1413,13 +1462,93 @@ export default function NamingConsultingInterview({ onLogout }) {
               ) : null}
 
               {analyzing ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="card__head">
-                    <h2>네이밍 제안 생성 중</h2>
-                    <p>입력 내용을 바탕으로 제안 3가지를 만들고 있어요.</p>
+                <>
+                  <div
+                    className="card namingLoadingCard"
+                    style={{ marginTop: 14 }}
+                  >
+                    <div
+                      className="namingLoadingCard__glow"
+                      aria-hidden="true"
+                    />
+
+                    <div className="namingLoadingCard__top">
+                      <span className="namingLoadingCard__pill">
+                        AI 분석 진행 중
+                      </span>
+                      <span className="namingLoadingCard__elapsed">
+                        {loadingElapsed.toFixed(1)}초
+                      </span>
+                    </div>
+
+                    <div className="namingLoadingCard__head">
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                      <h2>네이밍 제안 생성 중</h2>
+                    </div>
+
+                    <p className="namingLoadingCard__desc">
+                      입력 내용을 바탕으로 제안 3가지를 만들고 있어요.
+                    </p>
+
+                    <div
+                      className="namingLoadingCard__steps"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__step is-active">
+                        질문 분석
+                      </span>
+                      <span className="namingLoadingCard__step is-active">
+                        키워드 조합
+                      </span>
+                      <span className="namingLoadingCard__step">후보 정리</span>
+                    </div>
+
+                    <div
+                      className="namingLoadingCard__progress"
+                      aria-hidden="true"
+                    >
+                      <span className="namingLoadingCard__progressFill" />
+                    </div>
+
+                    <div className="namingLoadingCard__wait">
+                      잠시만 기다려주세요
+                      <span
+                        className="namingLoadingCard__dots"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
-                  <div className="hint">잠시만 기다려주세요…</div>
-                </div>
+
+                  <div
+                    className="candidateList candidateList--loading"
+                    aria-hidden="true"
+                  >
+                    {[1, 2, 3].map((n) => (
+                      <div
+                        key={n}
+                        className="candidateCard candidateCard--loading"
+                      >
+                        <div className="candidateHead">
+                          <div className="candidateTitle">{`컨설팅 제안 ${n}`}</div>
+                          <span className="candidateBadge">생성 중</span>
+                        </div>
+                        <div className="candidateSections single">
+                          <section className="candidateSection candidateSection--content">
+                            <div className="candidateSectionLabel candidateSectionLabel--ai">
+                              제안된 네이밍
+                            </div>
+                            <div className="candidateLoadingLine lg" />
+                            <div className="candidateLoadingLine" />
+                            <div className="candidateLoadingLine sm" />
+                          </section>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : hasResult ? (
                 <div className="card" style={{ marginTop: 14 }}>
                   <div className="card__head">
@@ -1430,8 +1559,18 @@ export default function NamingConsultingInterview({ onLogout }) {
                   </div>
 
                   <div className="candidateList">
-                    {candidates.map((c) => {
+                    {candidates.map((c, idx) => {
                       const isSelected = selectedId === c.id;
+                      const aiNaming = safeText(
+                        (Array.isArray(c.samples)
+                          ? c.samples.find((s) => safeText(s, ""))
+                          : "") ||
+                          c.oneLiner ||
+                          c.name ||
+                          "",
+                        "",
+                      );
+
                       return (
                         <div
                           key={c.id}
@@ -1450,112 +1589,23 @@ export default function NamingConsultingInterview({ onLogout }) {
                           }}
                         >
                           <div className="candidateHead">
-                            <div>
-                              <div className="candidateTitle">{c.name}</div>
-                              {c.oneLiner ? (
-                                <div style={{ marginTop: 6, opacity: 0.9 }}>
-                                  {c.oneLiner}
-                                </div>
-                              ) : null}
-                            </div>
+                            <div className="candidateTitle">{`컨설팅 제안 ${idx + 1}`}</div>
                             <span className="candidateBadge">
                               {isSelected ? "선택됨" : "제안"}
                             </span>
                           </div>
 
-                          {c.keywords?.length ? (
-                            <div style={{ marginTop: 10 }}>
-                              <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                                키워드
+                          <div className="candidateSections single">
+                            <section className="candidateSection candidateSection--content">
+                              <div className="candidateSectionLabel candidateSectionLabel--ai">
+                                제안된 네이밍
                               </div>
                               <div
-                                style={{
-                                  display: "flex",
-                                  gap: 6,
-                                  flexWrap: "wrap",
-                                }}
+                                className={`candidateAiValue ${isSelected ? "selected" : ""}`}
                               >
-                                {c.keywords.map((kw) => (
-                                  <span
-                                    key={kw}
-                                    style={{
-                                      fontSize: 12,
-                                      fontWeight: 800,
-                                      padding: "4px 10px",
-                                      borderRadius: 999,
-                                      background: "rgba(0,0,0,0.04)",
-                                      border: "1px solid rgba(0,0,0,0.06)",
-                                      color: "rgba(0,0,0,0.75)",
-                                    }}
-                                  >
-                                    #{kw}
-                                  </span>
-                                ))}
+                                {aiNaming || "AI 결과값이 없습니다."}
                               </div>
-                            </div>
-                          ) : null}
-
-                          <div
-                            style={{
-                              marginTop: 10,
-                              fontSize: 13,
-                              opacity: 0.9,
-                            }}
-                          >
-                            {c.style ? (
-                              <div>
-                                <b>스타일</b> · {c.style}
-                              </div>
-                            ) : null}
-
-                            {c.samples?.length ? (
-                              <div style={{ marginTop: 6 }}>
-                                <b>샘플</b>
-                                <div
-                                  style={{
-                                    marginTop: 6,
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    gap: 6,
-                                  }}
-                                >
-                                  {c.samples.map((s) => (
-                                    <span
-                                      key={s}
-                                      style={{
-                                        fontSize: 12,
-                                        fontWeight: 800,
-                                        padding: "4px 10px",
-                                        borderRadius: 999,
-                                        background: "rgba(0,0,0,0.04)",
-                                        border: "1px solid rgba(0,0,0,0.06)",
-                                        color: "rgba(0,0,0,0.75)",
-                                      }}
-                                    >
-                                      {s}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-
-                            {c.rationale ? (
-                              <div style={{ marginTop: 10, opacity: 0.85 }}>
-                                <b>근거</b> · {c.rationale}
-                              </div>
-                            ) : null}
-
-                            {c.checks?.length ? (
-                              <div style={{ marginTop: 8, opacity: 0.85 }}>
-                                <b>체크</b> · {c.checks.join(" · ")}
-                              </div>
-                            ) : null}
-
-                            {c.avoid?.length ? (
-                              <div style={{ marginTop: 8, opacity: 0.85 }}>
-                                <b>피해야 할 요소</b> · {c.avoid.join(", ")}
-                              </div>
-                            ) : null}
+                            </section>
                           </div>
 
                           <div className="candidateActions">
@@ -1666,20 +1716,25 @@ export default function NamingConsultingInterview({ onLogout }) {
 
                 <button
                   type="button"
-                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled" : ""}`}
+                  className={`btn primary sideAnalyze ${canAnalyze ? "ready" : "pending"} ${analyzing ? "disabled loading" : ""}`}
                   onClick={() =>
                     handleGenerateCandidates(hasResult ? "regen" : "generate")
                   }
                   disabled={!canAnalyze || analyzing}
                   style={{ width: "100%", marginBottom: 8 }}
                 >
-                  {analyzing
-                    ? "생성 중..."
-                    : hasResult
-                      ? "AI 분석 재요청"
-                      : canAnalyze
-                        ? "AI 분석 요청"
-                        : `AI 분석 요청 (${remainingRequired}개 남음)`}
+                  {analyzing ? (
+                    <>
+                      <span className="btnInlineSpinner" aria-hidden="true" />
+                      <span>생성 중...</span>
+                    </>
+                  ) : hasResult ? (
+                    "AI 분석 재요청"
+                  ) : canAnalyze ? (
+                    "AI 분석 요청"
+                  ) : (
+                    `AI 분석 요청 (${remainingRequired}개 남음)`
+                  )}
                 </button>
 
                 <p
@@ -1716,42 +1771,8 @@ export default function NamingConsultingInterview({ onLogout }) {
               </div>
             </aside>
           </div>
-
-          {canAnalyze ? (
-            <div
-              className="diagBottomReadyNotice"
-              role="status"
-              aria-live="polite"
-            >
-              <span className="diagBottomReadyNotice__icon" aria-hidden="true">
-                ✅
-              </span>
-              <p>
-                <strong>모든 필수 입력이 완료되었습니다.</strong> 오른쪽 진행
-                상태 카드의 <b>AI 분석 요청</b> 버튼으로 다음 진행이 가능합니다.
-              </p>
-            </div>
-          ) : null}
         </div>
       </main>
-
-      {analyzing ? (
-        <div
-          className="aiLoadingOverlay"
-          role="status"
-          aria-live="polite"
-          aria-label="AI 분석 진행 중"
-        >
-          <div className="aiLoadingOverlay__card">
-            <div className="aiLoadingOverlay__spinner" aria-hidden="true" />
-            <h3>AI가 네이밍 컨설팅 제안을 생성하고 있어요</h3>
-            <p>
-              잠시만 기다려주세요. 응답이 빨라도 로딩 화면이 최소 1.5초 동안
-              표시됩니다.
-            </p>
-          </div>
-        </div>
-      ) : null}
 
       <SiteFooter onOpenPolicy={setOpenType} />
     </div>

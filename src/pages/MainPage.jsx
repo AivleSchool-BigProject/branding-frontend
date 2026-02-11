@@ -77,6 +77,7 @@ export default function MainPage({ onLogout }) {
     const hasConcept = Boolean(p?.concept?.selectedId || p?.concept?.selected);
     const hasStory = Boolean(p?.story?.selectedId || p?.story?.selected);
     const hasLogo = Boolean(p?.logo?.selectedId || p?.logo?.selected);
+    const brandId = p?.brandId ?? null;
 
     // ✅ 단계별 다음 라우트/진행률
     if (hasLogo) {
@@ -86,6 +87,7 @@ export default function MainPage({ onLogout }) {
         stepLabel: "브랜드 컨설팅 완료",
         ctaLabel: "결과 보기",
         nextRoute: "/mypage",
+        brandId,
       };
     }
 
@@ -96,6 +98,7 @@ export default function MainPage({ onLogout }) {
         stepLabel: "로고 컨설팅",
         ctaLabel: "이어하기",
         nextRoute: "/brand/logo/interview",
+        brandId,
       };
     }
 
@@ -106,6 +109,7 @@ export default function MainPage({ onLogout }) {
         stepLabel: "스토리 컨설팅",
         ctaLabel: "이어하기",
         nextRoute: "/brand/story/interview",
+        brandId,
       };
     }
 
@@ -116,6 +120,7 @@ export default function MainPage({ onLogout }) {
         stepLabel: "컨셉 컨설팅",
         ctaLabel: "이어하기",
         nextRoute: "/brand/concept/interview",
+        brandId,
       };
     }
 
@@ -126,6 +131,7 @@ export default function MainPage({ onLogout }) {
         stepLabel: "네이밍 컨설팅",
         ctaLabel: "이어하기",
         nextRoute: "/brand/naming/interview",
+        brandId,
       };
     }
 
@@ -135,6 +141,7 @@ export default function MainPage({ onLogout }) {
       stepLabel: "기업진단부터 시작",
       ctaLabel: "바로 시작",
       nextRoute: "/diagnosisinterview",
+      brandId,
     };
   }, []);
 
@@ -209,7 +216,7 @@ export default function MainPage({ onLogout }) {
       resetBrandConsultingToDiagnosisStart("mainpage_restart");
     }
     closeBrandGuide();
-    navigate("/diagnosisinterview", { state: { mode: "start" } });
+    navigate("/diagnosisinterview?mode=start", { state: { mode: "start" } });
   };
 
   useEffect(() => {
@@ -352,7 +359,12 @@ export default function MainPage({ onLogout }) {
                     return;
                   }
                   // 완료면 결과, 진행중이면 다음 단계로
-                  navigate(brandProgress.nextRoute);
+                  navigate(brandProgress.nextRoute, {
+                    state: {
+                      flow: "brand_continue",
+                      brandId: brandProgress.brandId ?? undefined,
+                    },
+                  });
                 }}
               >
                 {brandProgress.ctaLabel}

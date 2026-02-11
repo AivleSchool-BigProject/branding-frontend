@@ -58,6 +58,39 @@ function safeParse(raw) {
   }
 }
 
+function normalizeBrandIdValue(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
+
+function pickPipelineBrandId(p) {
+  return normalizeBrandIdValue(p?.brandId ?? null);
+}
+
+export function ensureBrandIdConsistency(incomingBrandId) {
+  const p = readPipeline();
+  const expectedBrandId = pickPipelineBrandId(p);
+  const incoming = normalizeBrandIdValue(incomingBrandId);
+
+  // incoming 값이 없으면 pipeline 기준으로 그대로 진행
+  if (!incoming) {
+    return { ok: true, expectedBrandId, incomingBrandId: null };
+  }
+
+  if (expectedBrandId && String(expectedBrandId) !== String(incoming)) {
+    return {
+      ok: false,
+      reason: "brand_mismatch",
+      redirectTo: "/brandconsulting",
+      expectedBrandId,
+      incomingBrandId: incoming,
+    };
+  }
+
+  return { ok: true, expectedBrandId, incomingBrandId: incoming };
+}
+
 export function readPipeline() {
   return safeParse(userGetItem(PIPELINE_KEY)) || {};
 }
@@ -467,31 +500,36 @@ export function consumeBrandFlowPendingAbort() {
 export function startBrandFlow({ brandId } = {}) {
   const cur = readPipeline();
 
-  const normalized =
-    brandId == null
-      ? null
-      : Number.isNaN(Number(brandId))
-        ? brandId
-        : Number(brandId);
+  const incomingBrandId = normalizeBrandIdValue(brandId);
+  const curBrandId = pickPipelineBrandId(cur);
 
-  const curBrandId = cur?.brandId ?? null;
-  const hasIncoming = normalized != null;
-
-  // ✅ brandId가 바뀐 경우에만(섞임 방지) 네이밍~로고를 초기화
+  const hasIncoming = incomingBrandId != null;
   const brandChanged =
     hasIncoming &&
     curBrandId != null &&
-    String(curBrandId) !== String(normalized);
+    String(curBrandId) !== String(incomingBrandId);
 
+  // ✅ 진행 중 플로우에서 brandId가 바뀌면 즉시 차단
+  // - 기존 데이터와 다른 브랜드 ID가 섞여 저장되는 문제 방지
+  if (brandChanged && isBrandWorkInProgress()) {
+    return {
+      ok: false,
+      reason: "brand_mismatch",
+      redirectTo: "/brandconsulting",
+      expectedBrandId: curBrandId,
+      incomingBrandId,
+      pipeline: cur,
+    };
+  }
+
+  // ✅ brandId 변경이 허용되는 경우(완료 상태 등)에는 다음 단계를 초기화
   const base = brandChanged ? clearStepsFrom("naming") : { ...cur };
   const flow = base?.brandFlow || {};
-
-  // ✅ flow.currentStep이 없으면, pipeline에 저장된 '선택 결과'로 최대 도달 단계를 추정
   const inferred = inferMaxReachedStep(base);
 
   const next = {
     ...base,
-    ...(hasIncoming ? { brandId: normalized } : {}),
+    ...(hasIncoming ? { brandId: incomingBrandId } : {}),
     brandFlow: {
       active: true,
       currentStep: brandChanged
@@ -505,7 +543,8 @@ export function startBrandFlow({ brandId } = {}) {
     updatedAt: Date.now(),
   };
 
-  return writePipeline(next);
+  const written = writePipeline(next);
+  return { ok: true, pipeline: written, brandChanged };
 }
 
 export function setBrandFlowCurrent(stepKey) {
@@ -587,14 +626,29 @@ export function ensureStrictStepAccess(stepKey) {
 
   if (flow?.active) {
     const curStep = getBrandFlowCurrentStep();
-    const want = String(stepKey || "naming");
-    const wantStep = BRAND_FLOW_STEP_INDEX[want] != null ? want : "naming";
+    const wantRaw = String(stepKey || "naming");
+    const wantStep =
+      BRAND_FLOW_STEP_INDEX[wantRaw] != null ? wantRaw : "naming";
 
-    if (BRAND_FLOW_STEP_INDEX[wantStep] < BRAND_FLOW_STEP_INDEX[curStep]) {
+    const curIdx = BRAND_FLOW_STEP_INDEX[curStep] ?? 0;
+    const wantIdx = BRAND_FLOW_STEP_INDEX[wantStep] ?? 0;
+
+    // ✅ 이전 단계로 되돌아가기 금지
+    if (wantIdx < curIdx) {
       return {
         ok: false,
         redirectTo: getBrandFlowRouteForStep(curStep),
         reason: "no_back",
+        currentStep: curStep,
+      };
+    }
+
+    // ✅ 현재 단계에서 2단계 이상 점프 금지
+    if (wantIdx > curIdx + 1) {
+      return {
+        ok: false,
+        redirectTo: getBrandFlowRouteForStep(curStep),
+        reason: "no_jump",
         currentStep: curStep,
       };
     }
