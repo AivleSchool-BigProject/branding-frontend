@@ -5,7 +5,7 @@ import "../styles/MainPage.css";
 
 // UI: 메인 카드(컨설팅 시작하기)에서 사용하는 이미지 에셋
 import makeset from "../Image/main_image/brand_consult2.png";
-import story from "../Image/main_image/PromotionalConsulting.png";
+import story from "../Image/main_image/Promotional_consulting2.png";
 import mainBanner from "../Image/banner_image/Banner_B.png";
 
 // UI: 약관/개인정보 모달 + 공통 헤더/푸터
