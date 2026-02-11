@@ -44,13 +44,24 @@ import InvestmentPostCreate from "./pages/InvestmentPostCreate.jsx";
 import InvestmentPostDetail from "./pages/InvestmentPostDetail.jsx";
 import InvestmentPostEdit from "./pages/InvestmentPostEdit.jsx";
 
-import ChatbotWidget from "./components/ChatbotWidget.jsx";
 import CurrentUserWidget from "./components/CurrentUserWidget.jsx";
 
 import {
   isBrandFlowRoute,
   isBrandWorkInProgress,
 } from "./utils/brandPipelineStorage.js";
+import { notifyPromoInterviewComingSoon } from "./utils/promoComingSoon.js";
+
+function PromoInterviewBlocked() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    notifyPromoInterviewComingSoon();
+    navigate("/promotion", { replace: true });
+  }, [navigate]);
+
+  return null;
+}
 
 export default function App() {
   const { pathname } = useLocation();
@@ -82,7 +93,7 @@ export default function App() {
   }, [pathname, navigate]);
 
   // ✅ 로그인/회원가입 관련 페이지에서는 숨김
-  const hideChatbotPaths = [
+  const hideWidgetPaths = [
     "/",
     "/login",
     "/signup",
@@ -90,10 +101,7 @@ export default function App() {
     "/findpw",
     "/easylogin",
   ];
-  const shouldHideChatbot = hideChatbotPaths.includes(pathname);
-
-  // ✅ 우측 상단 유저 위젯도 로그인/회원가입 관련 페이지에서는 숨김
-  const shouldHideUserWidget = hideChatbotPaths.includes(pathname);
+  const shouldHideUserWidget = hideWidgetPaths.includes(pathname);
 
   return (
     <>
@@ -185,19 +193,19 @@ export default function App() {
         <Route path="/promotion" element={<PromotionPage />} />
         <Route
           path="/promotion/icon/interview"
-          element={<ProductIconConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/aicut/interview"
-          element={<AICutModelConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/staging/interview"
-          element={<ProductStagingCutConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/poster/interview"
-          element={<SNSPosterConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         {/* ✅ 마이페이지 */}
         <Route path="/mypage" element={<MyPage />} />
@@ -218,13 +226,8 @@ export default function App() {
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
 
-      {/* ✅ 우측 상단 유저 위젯(현재 로그인 계정) */}
+      {/* ✅ 우측 하단 유저 위젯(현재 로그인 계정) */}
       {!shouldHideUserWidget && <CurrentUserWidget />}
-
-      {/* ✅ 챗봇은 라우트 아래에 떠 있게 */}
-      {!shouldHideChatbot && (
-        <ChatbotWidget title="AI 도우미" subtitle="무엇을 도와드릴까요?" />
-      )}
     </>
   );
 }

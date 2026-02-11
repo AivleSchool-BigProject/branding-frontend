@@ -272,6 +272,10 @@ export default function DiagnosisResult({ onLogout }) {
   const pipelineSyncRef = useRef("");
 
   useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  useEffect(() => {
     if (!report) return;
 
     const syncKey = `${brandId || "none"}::${String(uiSummary || "").trim()}`;

@@ -1,6 +1,12 @@
 // src/components/CurrentUserWidget.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/CurrentUserWidget.css";
 
 import { apiRequest, clearAccessToken } from "../api/client.js";
@@ -11,15 +17,9 @@ import {
   clearIsLoggedIn,
 } from "../api/auth.js";
 
-/**
- * ✅ 우측 상단(헤더 아래) "현재 로그인 계정" 플로팅 위젯
- * - 프론트만으로 가능: Login.jsx에서 localStorage에 저장해둔 currentUserId를 읽어 표시
- * - 헤더 높이가 바뀌어도, 실제 header(.main-header) 아래로 자동 배치
- * - 클릭하면 미니 메뉴(마이페이지/로그아웃)
- */
 export default function CurrentUserWidget() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const rootRef = useRef(null);
 
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     try {
@@ -28,7 +28,6 @@ export default function CurrentUserWidget() {
       return false;
     }
   });
-
   const [userId, setUserId] = useState(() => {
     try {
       return getCurrentUserId();
@@ -36,22 +35,119 @@ export default function CurrentUserWidget() {
       return null;
     }
   });
-
-  const [topPx, setTopPx] = useState(86);
   const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
+  const [stats, setStats] = useState({ brand: 0, promotion: 0 });
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(new Date());
 
   const label = useMemo(() => {
     const id = String(userId ?? "").trim();
     if (!id) return "";
-    // 길면 앞/뒤만 보여주기
-    if (id.length <= 18) return id;
-    return `${id.slice(0, 9)}…${id.slice(-6)}`;
+    if (id.length <= 24) return id;
+    return `${id.slice(0, 12)}…${id.slice(-8)}`;
   }, [userId]);
 
-  // ✅ 로그인 상태 sync
+  const relativeUpdated = useMemo(() => {
+    const diffSec = Math.max(
+      1,
+      Math.floor((Date.now() - lastUpdatedAt.getTime()) / 1000),
+    );
+    if (diffSec < 60) return "방금 전";
+    const m = Math.floor(diffSec / 60);
+    if (m < 60) return `${m}분 전`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}시간 전`;
+    const d = Math.floor(h / 24);
+    return `${d}일 전`;
+  }, [lastUpdatedAt]);
+
+  const countPromotionFromStorage = () => {
+    try {
+      // 1) 사용자 분리 저장소 기준(정확)
+      const promoList = listPromoReports();
+      if (Array.isArray(promoList)) return promoList.length;
+
+      // 2) 사용자 분리 키 직접 조회(폴백)
+      const scopedKeys = [
+        "promoConsultingHistory_v1",
+        "promoReportHistory",
+        "promotionReportHistory",
+        "promotionHistory",
+      ];
+      for (const key of scopedKeys) {
+        const parsed = userSafeParse(key);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+
+      // 3) 레거시 전역 키 폴백
+      for (const key of scopedKeys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const countBrandFromStorage = () => {
+    try {
+      const raw = localStorage.getItem("myBrands");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+      let brand = 0;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = String(localStorage.key(i) || "");
+        const v = String(localStorage.getItem(k) || "");
+        if (
+          /brand/i.test(k + " " + v) &&
+          /(result|history|done|completed|consulting)/i.test(k + " " + v)
+        ) {
+          brand += 1;
+        }
+      }
+      return brand;
+    } catch {
+      return 0;
+    }
+  };
+
+  const refreshCounts = useCallback(async () => {
+    let brandCount = 0;
+    try {
+      // 백엔드 스펙 차이를 고려해서 순차적으로 시도
+      const candidates = ["/mypage/brands", "/brands/mine", "/brands"];
+      for (const url of candidates) {
+        try {
+          const res = await apiRequest(url, { method: "GET" });
+          const arr = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.data)
+              ? res.data
+              : null;
+          if (arr) {
+            brandCount = arr.length;
+            break;
+          }
+        } catch {
+          // 다음 후보로 진행
+        }
+      }
+      if (brandCount === 0) brandCount = countBrandFromStorage();
+    } catch {
+      brandCount = countBrandFromStorage();
+    }
+
+    const promotionCount = countPromotionFromStorage();
+    setStats({ brand: brandCount, promotion: promotionCount });
+    setLastUpdatedAt(new Date());
+  }, []);
+
   useEffect(() => {
-    const sync = () => {
+    const syncIdentity = () => {
       try {
         setIsLoggedIn(getIsLoggedIn());
       } catch {
@@ -64,55 +160,29 @@ export default function CurrentUserWidget() {
       }
     };
 
-    sync();
+    syncIdentity();
+    refreshCounts();
 
-    const onStorage = (e) => {
-      if (
-        e.key === "currentUserId" ||
-        e.key === "isLoggedIn" ||
-        e.key === null
-      ) {
-        sync();
-      }
+    const onStorage = () => {
+      syncIdentity();
+      refreshCounts();
     };
+    const onUpdated = () => refreshCounts();
+    const onFocus = () => refreshCounts();
+
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  // ✅ 헤더 아래 위치 계산(페이지 이동/리사이즈 시)
-  useEffect(() => {
-    const updateTop = () => {
-      const header = document.querySelector(".main-header");
-      if (!header) {
-        setTopPx(18);
-        return;
-      }
-      const rect = header.getBoundingClientRect();
-      // header가 화면 위로 스크롤될 수 있으니 최소값 보장
-      const next = Math.max(10, rect.bottom + 10);
-      setTopPx(next);
-    };
-
-    // 렌더 타이밍/레이아웃 안정화를 위해 두 번 체크
-    updateTop();
-    const t1 = window.setTimeout(updateTop, 0);
-    const t2 = window.setTimeout(updateTop, 120);
-
-    window.addEventListener("resize", updateTop);
-    window.addEventListener("scroll", updateTop, { passive: true });
+    window.addEventListener("consulting:updated", onUpdated);
+    window.addEventListener("focus", onFocus);
 
     return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.removeEventListener("resize", updateTop);
-      window.removeEventListener("scroll", updateTop);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("consulting:updated", onUpdated);
+      window.removeEventListener("focus", onFocus);
     };
-  }, [pathname]);
+  }, [refreshCounts]);
 
-  // ✅ 바깥 클릭 시 닫기
   useEffect(() => {
     if (!open) return;
-
     const onDown = (e) => {
       const root = rootRef.current;
       if (!root) return;
@@ -127,21 +197,20 @@ export default function CurrentUserWidget() {
     };
   }, [open]);
 
+  const go = (path) => {
+    setOpen(false);
+    navigate(path);
+  };
+
   const handleLogout = async () => {
     const ok = window.confirm("로그아웃 하시겠습니까?");
     if (!ok) return;
-
     try {
-      // 백에 logout 엔드포인트가 있으면 호출 (없으면 무시)
       await apiRequest("/auth/logout", { method: "POST" });
-    } catch {
-      // ignore
-    }
-
+    } catch {}
     clearAccessToken();
     clearCurrentUserId();
     clearIsLoggedIn();
-
     setOpen(false);
     navigate("/login", { replace: true });
   };
@@ -152,46 +221,65 @@ export default function CurrentUserWidget() {
     <div
       ref={rootRef}
       className={`current-user-widget ${open ? "is-open" : ""}`}
-      style={{ top: `${topPx}px` }}
       aria-label="현재 로그인 계정"
     >
       <button
         type="button"
         className="current-user-pill"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          refreshCounts();
+        }}
         title="현재 로그인 계정"
+        aria-expanded={open}
       >
         <span className="current-user-dot" aria-hidden="true" />
         <span className="current-user-text">
-          <span className="current-user-label">로그인</span>
+          {/* <span className="current-user-label">로그인 중</span> */}
           <span className="current-user-id">{label}</span>
+          <span className="current-user-meta">
+            최근 업데이트: {relativeUpdated}
+          </span>
         </span>
         <span className="current-user-chev" aria-hidden="true">
-          ▾
+          {open ? "▴" : "▾"}
         </span>
       </button>
 
-      {open ? (
-        <div className="current-user-menu" role="menu">
-          <button
-            type="button"
-            className="current-user-menu-item"
-            onClick={() => {
-              setOpen(false);
-              navigate("/mypage");
-            }}
-          >
-            마이페이지
-          </button>
-          <button
-            type="button"
-            className="current-user-menu-item danger"
-            onClick={handleLogout}
-          >
-            로그아웃
-          </button>
-        </div>
-      ) : null}
+      <div className="current-user-panel" role="menu" aria-hidden={!open}>
+        <section className="current-user-stats">
+          <h4>BRANDPILOT</h4>
+        </section>
+
+        <button
+          type="button"
+          className="current-user-menu-item"
+          onClick={() => go("/mypage")}
+        >
+          마이페이지
+        </button>
+        <button
+          type="button"
+          className="current-user-menu-item"
+          onClick={() => go("/brandconsulting")}
+        >
+          브랜드 컨설팅 시작하기
+        </button>
+        <button
+          type="button"
+          className="current-user-menu-item"
+          onClick={() => go("/promotion")}
+        >
+          홍보물 컨설팅 시작하기
+        </button>
+        <button
+          type="button"
+          className="current-user-menu-item danger"
+          onClick={handleLogout}
+        >
+          로그아웃
+        </button>
+      </div>
     </div>
   );
 }

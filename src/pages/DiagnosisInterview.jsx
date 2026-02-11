@@ -827,10 +827,50 @@ export default function DiagnosisInterview({ onLogout }) {
     return parts.join(" | ");
   };
 
+  const isQuestionCompleted = (q) => {
+    if (!q || typeof q !== "object") return false;
+
+    const ck = q.context_key;
+    if (!ck) return false;
+
+    const otherKey = otherKeyOf(ck);
+    const value = getValue(ck);
+
+    if (
+      q.question_type === "short_answer" ||
+      q.question_type === "long_answer"
+    ) {
+      return hasText(value);
+    }
+
+    if (q.question_type === "single_choice") {
+      const selected = String(value ?? "").trim();
+      if (!selected) return false;
+
+      const selectedOpt = (q.options || []).find((o) => o.value === selected);
+      if (selected === "Other" && selectedOpt?.has_text_input) {
+        return hasText(getValue(otherKey));
+      }
+      return true;
+    }
+
+    if (q.question_type === "multiple_choice") {
+      const arr = Array.isArray(value) ? value : [];
+      if (arr.length === 0) return false;
+      if (arr.includes("Other")) {
+        return hasText(getValue(otherKey));
+      }
+      return true;
+    }
+
+    return hasText(value);
+  };
+
   const renderQuestion = (q) => {
     const ck = q.context_key;
     const otherKey = otherKeyOf(ck);
     const value = getValue(ck);
+    const isComplete = isQuestionCompleted(q);
 
     const label = (
       <label>
@@ -840,7 +880,9 @@ export default function DiagnosisInterview({ onLogout }) {
 
     if (q.question_type === "short_answer") {
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
           <input
             value={String(value ?? "")}
@@ -853,7 +895,9 @@ export default function DiagnosisInterview({ onLogout }) {
 
     if (q.question_type === "long_answer") {
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
           <textarea
             value={String(value ?? "")}
@@ -874,7 +918,9 @@ export default function DiagnosisInterview({ onLogout }) {
         selectedOpt?.has_text_input && selected === "Other";
 
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
 
           <select
@@ -918,7 +964,9 @@ export default function DiagnosisInterview({ onLogout }) {
       const otherOpt = opts.find((o) => o.value === "Other");
 
       return (
-        <div className="field">
+        <div
+          className={`field questionField ${isComplete ? "is-complete" : ""}`}
+        >
           {label}
 
           <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
@@ -980,7 +1028,7 @@ export default function DiagnosisInterview({ onLogout }) {
     }
 
     return (
-      <div className="field">
+      <div className={`field questionField ${isComplete ? "is-complete" : ""}`}>
         <p className="hint">지원하지 않는 질문 타입: {q.question_type}</p>
       </div>
     );
@@ -1220,35 +1268,6 @@ export default function DiagnosisInterview({ onLogout }) {
 
           <div className="diagInterview__grid">
             <section className="diagInterview__left">
-              <div className="card" ref={refBasic}>
-                <div className="card__head">
-                  <h2>기본 정보 (선택)</h2>
-                  <p>
-                    AI 질문지에는 포함되지 않지만, 작성하면 분석에 도움이 돼요.
-                  </p>
-                </div>
-
-                <div className="formGrid">
-                  <div className="field">
-                    <label>회사/프로젝트명 (선택)</label>
-                    <input
-                      value={form.companyName}
-                      onChange={(e) => setValue("companyName", e.target.value)}
-                      placeholder="예) BRANDPILOT"
-                    />
-                  </div>
-
-                  <div className="field">
-                    <label>웹사이트/소개 링크 (선택)</label>
-                    <input
-                      value={form.website}
-                      onChange={(e) => setValue("website", e.target.value)}
-                      placeholder="예) https://... 또는 노션/구글독 링크"
-                    />
-                  </div>
-                </div>
-              </div>
-
               {categoriesOrdered.map((cat, idx) => (
                 <div key={cat} className="card" ref={categoryRefs[cat]}>
                   <div className="card__head">

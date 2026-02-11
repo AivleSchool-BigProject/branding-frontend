@@ -923,6 +923,21 @@ export default function LogoConsultingInterview({ onLogout }) {
     return status;
   }, [form, requiredKeys]);
 
+  const questionComplete = useMemo(
+    () => ({
+      logo_structure: Boolean(requiredStatus.logo_structure),
+      visual_motif: Boolean(requiredStatus.visual_motif),
+      brand_color: Boolean(requiredStatus.brand_color),
+      design_style: Boolean(requiredStatus.design_style),
+      design_reference: Boolean(requiredStatus.design_reference),
+      logo_flexibility: Boolean(requiredStatus.logo_flexibility),
+      visual_text_ratio: Boolean(requiredStatus.visual_text_ratio),
+      main_usage_channels: Boolean(requiredStatus.main_usage_channels),
+      typography_style: Boolean(requiredStatus.typography_style),
+    }),
+    [requiredStatus],
+  );
+
   const completedRequired = useMemo(
     () => requiredKeys.filter((k) => requiredStatus[k]).length,
     [requiredKeys, requiredStatus],
@@ -939,7 +954,7 @@ export default function LogoConsultingInterview({ onLogout }) {
     0,
   );
   const hasResult = candidates.length > 0;
-  const canFinish = Boolean(hasResult && selectedId);
+  const canFinish = Boolean(hasResult && selectedId && !analyzing);
 
   const requiredLabelMap = {
     logo_structure: "로고 형태",
@@ -1304,6 +1319,12 @@ export default function LogoConsultingInterview({ onLogout }) {
     try {
       const nextSeed = mode === "regen" ? regenSeed + 1 : regenSeed;
       if (mode === "regen") setRegenSeed(nextSeed);
+
+      if (mode === "regen") {
+        // 재분석 시작 시 기존 선택을 해제해 완료 버튼을 비활성화
+        setSelectedId(null);
+        persistResult(candidates, null, nextSeed);
+      }
 
       const diagnosisSummary = p?.diagnosisSummary || null;
       const selections = {
@@ -1706,7 +1727,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>어떤 형태의 로고를 원하시나요? (Step 5)</p>
                 </div>
 
-                <div className="field" id="logo-q-logo_structure">
+                <div
+                  className={`field questionField ${questionComplete.logo_structure ? "is-complete" : ""}`}
+                  id="logo-q-logo_structure"
+                >
                   <label>
                     로고 형태 선택 <span className="req">*</span>
                   </label>
@@ -1737,7 +1761,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>로고에 담고 싶은 이미지는 무엇인가요? (선택형)</p>
                 </div>
 
-                <div className="field" id="logo-q-visual_motif">
+                <div
+                  className={`field questionField ${questionComplete.visual_motif ? "is-complete" : ""}`}
+                  id="logo-q-visual_motif"
+                >
                   <label>
                     비주얼 모티프 선택 <span className="req">*</span>
                   </label>
@@ -1766,7 +1793,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <h2>3. 대표 색상</h2>
                   <p>우리를 대표하는 색상은 무엇인가요? (최대 2개)</p>
                 </div>
-                <div className="field" id="logo-q-brand_color">
+                <div
+                  className={`field questionField ${questionComplete.brand_color ? "is-complete" : ""}`}
+                  id="logo-q-brand_color"
+                >
                   <label>
                     색상 선택(최대 2개) <span className="req">*</span>
                   </label>
@@ -1878,7 +1908,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>선호하는 디자인 스타일은 무엇인가요? (Step 5)</p>
                 </div>
 
-                <div className="field" id="logo-q-design_style">
+                <div
+                  className={`field questionField ${questionComplete.design_style ? "is-complete" : ""}`}
+                  id="logo-q-design_style"
+                >
                   <label>
                     스타일 선택 <span className="req">*</span>
                   </label>
@@ -1913,7 +1946,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-design_reference">
+                <div
+                  className={`field questionField ${questionComplete.design_reference ? "is-complete" : ""}`}
+                  id="logo-q-design_reference"
+                >
                   <label>
                     레퍼런스(필수) <span className="req">*</span>
                   </label>
@@ -1939,7 +1975,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-logo_flexibility">
+                <div
+                  className={`field questionField ${questionComplete.logo_flexibility ? "is-complete" : ""}`}
+                  id="logo-q-logo_flexibility"
+                >
                   <label>
                     중요 특성(최대 2개) <span className="req">*</span>
                   </label>
@@ -1969,7 +2008,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>이미지와 텍스트 중 무엇이 더 중요한가요?</p>
                 </div>
 
-                <div className="field" id="logo-q-visual_text_ratio">
+                <div
+                  className={`field questionField ${questionComplete.visual_text_ratio ? "is-complete" : ""}`}
+                  id="logo-q-visual_text_ratio"
+                >
                   <label>
                     비율 선택 <span className="req">*</span>
                   </label>
@@ -2000,7 +2042,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   </p>
                 </div>
 
-                <div className="field" id="logo-q-main_usage_channels">
+                <div
+                  className={`field questionField ${questionComplete.main_usage_channels ? "is-complete" : ""}`}
+                  id="logo-q-main_usage_channels"
+                >
                   <label>
                     사용 채널(최대 2개) <span className="req">*</span>
                   </label>
@@ -2036,7 +2081,10 @@ export default function LogoConsultingInterview({ onLogout }) {
                   <p>브랜드 로고에 어울리는 폰트 스타일은 무엇인가요?</p>
                 </div>
 
-                <div className="field" id="logo-q-typography_style">
+                <div
+                  className={`field questionField ${questionComplete.typography_style ? "is-complete" : ""}`}
+                  id="logo-q-typography_style"
+                >
                   <label>
                     폰트 스타일 선택 <span className="req">*</span>
                   </label>
@@ -2060,6 +2108,87 @@ export default function LogoConsultingInterview({ onLogout }) {
 
               {/* 결과 영역 */}
               <div ref={refResult} />
+
+              {analyzing || hasResult ? (
+                <div
+                  className="card namingLoadingCard"
+                  style={{ marginTop: 14 }}
+                >
+                  <div className="namingLoadingCard__glow" aria-hidden="true" />
+
+                  <div className="namingLoadingCard__top">
+                    <span className="namingLoadingCard__pill">
+                      {analyzing ? "AI 분석 진행 중" : "AI 분석 완료"}
+                    </span>
+                    <span className="namingLoadingCard__elapsed">
+                      {analyzing ? `${loadingElapsed.toFixed(1)}초` : "완료"}
+                    </span>
+                  </div>
+
+                  <div className="namingLoadingCard__head">
+                    {analyzing ? (
+                      <span
+                        className="namingLoadingCard__spinner"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className="namingLoadingCard__done"
+                        aria-hidden="true"
+                      >
+                        ✓
+                      </span>
+                    )}
+                    <h2>
+                      {analyzing ? "로고 제안 생성 중" : "로고 제안 생성 완료"}
+                    </h2>
+                  </div>
+
+                  <p className="namingLoadingCard__desc">
+                    {analyzing
+                      ? "입력 내용을 바탕으로 제안 3가지를 만들고 있어요."
+                      : "AI 분석이 완료되었습니다. 아래 제안을 확인하고 1개를 선택해 주세요."}
+                  </p>
+
+                  {analyzing ? (
+                    <>
+                      <div
+                        className="namingLoadingCard__steps"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__step is-active">
+                          질문 분석
+                        </span>
+                        <span className="namingLoadingCard__step is-active">
+                          키워드 조합
+                        </span>
+                        <span className="namingLoadingCard__step">
+                          후보 정리
+                        </span>
+                      </div>
+
+                      <div
+                        className="namingLoadingCard__progress"
+                        aria-hidden="true"
+                      >
+                        <span className="namingLoadingCard__progressFill" />
+                      </div>
+
+                      <div className="namingLoadingCard__wait">
+                        잠시만 기다려주세요
+                        <span
+                          className="namingLoadingCard__dots"
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="namingLoadingCard__wait is-done">
+                      제안이 준비되었습니다
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {analyzing ? (
                 <div
@@ -2118,65 +2247,6 @@ export default function LogoConsultingInterview({ onLogout }) {
 
               {analyzing ? (
                 <>
-                  <div
-                    className="card namingLoadingCard"
-                    style={{ marginTop: 14 }}
-                  >
-                    <div
-                      className="namingLoadingCard__glow"
-                      aria-hidden="true"
-                    />
-
-                    <div className="namingLoadingCard__top">
-                      <span className="namingLoadingCard__pill">
-                        AI 분석 진행 중
-                      </span>
-                      <span className="namingLoadingCard__elapsed">
-                        {loadingElapsed.toFixed(1)}초
-                      </span>
-                    </div>
-
-                    <div className="namingLoadingCard__head">
-                      <span
-                        className="namingLoadingCard__spinner"
-                        aria-hidden="true"
-                      />
-                      <h2>로고 시안 생성 중</h2>
-                    </div>
-
-                    <p className="namingLoadingCard__desc">
-                      입력 내용을 바탕으로 시안 3가지를 만들고 있어요.
-                    </p>
-
-                    <div
-                      className="namingLoadingCard__steps"
-                      aria-hidden="true"
-                    >
-                      <span className="namingLoadingCard__step is-active">
-                        스타일 분석
-                      </span>
-                      <span className="namingLoadingCard__step is-active">
-                        시안 렌더링
-                      </span>
-                      <span className="namingLoadingCard__step">후보 정리</span>
-                    </div>
-
-                    <div
-                      className="namingLoadingCard__progress"
-                      aria-hidden="true"
-                    >
-                      <span className="namingLoadingCard__progressFill" />
-                    </div>
-
-                    <div className="namingLoadingCard__wait">
-                      잠시만 기다려주세요
-                      <span
-                        className="namingLoadingCard__dots"
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-
                   <div
                     className="candidateList candidateList--loading"
                     aria-hidden="true"
@@ -2335,37 +2405,54 @@ export default function LogoConsultingInterview({ onLogout }) {
 
                 <div className="divider" />
 
-                <h4 className="sideSubTitle">필수 입력 체크</h4>
-                <ul className="checkList checkList--cards">
-                  {requiredKeys.map((key) => {
-                    const ok = Boolean(requiredStatus[key]);
-                    const label = requiredLabelMap[key] || key;
+                {hasResult ? (
+                  <div
+                    className="sideCompactDone"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <h4 className="sideSubTitle" style={{ marginTop: 0 }}>
+                      입력 상태
+                    </h4>
+                    <p className="hint" style={{ marginTop: 6 }}>
+                      필수 입력 완료 · AI 제안 수신 완료
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="sideSubTitle">필수 입력 체크</h4>
+                    <ul className="checkList checkList--cards">
+                      {requiredKeys.map((key) => {
+                        const ok = Boolean(requiredStatus[key]);
+                        const label = requiredLabelMap[key] || key;
 
-                    return (
-                      <li key={key}>
-                        <button
-                          type="button"
-                          className={`checkItemBtn ${ok ? "ok" : "todo"}`}
-                          onClick={() => scrollToRequiredField(key)}
-                          aria-label={`${label} 항목으로 이동`}
-                        >
-                          <span className="checkItemLeft">
-                            <span
-                              className={`checkStateIcon ${ok ? "ok" : "todo"}`}
-                              aria-hidden="true"
+                        return (
+                          <li key={key}>
+                            <button
+                              type="button"
+                              className={`checkItemBtn ${ok ? "ok" : "todo"}`}
+                              onClick={() => scrollToRequiredField(key)}
+                              aria-label={`${label} 항목으로 이동`}
                             >
-                              {ok ? "✅" : "❗"}
-                            </span>
-                            <span>{label}</span>
-                          </span>
-                          <span className="checkItemState">
-                            {ok ? "완료" : "필수"}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <span className="checkItemLeft">
+                                <span
+                                  className={`checkStateIcon ${ok ? "ok" : "todo"}`}
+                                  aria-hidden="true"
+                                >
+                                  {ok ? "✅" : "❗"}
+                                </span>
+                                <span>{label}</span>
+                              </span>
+                              <span className="checkItemState">
+                                {ok ? "완료" : "필수"}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
 
                 <div className="divider" />
 
@@ -2418,19 +2505,26 @@ export default function LogoConsultingInterview({ onLogout }) {
                 <div className="divider" />
 
                 <h4 className="sideSubTitle">마무리</h4>
-                {canFinish ? (
-                  <button
-                    type="button"
-                    className={`btn primary ${finishing ? "disabled" : ""}`}
-                    onClick={handleFinish}
-                    disabled={finishing}
-                    style={{ width: "100%" }}
-                  >
-                    {finishing ? "저장 중..." : "완료(히스토리로)"}
-                  </button>
+                {hasResult ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`btn primary ${!canFinish || finishing ? "disabled" : ""}`}
+                      onClick={handleFinish}
+                      disabled={!canFinish || finishing}
+                      style={{ width: "100%" }}
+                    >
+                      {finishing ? "저장 중..." : "완료(히스토리로)"}
+                    </button>
+                    {!canFinish ? (
+                      <p className="hint" style={{ marginTop: 10 }}>
+                        * 시안 1개를 선택하면 완료 버튼이 활성화됩니다.
+                      </p>
+                    ) : null}
+                  </>
                 ) : (
                   <p className="hint" style={{ marginTop: 10 }}>
-                    * 시안 1개를 선택하면 완료 버튼이 표시됩니다.
+                    * AI 시안이 도착하면 완료 버튼이 표시됩니다.
                   </p>
                 )}
               </div>
