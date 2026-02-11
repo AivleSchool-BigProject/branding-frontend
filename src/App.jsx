@@ -50,6 +50,18 @@ import {
   isBrandFlowRoute,
   isBrandWorkInProgress,
 } from "./utils/brandPipelineStorage.js";
+import { notifyPromoInterviewComingSoon } from "./utils/promoComingSoon.js";
+
+function PromoInterviewBlocked() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    notifyPromoInterviewComingSoon();
+    navigate("/promotion", { replace: true });
+  }, [navigate]);
+
+  return null;
+}
 
 export default function App() {
   const { pathname } = useLocation();
@@ -181,19 +193,19 @@ export default function App() {
         <Route path="/promotion" element={<PromotionPage />} />
         <Route
           path="/promotion/icon/interview"
-          element={<ProductIconConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/aicut/interview"
-          element={<AICutModelConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/staging/interview"
-          element={<ProductStagingCutConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         <Route
           path="/promotion/poster/interview"
-          element={<SNSPosterConsultingInterview />}
+          element={<PromoInterviewBlocked />}
         />
         {/* ✅ 마이페이지 */}
         <Route path="/mypage" element={<MyPage />} />

@@ -16,6 +16,7 @@ import {
   readPipeline,
   resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
+import { notifyPromoInterviewComingSoon } from "../utils/promoComingSoon.js";
 
 const BRAND_HOME_ROUTE = "/brandconsulting";
 
@@ -182,7 +183,7 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
     const to = PROMO_INTERVIEW_ROUTES[action];
     if (!to) return;
 
-    navigate(to);
+    notifyPromoInterviewComingSoon();
     if (typeof onPromoPick === "function") onPromoPick(action);
   };
 
