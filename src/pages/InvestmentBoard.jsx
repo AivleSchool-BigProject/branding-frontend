@@ -280,7 +280,7 @@ export default function InvestmentBoard({ onLogout }) {
             <button
               type="button"
               className="invest-guide-link"
-              onClick={() => navigate("/brand/consulting")}
+              onClick={() => navigate("/brandconsulting")}
             >
               브랜드 컨설팅 바로가기 ↗
             </button>

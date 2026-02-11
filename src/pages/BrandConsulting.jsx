@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import bannerImage from "../Image/banner_image/Banner_B.png";
+// import bannerImage from "../Image/banner_image/Banner_brand_gray.png";
 
 // ✅ 기업진단 단계(추가)
 import diagnosisImg from "../Image/brandcon_image/diagnosis.png";
