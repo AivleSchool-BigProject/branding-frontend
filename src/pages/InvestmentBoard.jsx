@@ -28,6 +28,11 @@ export default function InvestmentBoard({ onLogout }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // 페이지 진입 시 스크롤 최상단으로 이동
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const fetchPosts = async () => {

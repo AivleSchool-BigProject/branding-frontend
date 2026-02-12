@@ -5,12 +5,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
 import analyzeCompany from "../Image/login_image/기업 초기 진단.png";
 import analyzeReport from "../Image/login_image/진단분석리포트.png";
-import makeset from "../Image/login_image/문서초안생성.png";
 import story from "../Image/login_image/스토리텔링.png";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
-import EasyLoginModal from "../components/EasyLoginModal.jsx";
 
 // ✅ 팀 코드의 백 연동 방식으로 통일
 import { apiRequest, setAccessToken } from "../api/client.js";
@@ -100,9 +98,6 @@ export default function LoginApp() {
   const [openType, setOpenType] = useState(null);
   const closeModal = () => setOpenType(null);
 
-  // ✅ 간편로그인 모달
-  const [easyOpen, setEasyOpen] = useState(false);
-
   // ✅ 입력값
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
@@ -159,16 +154,8 @@ export default function LoginApp() {
   };
 
   const goSignupWithFlip = () => {
-    if (isLoading || isFlippingToSignup) return;
-
-    if (shouldReduceMotion()) {
-      navigate("/signup");
-      return;
-    }
-
-    warmSignupPage();
-    setIsFlippingToSignup(true);
-    queueTimer(() => navigate("/signup"), FLIP_MS);
+    if (isLoading) return;
+    navigate("/signup");
   };
 
   const handleSubmit = async (event) => {
@@ -220,29 +207,6 @@ export default function LoginApp() {
     }
   };
 
-  const handleEasyLoginSuccess = ({ provider, accessToken, user }) => {
-    try {
-      // ✅ 백엔드 없이 프론트 세션 로그인(임시 운영/시연용)
-      if (accessToken) setAccessToken(accessToken);
-
-      const derivedId =
-        user?.email ||
-        user?.id ||
-        user?.name ||
-        `${String(provider || "social").toLowerCase()}_${Date.now()}`;
-
-      setCurrentUserId(String(derivedId));
-      setIsLoggedIn(true);
-      setEasyOpen(false);
-
-      navigate(redirectTo || "/main", {
-        state: { fromLoginTransition: true },
-      });
-    } catch {
-      setErrorMsg("간편로그인 처리 중 오류가 발생했습니다.");
-    }
-  };
-
   return (
     <div className="login-page navy">
       <PolicyModal
@@ -261,17 +225,7 @@ export default function LoginApp() {
         <TermsContent />
       </PolicyModal>
 
-      <EasyLoginModal
-        open={easyOpen}
-        onClose={() => setEasyOpen(false)}
-        onSuccess={handleEasyLoginSuccess}
-      />
-
-      <div
-        className={`login-shell split ${
-          isFlippingToSignup ? "is-flipping-to-signup" : ""
-        }`}
-      >
+      <div className="login-shell split">
         {/* 플립 중 미리 보이는 다음 페이지(회원가입) 레이어 */}
         <div className="flip-next-preview" aria-hidden={!isFlippingToSignup}>
           <section className="flip-next-hero">
@@ -379,7 +333,7 @@ export default function LoginApp() {
                 autoComplete="username"
                 value={id}
                 onChange={(e) => setId(e.target.value)}
-                disabled={isLoading || isFlippingToSignup}
+                disabled={isLoading}
               />
             </div>
 
@@ -395,7 +349,7 @@ export default function LoginApp() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading || isFlippingToSignup}
+                  disabled={isLoading}
                 />
 
                 <button
@@ -406,7 +360,7 @@ export default function LoginApp() {
                     showPassword ? "비밀번호 숨기기" : "비밀번호 보기"
                   }
                   aria-pressed={showPassword}
-                  disabled={isLoading || isFlippingToSignup}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
@@ -428,18 +382,9 @@ export default function LoginApp() {
             <button
               type="submit"
               className="login-primary"
-              disabled={isLoading || isFlippingToSignup}
+              disabled={isLoading}
             >
               {isLoading ? "로그인 중..." : "로그인"}
-            </button>
-
-            <button
-              type="button"
-              className="login-easy"
-              onClick={() => setEasyOpen(true)}
-              disabled={isLoading || isFlippingToSignup}
-            >
-              간편로그인
             </button>
 
             <div className="login-divider" />
@@ -455,7 +400,7 @@ export default function LoginApp() {
                 onClick={goSignupWithFlip}
                 onMouseEnter={warmSignupPage}
                 onFocus={warmSignupPage}
-                disabled={isLoading || isFlippingToSignup}
+                disabled={isLoading}
               >
                 회원가입
               </button>
@@ -491,13 +436,31 @@ export default function LoginApp() {
               </div>
 
               <div className="marquee-card">
-                <img src={makeset} alt="문서초안자동생성" />
-                <strong>문서 초안 자동 생성</strong>
-                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
+                <img src={story} alt="스토리텔링" />
+                <strong>스타트업 스토리텔링</strong>
+                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
 
-              <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
+              <div className="marquee-card" aria-hidden="true">
+                <img src={namingLogoImg} alt="" />
+                <strong>네이밍·로고 추천</strong>
+                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={analyzeCompany} alt="" />
+                <strong>기업 진단분석</strong>
+                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={analyzeReport} alt="" />
+                <strong>분석 리포트 제공</strong>
+                <p>분석 내용 기반 리포트를 제공합니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={story} alt="" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
