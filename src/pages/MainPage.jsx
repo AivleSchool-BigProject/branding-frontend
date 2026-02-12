@@ -510,9 +510,17 @@ export default function MainPage({ onLogout }) {
         {/* ===== 투자 유치 게시판(틀 유지) ===== */}
         <section className="deal-board" aria-label="투자 유치 게시판">
           <div className="deal-header">
-            <div>
-              <p className="deal-eyebrow">초기 스타트업과 함께 해주세요!</p>
-              <h3 className="deal-title">스타트업 투자유치</h3>
+            <div className="deal-header-main">
+              <p className="deal-eyebrow">
+                투자자와 기업을 연결하는 기업 홍보 공간입니다.
+              </p>
+              <h3 className="deal-title">투자 라운지</h3>
+              <div className="deal-status-row" aria-hidden="true">
+                <span className="deal-status-pill">실시간 업데이트</span>
+                <span className="deal-count-pill">
+                  게시글 {dealLoading ? "-" : dealItems.length}건
+                </span>
+              </div>
             </div>
 
             <button
@@ -555,7 +563,15 @@ export default function MainPage({ onLogout }) {
               <div className="deal-empty">{dealError}</div>
             ) : dealPreview.length === 0 ? (
               <div className="deal-empty">
-                <div>등록된 게시글이 없습니다.</div>
+                <div className="deal-empty__left">
+                  <span className="deal-empty__icon" aria-hidden="true">
+                    📌
+                  </span>
+                  <div className="deal-empty__text">
+                    <strong>등록된 게시글이 없습니다.</strong>
+                    <p>첫 게시글을 등록하고 투자자에게 회사를 소개해보세요.</p>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="deal-empty-btn"

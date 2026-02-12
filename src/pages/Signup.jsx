@@ -6,7 +6,6 @@ import DatePicker from "react-datepicker";
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
 import analyzeCompany from "../Image/login_image/기업 초기 진단.png";
 import analyzeReport from "../Image/login_image/진단분석리포트.png";
-import makeset from "../Image/login_image/문서초안생성.png";
 import story from "../Image/login_image/스토리텔링.png";
 
 import PolicyModal from "../components/PolicyModal.jsx";
@@ -45,6 +44,7 @@ export default function SignupApp() {
   // 모달 상태
   const [consentOpen, setConsentOpen] = useState(false);
   const [readOpenType, setReadOpenType] = useState(null); // "terms" | "privacy" | null
+  const [openType, setOpenType] = useState(null); // 좌측 배너용 보기 모달
 
   // 메시지/로딩
   const [error, setError] = useState("");
@@ -81,29 +81,8 @@ export default function SignupApp() {
     return () => window.clearTimeout(t);
   }, []);
 
-  const goLoginWithFlip = (holdMs = 0) => {
-    if (isRoutingToLogin) return;
-
-    warmLoginPage();
-
-    if (shouldReduceMotion()) {
-      navigate("/login");
-      return;
-    }
-
-    setIsRoutingToLogin(true);
-
-    const startFlip = () => {
-      setIsFlippingToLogin(true);
-    };
-
-    if (holdMs > 0) {
-      queueTimer(startFlip, holdMs);
-    } else {
-      startFlip();
-    }
-
-    queueTimer(() => navigate("/login"), holdMs + FLIP_MS);
+  const goLoginWithFlip = () => {
+    navigate("/login");
   };
 
   const isEmailLike = useMemo(() => {
@@ -275,6 +254,23 @@ export default function SignupApp() {
 
   return (
     <div className="signup-page">
+      {/* 좌측 배너(안내용) 약관 모달 */}
+      <PolicyModal
+        open={openType === "privacy"}
+        title="개인정보 처리방침"
+        onClose={() => setOpenType(null)}
+      >
+        <PrivacyContent />
+      </PolicyModal>
+
+      <PolicyModal
+        open={openType === "terms"}
+        title="이용약관"
+        onClose={() => setOpenType(null)}
+      >
+        <TermsContent />
+      </PolicyModal>
+
       {/* 필수 동의 모달 */}
       <PolicyModal
         open={consentOpen}
@@ -561,13 +557,31 @@ export default function SignupApp() {
               </div>
 
               <div className="marquee-card">
-                <img src={makeset} alt="문서초안자동생성" />
-                <strong>문서 초안 자동 생성</strong>
-                <p>사업제안서, IR등 문서 초안을 자동 생성해줍니다.</p>
+                <img src={story} alt="스토리텔링" />
+                <strong>스타트업 스토리텔링</strong>
+                <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
 
-              <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
+              <div className="marquee-card" aria-hidden="true">
+                <img src={namingLogoImg} alt="" />
+                <strong>네이밍·로고 추천</strong>
+                <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={analyzeCompany} alt="" />
+                <strong>기업 진단분석</strong>
+                <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={analyzeReport} alt="" />
+                <strong>분석 리포트 제공</strong>
+                <p>분석 내용 기반 리포트를 제공합니다.</p>
+              </div>
+
+              <div className="marquee-card" aria-hidden="true">
+                <img src={story} alt="" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
@@ -579,7 +593,7 @@ export default function SignupApp() {
               <button
                 type="button"
                 className="hero-footer-link"
-                onClick={() => openReadModal("privacy")}
+                onClick={() => setOpenType("privacy")}
               >
                 개인정보 처리방침
               </button>
@@ -587,7 +601,7 @@ export default function SignupApp() {
               <button
                 type="button"
                 className="hero-footer-link"
-                onClick={() => openReadModal("terms")}
+                onClick={() => setOpenType("terms")}
               >
                 이용약관
               </button>

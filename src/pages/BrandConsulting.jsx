@@ -23,7 +23,9 @@ import {
   readPipeline,
   ensureStrictStepAccess,
   setBrandFlowCurrent,
+  resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
+import { fetchMyBrands } from "../api/mypage.js";
 
 export default function BrandConsulting({ onLogout }) {
   const location = useLocation();
@@ -34,11 +36,38 @@ export default function BrandConsulting({ onLogout }) {
 
   // ✅ pipeline 상태(브랜드 컨설팅 흐름의 단일 소스)
   const [pipeline, setPipeline] = useState(() => readPipeline());
+  const [hasCompletedHistory, setHasCompletedHistory] = useState(false);
 
   // ✅ 1회 마이그레이션 + 상태 동기화
   useEffect(() => {
     const next = migrateLegacyToPipelineIfNeeded();
     setPipeline(next);
+  }, []);
+
+  // ✅ 마이페이지 완료 이력 확인(하단 리포트 버튼 활성화 기준)
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const rows = await fetchMyBrands();
+        const arr = Array.isArray(rows) ? rows : [];
+        const hasFinal = arr.some(
+          (d) =>
+            String(d?.currentStep || "")
+              .trim()
+              .toUpperCase() === "FINAL",
+        );
+        if (alive) setHasCompletedHistory(hasFinal);
+      } catch {
+        // API 실패 시에는 기존 화면 로직으로 동작
+        if (alive) setHasCompletedHistory(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const pickedSection = location.state?.section || null;
@@ -89,7 +118,7 @@ export default function BrandConsulting({ onLogout }) {
     [],
   );
 
-  const status = useMemo(() => {
+  const rawStatus = useMemo(() => {
     const hasDiagnosis = Boolean(
       (typeof pipeline?.diagnosisSummary === "string" &&
         pipeline.diagnosisSummary.trim()) ||
@@ -112,7 +141,30 @@ export default function BrandConsulting({ onLogout }) {
 
     return { hasDiagnosis, hasNaming, hasConcept, hasStory, hasLogo };
   }, [pipeline]);
+
   const pipelineBrandId = pipeline?.brandId ?? null;
+
+  // ✅ 완료 이력이 있는 상태에서는 홈에서 수정 금지(새 진단부터만 시작)
+  const isPipelineCompleted =
+    rawStatus.hasDiagnosis &&
+    rawStatus.hasNaming &&
+    rawStatus.hasConcept &&
+    rawStatus.hasStory &&
+    rawStatus.hasLogo;
+
+  const isCompletedLockMode = isPipelineCompleted;
+
+  // 화면 표시는 "처음 시작"처럼 보이게
+  const status = useMemo(() => {
+    if (!isCompletedLockMode) return rawStatus;
+    return {
+      hasDiagnosis: false,
+      hasNaming: false,
+      hasConcept: false,
+      hasStory: false,
+      hasLogo: false,
+    };
+  }, [isCompletedLockMode, rawStatus]);
 
   const unlocked = useMemo(() => {
     const naming = status.hasDiagnosis;
@@ -145,7 +197,7 @@ export default function BrandConsulting({ onLogout }) {
   }, [nextStep]);
 
   const ctaText = useMemo(() => {
-    if (nextStep === "diagnosis") return "기업진단 먼저 진행하기";
+    if (nextStep === "diagnosis") return "기업진단 시작하기";
     if (nextStep === "naming") return "네이밍부터 시작하기";
     if (nextStep === "concept") return "컨셉 이어서 진행하기";
     if (nextStep === "story") return "스토리 이어서 진행하기";
@@ -153,14 +205,22 @@ export default function BrandConsulting({ onLogout }) {
     return "마이페이지에서 리포트 보기";
   }, [nextStep]);
 
-  const isBrandConsultingCompleted =
-    status.hasDiagnosis &&
-    status.hasNaming &&
-    status.hasConcept &&
-    status.hasStory &&
-    status.hasLogo;
+  const canViewMyReports = isPipelineCompleted || hasCompletedHistory;
+
+  const startFreshDiagnosis = () => {
+    resetBrandConsultingToDiagnosisStart("completed_lock_start_new");
+    const next = readPipeline();
+    setPipeline(next);
+    navigate("/diagnosisinterview?mode=start", { state: { mode: "start" } });
+  };
 
   const handlePrimaryCTA = () => {
+    // ✅ 완료 상태에서는 수정 금지 + 새 진단으로만 시작
+    if (isCompletedLockMode) {
+      startFreshDiagnosis();
+      return;
+    }
+
     if (nextStep === "diagnosis") {
       alert(
         "브랜드 컨설팅은 기업진단 요약을 기반으로 진행됩니다. 기업진단을 먼저 완료해주세요.",
@@ -197,7 +257,7 @@ export default function BrandConsulting({ onLogout }) {
   };
 
   const handleViewFinalReport = () => {
-    if (!isBrandConsultingCompleted) return;
+    if (!canViewMyReports) return;
     navigate("/mypage");
   };
 
@@ -208,7 +268,9 @@ export default function BrandConsulting({ onLogout }) {
     story: "브랜드 스토리 컨설팅",
   };
 
-  const diagSummaryText = pipeline?.diagnosisSummary?.shortText || "";
+  const diagSummaryText = isCompletedLockMode
+    ? ""
+    : pipeline?.diagnosisSummary?.shortText || "";
 
   return (
     <div className="brand-page">
@@ -296,15 +358,21 @@ export default function BrandConsulting({ onLogout }) {
               >
                 {steps.map((s, idx) => {
                   const isDiagnosisStep = s.key === "diagnosis";
-                  const stepUnlocked = isDiagnosisStep
-                    ? true
-                    : Boolean(unlocked[s.key]);
-                  const stepDone = isDiagnosisStep
-                    ? status.hasDiagnosis
-                    : Boolean(
-                        pipeline?.[s.key]?.selectedId ||
-                        pipeline?.[s.key]?.selected,
-                      );
+
+                  const stepUnlocked = isCompletedLockMode
+                    ? isDiagnosisStep
+                    : isDiagnosisStep
+                      ? true
+                      : Boolean(unlocked[s.key]);
+
+                  const stepDone = isCompletedLockMode
+                    ? false
+                    : isDiagnosisStep
+                      ? status.hasDiagnosis
+                      : Boolean(
+                          pipeline?.[s.key]?.selectedId ||
+                          pipeline?.[s.key]?.selected,
+                        );
 
                   return (
                     <div
@@ -341,6 +409,18 @@ export default function BrandConsulting({ onLogout }) {
                             className={`btn ghost ${stepUnlocked ? "" : "disabled"}`}
                             disabled={!stepUnlocked}
                             onClick={() => {
+                              if (isCompletedLockMode) {
+                                if (isDiagnosisStep) {
+                                  startFreshDiagnosis();
+                                  return;
+                                }
+
+                                alert(
+                                  "완료된 컨설팅은 홈에서 수정할 수 없습니다. 새 기업진단으로 다시 시작하거나, 마이페이지에서 기존 리포트를 확인해주세요.",
+                                );
+                                return;
+                              }
+
                               const access = ensureStrictStepAccess(s.key);
                               if (isDiagnosisStep && access?.ok) {
                                 if (status.hasDiagnosis) {
@@ -389,13 +469,17 @@ export default function BrandConsulting({ onLogout }) {
                               });
                             }}
                           >
-                            {isDiagnosisStep
-                              ? stepDone
-                                ? "진단 확인/수정"
-                                : "기업진단 시작"
-                              : stepDone
-                                ? "결과 확인/수정"
-                                : "이 단계 진행"}
+                            {isCompletedLockMode
+                              ? isDiagnosisStep
+                                ? "기업진단 시작"
+                                : "잠김 (새 진단 필요)"
+                              : isDiagnosisStep
+                                ? stepDone
+                                  ? "진단 확인/수정"
+                                  : "기업진단 시작"
+                                : stepDone
+                                  ? "결과 확인/수정"
+                                  : "이 단계 진행"}
                           </button>
                         </div>
                       </div>
@@ -411,7 +495,13 @@ export default function BrandConsulting({ onLogout }) {
             >
               <h3 className="bcFlowActions__title">다음 할 일</h3>
 
-              {status.hasDiagnosis ? (
+              {isCompletedLockMode ? (
+                <p className="bcFlowActions__desc">
+                  이전 브랜드 컨설팅은 완료되어 홈에서 수정할 수 없습니다.
+                  <br />새 브랜드로 진행하려면 <b>기업진단부터 다시 시작</b>
+                  하세요.
+                </p>
+              ) : status.hasDiagnosis ? (
                 <p className="bcFlowActions__desc">
                   기업진단 요약이 준비되었습니다.
                   {diagSummaryText ? (
@@ -441,24 +531,23 @@ export default function BrandConsulting({ onLogout }) {
                   {ctaText}
                 </button>
 
-                {/* ✅ 여기: disabled 대신 가짜 disabled + 툴팁 */}
                 <button
                   type="button"
                   className={`btn ghost bcTooltipBtn ${
-                    isBrandConsultingCompleted ? "" : "is-disabled"
+                    canViewMyReports ? "" : "is-disabled"
                   }`}
                   onClick={handleViewFinalReport}
-                  aria-disabled={!isBrandConsultingCompleted}
+                  aria-disabled={!canViewMyReports}
                 >
                   마이페이지에서 리포트 보기
-                  {!isBrandConsultingCompleted && (
+                  {!canViewMyReports && (
                     <span className="bcTooltip" role="tooltip">
-                      진행된 컨설팅이 없습니다.
+                      완료된 리포트가 아직 없습니다.
                     </span>
                   )}
                 </button>
 
-                {!isBrandConsultingCompleted ? (
+                {!canViewMyReports ? (
                   <p className="bcFlowActions__hint">
                     * 네이밍 → 컨셉 → 스토리 → 로고 선택까지 완료하면 리포트가
                     활성화돼요.

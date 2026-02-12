@@ -523,7 +523,7 @@
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  width: min(94vw, 860px);
+  width: min(88vw, 720px);
   margin: 0;
   padding: 15px 18px;
   border-radius: 16px;

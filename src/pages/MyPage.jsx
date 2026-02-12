@@ -235,7 +235,7 @@ function extractStoryText(r) {
   );
 }
 
-// ✅ 요청 반영: "한줄 소개"를 브랜드 카드에 추가
+// ✅ 한줄 소개 텍스트 추출(카드 표시용이 아닌 검색 보조용)
 function extractOneLineText(r) {
   const ds = r?.snapshot?.diagnosisSummary || {};
   const sel = r?.snapshot?.selections || {};
@@ -658,9 +658,7 @@ export default function MyPage({ onLogout }) {
           <div className="mypage-headerRow">
             <div>
               <h2 className="mypage-title">마이페이지</h2>
-              <p className="mypage-sub">
-                내가 만든 리포트를 모아보고, 다시 실행할 수 있어요.
-              </p>
+              <p className="mypage-sub">내가 만든 리포트를 모아볼 수 있어요.</p>
             </div>
           </div>
         </div>
@@ -854,12 +852,6 @@ export default function MyPage({ onLogout }) {
                       ? selectedLogoMap[String(r.id)]
                       : "");
 
-                  const oneLineRaw =
-                    r?.kind === "brand" ? extractOneLineText(r) : "";
-                  const oneLinePreview = oneLineRaw
-                    ? truncateText(oneLineRaw, 80)
-                    : "-";
-
                   const conceptRaw =
                     r?.kind === "brand" ? extractConceptText(r) : "";
                   const storyRaw =
@@ -998,13 +990,6 @@ export default function MyPage({ onLogout }) {
                                   </button>
                                 </div>
                               </div>
-
-                              <p className="reportCard__sub">
-                                <strong style={{ fontWeight: 900 }}>
-                                  한줄 소개
-                                </strong>{" "}
-                                · {oneLinePreview}
-                              </p>
 
                               <p className="reportCard__sub">
                                 <strong style={{ fontWeight: 900 }}>
