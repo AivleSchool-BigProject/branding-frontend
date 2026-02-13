@@ -316,7 +316,7 @@ export default function InvestmentBoard({ onLogout }) {
               </strong>
               <p>
                 {isSearching
-                  ? "다른 지역/규모를 선택하거나 검색어를 바꿔보세요."
+                  ? "지역이나 규모를 변경하거나 검색어를 다시 입력해보세요."
                   : "게시글이 등록되면 이곳에서 확인할 수 있어요."}
               </p>
             </div>
