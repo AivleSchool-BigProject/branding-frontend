@@ -586,3 +586,33 @@
   background: rgba(79, 70, 229, 0.08);
 }
 
+/* ✅ 빈 상태(등록된 게시글 없음) 카드 중앙 정렬 + 가로폭 확장 */
+.invest-detail-empty {
+  grid-column: 1 / -1;     /* 3열 grid 전체를 차지 */
+  margin: 22px auto 0;     /* 가운데로 */
+  width: 100%;
+  max-width: 720px;        /* 가로 길이(원하는 값으로 조절) */
+  text-align: center;
+  padding: 28px 22px;      /* 여백 (기존 카드 느낌 맞추기) */
+  background: #ffffff;
+  border: 1px solid #e6e9f1;
+  border-radius: 16px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* 문구가 2줄일 때 보기 좋게 */
+.invest-detail-empty strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.invest-detail-empty p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+

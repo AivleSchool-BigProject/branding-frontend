@@ -131,6 +131,8 @@ export default function InvestmentBoard({ onLogout }) {
     "대기업",
   ];
 
+  const isSearching = q.trim().length > 0 || region !== "all" || size !== "all";
+
   return (
     <div className="invest-page">
       {/* 정책 모달 */}
@@ -228,69 +230,77 @@ export default function InvestmentBoard({ onLogout }) {
           </div>
         </section>
 
-        {/* ✅ 투자 라운지 이용 가이드 */}
-        <section className="invest-guide" aria-label="투자 라운지 이용 가이드">
-          {/* ✅ 카드 1: 이용 가이드 + 이미지 */}
-          <div className="invest-guide-card invest-guide-card--intro">
-            <div className="invest-guide-left">
-              <div className="invest-guide-badge">
-                📌 투자 라운지 이용 가이드
+        {!isSearching && (
+          <section
+            className="invest-guide"
+            aria-label="투자 라운지 이용 가이드"
+          >
+            {/* ✅ 카드 1: 이용 가이드 + 이미지 */}
+            <div className="invest-guide-card invest-guide-card--intro">
+              <div className="invest-guide-left">
+                <div className="invest-guide-badge">
+                  📌 투자 라운지 이용 가이드
+                </div>
+
+                <h2 className="invest-guide-title js-guide-title">
+                  투자 라운지는 기업이 투자자에게 회사를 소개하는 공간이에요.
+                </h2>
+
+                <ul className="invest-guide-steps" aria-label="이용 절차">
+                  <li data-step="1">
+                    우리 회사를 투자자에게 소개하는 게시글을 작성해요
+                  </li>
+                  <li data-step="2">
+                    투자자는 게시글을 보고 기업에 관심을 가질 수 있어요
+                  </li>
+                  <li data-step="3">
+                    관심 있는 투자자는 기업에 직접 연락할 수 있어요
+                  </li>
+                </ul>
               </div>
 
-              <h2 className="invest-guide-title js-guide-title">
-                투자 라운지는 기업이 투자자에게 회사를 소개하는 공간이에요.
-              </h2>
-
-              <ul className="invest-guide-steps" aria-label="이용 절차">
-                <li data-step="1">
-                  우리 회사를 투자자에게 소개하는 게시글을 작성해요
-                </li>
-                <li data-step="2">
-                  투자자는 게시글을 보고 기업에 관심을 가질 수 있어요
-                </li>
-                <li data-step="3">
-                  관심 있는 투자자는 기업에 직접 연락할 수 있어요
-                </li>
-              </ul>
-            </div>
-
-            <div className="invest-guide-right" aria-hidden="true">
-              <div className="invest-guide-visual">
-                <img className="invest-guide-img" src={investGuideImg} alt="" />
+              <div className="invest-guide-right" aria-hidden="true">
+                <div className="invest-guide-visual">
+                  <img
+                    className="invest-guide-img"
+                    src={investGuideImg}
+                    alt=""
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ✅ 카드 2: 작성 가이드 질문 */}
-          <div className="invest-guide-card invest-guide-card--questions">
-            <div className="invest-guide-left">
-              <p className="invest-guide-miniTitle">
-                투자 라운지 작성 시 참고하면 좋은 질문
-              </p>
+            {/* ✅ 카드 2: 작성 가이드 질문 */}
+            <div className="invest-guide-card invest-guide-card--questions">
+              <div className="invest-guide-left">
+                <p className="invest-guide-miniTitle">
+                  투자 라운지 작성 시 참고하면 좋은 질문
+                </p>
 
-              <ul
-                className="invest-guide-questionsMini"
-                aria-label="투자 라운지 작성 가이드 질문"
+                <ul
+                  className="invest-guide-questionsMini"
+                  aria-label="투자 라운지 작성 가이드 질문"
+                >
+                  <li>우리 회사는 어떤 문제를 해결하나요?</li>
+                  <li>핵심 제품/서비스는 무엇인가요?</li>
+                  <li>투자를 통해 어떤 성장을 만들고 싶나요?</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="invest-guide-tip">
+              💡 브랜드 컨설팅을 완료하면 더 명확한 투자 스토리를 작성할 수
+              있어요.
+              <button
+                type="button"
+                className="invest-guide-link"
+                onClick={() => navigate("/brandconsulting")}
               >
-                <li>우리 회사는 어떤 문제를 해결하나요?</li>
-                <li>핵심 제품/서비스는 무엇인가요?</li>
-                <li>투자를 통해 어떤 성장을 만들고 싶나요?</li>
-              </ul>
+                브랜드 컨설팅 바로가기 ↗
+              </button>
             </div>
-          </div>
-
-          <div className="invest-guide-tip">
-            💡 브랜드 컨설팅을 완료하면 더 명확한 투자 스토리를 작성할 수
-            있어요.
-            <button
-              type="button"
-              className="invest-guide-link"
-              onClick={() => navigate("/brandconsulting")}
-            >
-              브랜드 컨설팅 바로가기 ↗
-            </button>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section className="invest-grid" aria-label="투자유치 게시글 목록">
           {loading ? (
@@ -298,7 +308,18 @@ export default function InvestmentBoard({ onLogout }) {
           ) : null}
           {error ? <div className="invest-detail-empty">{error}</div> : null}
           {!loading && !error && filtered.length === 0 ? (
-            <div className="invest-detail-empty">등록된 게시글이 없습니다.</div>
+            <div className="invest-detail-empty">
+              <strong>
+                {isSearching
+                  ? "조건에 맞는 게시글이 없어요."
+                  : "아직 등록된 게시글이 없어요."}
+              </strong>
+              <p>
+                {isSearching
+                  ? "다른 지역/규모를 선택하거나 검색어를 바꿔보세요."
+                  : "게시글이 등록되면 이곳에서 확인할 수 있어요."}
+              </p>
+            </div>
           ) : null}
           {filtered.map((it) => {
             if (it.kind === "preview") {
