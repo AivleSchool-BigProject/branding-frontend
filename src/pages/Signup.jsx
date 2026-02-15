@@ -3,14 +3,15 @@ import React, { useEffect, useMemo, useRef, useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 
-import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
-import analyzeCompany from "../Image/login_image/기업 초기 진단.png";
-import analyzeReport from "../Image/login_image/진단분석리포트.png";
-import story from "../Image/login_image/스토리텔링.png";
+import namingLogoImg from "../Image/login_image/네이밍_로고_추천.webp";
+import analyzeCompany from "../Image/login_image/기업 초기 진단.webp";
+import analyzeReport from "../Image/login_image/진단분석리포트.webp";
+import story from "../Image/login_image/스토리텔링.webp";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
+import { getServiceErrorMessage } from "../utils/serviceErrorMessages.js";
 
 const FLIP_MS = 850;
 const SUCCESS_HOLD_MS = 260;
@@ -149,8 +150,14 @@ export default function SignupApp() {
       setReadOpenType(null);
       setConsentError("");
       goLoginWithFlip(SUCCESS_HOLD_MS);
-    } catch {
-      setError("회원가입에 실패했습니다.");
+    } catch (error) {
+      setError(
+        getServiceErrorMessage(error, {
+          context: "signup",
+          fallback:
+            "회원가입 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+        }),
+      );
     } finally {
       setLoading(false);
     }

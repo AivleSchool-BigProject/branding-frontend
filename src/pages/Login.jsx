@@ -2,10 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import namingLogoImg from "../Image/login_image/네이밍_로고_추천.png";
-import analyzeCompany from "../Image/login_image/기업 초기 진단.png";
-import analyzeReport from "../Image/login_image/진단분석리포트.png";
-import story from "../Image/login_image/스토리텔링.png";
+import namingLogoImg from "../Image/login_image/네이밍_로고_추천.webp";
+import analyzeCompany from "../Image/login_image/기업 초기 진단.webp";
+import analyzeReport from "../Image/login_image/진단분석리포트.webp";
+import story from "../Image/login_image/스토리텔링.webp";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";

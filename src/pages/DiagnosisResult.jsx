@@ -49,37 +49,6 @@ function renderText(v) {
   return s ? s : "-";
 }
 
-function toTextArray(v) {
-  if (!v) return [];
-  if (Array.isArray(v))
-    return v.map((x) => String(x ?? "").trim()).filter(Boolean);
-  if (typeof v === "string") return [v.trim()].filter(Boolean);
-  return [];
-}
-
-function Chips({ items }) {
-  const arr = toTextArray(items);
-  if (!arr.length) return <span style={{ color: "#6b7280" }}>-</span>;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-      {arr.map((t, i) => (
-        <span
-          key={`${t}-${i}`}
-          style={{
-            fontSize: 12,
-            padding: "6px 10px",
-            borderRadius: 999,
-            border: "1px solid #e5e7eb",
-            background: "#fff",
-          }}
-        >
-          {t}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function Block({ title, children, subtitle }) {
   return (
     <div className="block">
@@ -159,8 +128,8 @@ export default function DiagnosisResult({ onLogout }) {
 
   // 1) flat 값 (FastAPI 더미 응답)
   const flatSummary = report?.summary ?? "";
-  const flatAnalysisText = report?.analysis ?? ""; // ✅ 문자열일 수 있음
-  const flatKeyInsights = report?.key_insights ?? ""; // ✅ snake_case
+  const flatAnalysisText = report?.analysis ?? "";
+  const flatKeyInsights = report?.key_insights ?? "";
 
   // ✅ legacy(이전 코드/백 응답) 구조 fallback
   const legacyInterviewReport =
@@ -210,7 +179,6 @@ export default function DiagnosisResult({ onLogout }) {
   ).trim();
 
   const uiAnalysisText = String(
-    // flatAnalysisText가 문자열이면 그대로
     (typeof flatAnalysisText === "string" ? flatAnalysisText : "") ||
       nestedAnalysis?.analysis ||
       "",
@@ -228,12 +196,6 @@ export default function DiagnosisResult({ onLogout }) {
     nestedAnalysis?.core_keywords ||
     nestedAnalysis?.keywords ||
     [];
-
-  const uiPersona =
-    nestedOutput?.persona ||
-    nestedAnalysis?.target_persona ||
-    nestedAnalysis?.persona ||
-    "-";
 
   const uiPerspectives =
     nestedOutput?.perspectives ||
@@ -389,9 +351,8 @@ export default function DiagnosisResult({ onLogout }) {
     ];
     return rows.filter((x) => String(x.v ?? "").trim());
   }, [rawQAFields, rawQA]);
-  // ✅ 분기 기준
-  const hasReport = Boolean(report);
 
+  const hasReport = Boolean(report);
   const canContinue = brandId != null && String(brandId).trim() !== "";
 
   // flat 응답은 keywords/persona가 없을 수 있으니
@@ -521,7 +482,9 @@ export default function DiagnosisResult({ onLogout }) {
                     </span>
                   </span>
                   <span
-                    className={`diagResultHero__chip state ${hasReport ? "ready" : "pending"}`}
+                    className={`diagResultHero__chip state ${
+                      hasReport ? "ready" : "pending"
+                    }`}
                   >
                     {hasReport ? "진단 완료" : "결과 대기"}
                   </span>
@@ -530,7 +493,9 @@ export default function DiagnosisResult({ onLogout }) {
 
               <div className="diagResultHero__right">
                 <div
-                  className={`diagResultHero__status ${canContinue ? "ready" : "pending"}`}
+                  className={`diagResultHero__status ${
+                    canContinue ? "ready" : "pending"
+                  }`}
                 >
                   <span
                     className="diagResultHero__statusDot"
@@ -541,19 +506,6 @@ export default function DiagnosisResult({ onLogout }) {
                       ? "브랜드 컨설팅 다음 단계로 진행할 수 있어요"
                       : "인터뷰 내용을 수정하거나 brandId 확인이 필요해요"}
                   </span>
-                </div>
-
-                <div className="diagResultHero__actions">
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={goInterview}
-                  >
-                    인터뷰로 돌아가기
-                  </button>
-                  <button type="button" className="btn" onClick={goHome}>
-                    기업진단 홈
-                  </button>
                 </div>
               </div>
             </div>
@@ -629,9 +581,7 @@ export default function DiagnosisResult({ onLogout }) {
                     </Block>
                   </Card>
 
-                  {/* ------------------- 삭제해야 할 부분 -------------------- */}
-                  {/* 다각도 분석은 현재 더미 백에서 주지 않으니,
-                      있으면 보여주고 없으면 카드 생략 */}
+                  {/* 다각도 분석은 값이 있을 때만 표시 */}
                   {isPlainObject(uiPerspectives) &&
                   Object.keys(uiPerspectives).length > 0 ? (
                     <Card
@@ -689,7 +639,6 @@ export default function DiagnosisResult({ onLogout }) {
                       </div>
                     </Card>
                   ) : null}
-                  {/* --------------------------------------------------- */}
 
                   {/* 입력 요약은 raw_qa가 있을 때만 보여주기 */}
                   {inputSummaryRows.length ? (

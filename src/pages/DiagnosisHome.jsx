@@ -9,7 +9,7 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 배너 이미지: 기업진단 & 인터뷰 홈 배너 → Banner_D 사용
-import bannerImage from "../Image/banner_image/Banner_D.png";
+import bannerImage from "../Image/banner_image/Banner_D.webp";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem } from "../utils/userLocalStorage.js";

@@ -2,11 +2,11 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
-import bannerImage from "../Image/banner_image/Banner_P.png";
-import iconImage from "../Image/promotion_image/ProductIcon.png";
-import aiCutImage from "../Image/promotion_image/AICutModel.png";
-import stagingImage from "../Image/promotion_image/ProductStaging.png";
-import posterImage from "../Image/promotion_image/SNSPoster.png";
+import bannerImage from "../Image/banner_image/Banner_P.webp";
+import iconImage from "../Image/promotion_image/ProductIcon.webp";
+import aiCutImage from "../Image/promotion_image/AICutModel.webp";
+import stagingImage from "../Image/promotion_image/ProductStaging.webp";
+import posterImage from "../Image/promotion_image/SNSPoster.webp";
 
 import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";

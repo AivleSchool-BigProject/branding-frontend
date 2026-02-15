@@ -4,9 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/MainPage.css";
 
 // UI: 메인 카드(컨설팅 시작하기)에서 사용하는 이미지 에셋
-import makeset from "../Image/main_image/brand_consult2.png";
-import story from "../Image/main_image/Promotional_consulting2.png";
-import mainBanner from "../Image/banner_image/Banner_B.png";
+import makeset from "../Image/main_image/brand_consult2.webp";
+import story from "../Image/main_image/Promotional_consulting2.webp";
+import mainBanner from "../Image/banner_image/Banner_B.webp";
 
 // UI: 약관/개인정보 모달 + 공통 헤더/푸터
 import PolicyModal from "../components/PolicyModal.jsx";
