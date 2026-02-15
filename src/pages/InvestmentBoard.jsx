@@ -9,7 +9,7 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 
-import investGuideImg from "../Image/investment_image/investment_rule.png";
+import investGuideImg from "../Image/investment_image/investment_rule.webp";
 
 export default function InvestmentBoard({ onLogout }) {
   const navigate = useNavigate();

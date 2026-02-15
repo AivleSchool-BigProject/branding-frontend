@@ -34,19 +34,25 @@ import {
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest, apiRequestAI } from "../api/client.js";
+import {
+  getServiceErrorMessage,
+  getBrandIdMissingMessage,
+  getBrandIdMismatchMessage,
+  buildDetailedErrorMessages,
+} from "../utils/serviceErrorMessages.js";
 
 // 2026-02-06
 // 컬러 피커 - react-colorful import
 import { HexColorPicker } from "react-colorful";
 
 import exNetflix from "../Image/logo_example_image/logo-Netflix.jpg";
-import exdunkin from "../Image/logo_example_image/logo_dunkin.png";
-import exBurgerKing from "../Image/logo_example_image/burgerking_logo.png";
+import exdunkin from "../Image/logo_example_image/logo_dunkin.webp";
+import exBurgerKing from "../Image/logo_example_image/burgerking_logo.webp";
 import exNike from "../Image/logo_example_image/nike-logos-swoosh-white.jpg";
 import exCocaCola from "../Image/logo_example_image/coca-cola-logo.webp";
-import exHarley from "../Image/logo_example_image/logo_Harley.png";
-import exNFL from "../Image/logo_example_image/logo_nfl.png";
-import exSnapchat from "../Image/logo_example_image/logo_snapchat.png";
+import exHarley from "../Image/logo_example_image/logo_Harley.webp";
+import exNFL from "../Image/logo_example_image/logo_nfl.webp";
+import exSnapchat from "../Image/logo_example_image/logo_snapchat.webp";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";
@@ -56,8 +62,10 @@ function alertBrandIdMismatchAndStop(info) {
   const expected = info?.expectedBrandId ?? "-";
   const incoming = info?.incomingBrandId ?? "-";
   window.alert(
-    `기업진단에서 생성된 brandID(${expected})와 다른 ID(${incoming})가 감지되어 컨설팅을 중단합니다.
-진행 중이던 컨설팅은 동일한 brandID로만 이어서 진행할 수 있습니다.`,
+    `${getBrandIdMismatchMessage()}
+
+진단에서 생성된 brandId: ${expected}
+현재 요청 brandId: ${incoming}`,
   );
 }
 
@@ -1306,7 +1314,9 @@ export default function LogoConsultingInterview({ onLogout }) {
 
     if (!brandId) {
       alert(
-        "brandId를 확인할 수 없습니다. 기업진단 → 네이밍/컨셉/스토리 완료 후 로고 단계로 진행해 주세요.",
+        getBrandIdMissingMessage(
+          "기업진단부터 순서대로 완료한 뒤 로고 단계를 진행해 주세요.",
+        ),
       );
       navigate("/diagnosisinterview", { state: { mode: "start" } });
       return;
@@ -1378,7 +1388,10 @@ export default function LogoConsultingInterview({ onLogout }) {
       window.setTimeout(() => scrollToResult(), 50);
     } catch (e) {
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.userMessage || e?.message;
+      const errNotice = buildDetailedErrorMessages(e, {
+        context: "brand",
+        fallback: "로고 생성 요청 중 오류가 발생했습니다.",
+      });
 
       console.warn("POST /brands/{brandId}/logo failed:", e);
 
@@ -1387,9 +1400,15 @@ export default function LogoConsultingInterview({ onLogout }) {
         const expired = !token || isJwtExpired(token);
 
         if (expired) {
-          alert(
-            "로그인 토큰이 없거나 만료되었습니다.\n다시 로그인한 뒤 '완료'를 다시 눌러주세요.",
-          );
+          const sessionMsg =
+            "로그인 세션이 만료되었거나 유효하지 않습니다.\n다시 로그인한 뒤 로고 생성을 다시 시도해주세요.";
+          alert(sessionMsg);
+          showToast({
+            icon: "⚠️",
+            title: "세션 만료",
+            msg: sessionMsg.replace(/\n+/g, " "),
+            variant: "warn",
+          });
           navigate("/login", {
             state: {
               redirectTo: `${location.pathname}${location.search || ""}`,
@@ -1398,16 +1417,24 @@ export default function LogoConsultingInterview({ onLogout }) {
           return;
         }
 
-        const serverMsg = msg ? `\n\n서버 메시지: ${msg}` : "";
-        alert(
-          status === 401
-            ? `로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.${serverMsg}`
-            : `권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다.\n기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.${serverMsg}`,
-        );
+        alert(errNotice.alertMessage);
+        showToast({
+          icon: "⚠️",
+          title: "AI 분석 실패",
+          msg: errNotice.toastMessage,
+          variant: "warn",
+        });
         return;
       }
 
-      alert(`로고 생성 요청에 실패했습니다: ${msg || "요청 실패"}`);
+      setAnalyzeError(`로고 생성에 실패했습니다: ${errNotice.friendly}`);
+      alert(`로고 생성 요청에 실패했습니다: ${errNotice.alertMessage}`);
+      showToast({
+        icon: "⚠️",
+        title: "AI 분석 실패",
+        msg: errNotice.toastMessage,
+        variant: "warn",
+      });
     } finally {
       await waitForMinAiLoading(requestStartedAt);
       setAnalyzing(false);
@@ -1472,7 +1499,7 @@ export default function LogoConsultingInterview({ onLogout }) {
       selected?.imageUrl || selected?.url || selected?.logoUrl || "";
 
     if (!brandId) {
-      alert("brandId를 확인할 수 없습니다. 기업진단을 다시 진행해 주세요.");
+      alert(getBrandIdMissingMessage("기업진단을 다시 진행해 주세요."));
       return;
     }
     if (!String(selectedLogoUrl).trim()) {
@@ -1501,16 +1528,17 @@ export default function LogoConsultingInterview({ onLogout }) {
       console.warn("POST /brands/{brandId}/logo/select failed:", e);
 
       if (status === 401 || status === 403) {
-        alert(
-          status === 401
-            ? "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요."
-            : "권한이 없습니다(403). 보통 현재 로그인한 계정의 brandId가 아닌 값으로 요청할 때 발생합니다. 기업진단을 다시 진행해 brandId를 새로 생성한 뒤 시도해주세요.",
-        );
+        alert(getServiceErrorMessage(e, { context: "brand" }));
         return;
       }
 
       if (!String(msg || "").includes("로고")) {
-        alert(`로고 선택 저장에 실패했습니다: ${msg || "요청 실패"}`);
+        alert(
+          `로고 선택 저장에 실패했습니다: ${getServiceErrorMessage(e, {
+            context: "brand",
+            fallback: "선택 결과 저장 중 오류가 발생했습니다.",
+          })}`,
+        );
         return;
       }
     } finally {
