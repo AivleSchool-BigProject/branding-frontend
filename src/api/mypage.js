@@ -23,7 +23,7 @@ export function deleteMyBrand(brandId) {
   // ✅ 백엔드 구현: POST /mypage/brands/{brandsId}
   // (MyPageController.deleteBrand)
   return apiRequest(`/mypage/brands/${brandId}`, {
-    method: "POST",
+    method: "DELETE",
   });
 }
 
