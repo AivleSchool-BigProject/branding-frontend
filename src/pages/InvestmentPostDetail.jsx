@@ -8,6 +8,7 @@ import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 import { getCurrentUserId } from "../api/auth.js";
+import "../styles/InvestmentPostDetail.css";
 
 export default function InvestmentPostDetail({ onLogout }) {
   const navigate = useNavigate();

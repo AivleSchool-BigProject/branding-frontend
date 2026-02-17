@@ -7,6 +7,7 @@ import SiteFooter from "../components/SiteFooter.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem, userSetItem, userRemoveItem } from "../utils/userLocalStorage.js";
+import "../styles/PromotionAllResults.css";
 
 function safeParse(raw) {
   try {

@@ -14,6 +14,7 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { notifyPromoInterviewComingSoon } from "../utils/promoComingSoon.js";
+import "../styles/Promotion.css";
 
 export default function PromotionPage({ onLogout }) {
   const location = useLocation();

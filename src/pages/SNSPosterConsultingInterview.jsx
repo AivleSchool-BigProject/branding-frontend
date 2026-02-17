@@ -21,6 +21,8 @@ import {
   addPromoReport,
   createPromoReportSnapshot,
 } from "../utils/promoReportHistory.js";
+import "../styles/ConceptConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 /**
  * ✅ 홍보물 컨설팅 (독립 서비스)

@@ -1,11 +1,8 @@
 // src/pages/Login.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.webp";
-import analyzeCompany from "../Image/login_image/기업 초기 진단.webp";
-import analyzeReport from "../Image/login_image/진단분석리포트.webp";
-import story from "../Image/login_image/스토리텔링.webp";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
@@ -13,13 +10,10 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 // ✅ 팀 코드의 백 연동 방식으로 통일
 import { apiRequest, setAccessToken } from "../api/client.js";
 import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
+import "../styles/Login.css";
 
-const FLIP_MS = 850;
-
-function shouldReduceMotion() {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
+const TRANSPARENT_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
 function EyeIcon(props) {
   return (
@@ -107,53 +101,58 @@ export default function LoginApp() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ 로그인 -> 회원가입 페이지 넘김
-  const [isFlippingToSignup, setIsFlippingToSignup] = useState(false);
-  const timersRef = useRef([]);
-  const signupWarmupStartedRef = useRef(false);
+  const [marqueeImages, setMarqueeImages] = useState({
+    analyzeCompany: "",
+    analyzeReport: "",
+    story: "",
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadExtraImages = async () => {
+      try {
+        const [companyMod, reportMod, storyMod] = await Promise.all([
+          import("../Image/login_image/기업 초기 진단.webp"),
+          import("../Image/login_image/진단분석리포트.webp"),
+          import("../Image/login_image/스토리텔링.webp"),
+        ]);
+
+        if (cancelled) return;
+
+        setMarqueeImages({
+          analyzeCompany: companyMod.default,
+          analyzeReport: reportMod.default,
+          story: storyMod.default,
+        });
+      } catch {
+        // 이미지 지연 로드 실패 시 기존 UI 동작 유지
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(loadExtraImages, {
+        timeout: 1800,
+      });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+
+    const timer = window.setTimeout(loadExtraImages, 300);
     return () => {
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current = [];
+      cancelled = true;
+      window.clearTimeout(timer);
     };
   }, []);
 
-  // ✅ 회원가입 화면 사전 로딩(플립 중 다음 장이 즉시 보이도록 청크 미리 준비)
+  // ✅ 회원가입 페이지 prefetch (hover/focus 시)
   const warmSignupPage = () => {
-    if (signupWarmupStartedRef.current) return;
-    signupWarmupStartedRef.current = true;
     import("./Signup.jsx").catch(() => {});
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return undefined;
-
-    let idleId = null;
-    let timeoutId = null;
-
-    if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(warmSignupPage, { timeout: 1000 });
-    } else {
-      timeoutId = window.setTimeout(warmSignupPage, 80);
-    }
-
-    return () => {
-      if (idleId !== null && "cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, []);
-
-  const queueTimer = (callback, ms) => {
-    const timerId = window.setTimeout(callback, ms);
-    timersRef.current.push(timerId);
-  };
-
-  const goSignupWithFlip = () => {
+  const goSignup = () => {
     if (isLoading) return;
     navigate("/signup");
   };
@@ -226,100 +225,7 @@ export default function LoginApp() {
       </PolicyModal>
 
       <div className="login-shell split">
-        {/* 플립 중 미리 보이는 다음 페이지(회원가입) 레이어 */}
-        <div className="flip-next-preview" aria-hidden={!isFlippingToSignup}>
-          <section className="flip-next-hero">
-            <div className="flip-next-hero-top" aria-hidden="true">
-              <span className="flip-next-hero-line" />
-              <span className="flip-next-hero-line short" />
-            </div>
-
-            <div className="flip-next-hero-cards" aria-hidden="true">
-              <div className="flip-next-hero-card" />
-              <div className="flip-next-hero-card" />
-              <div className="flip-next-hero-card" />
-            </div>
-          </section>
-
-          <section className="flip-next-form-pane">
-            <div className="flip-signup-card" aria-hidden="true">
-              <h3>회원가입</h3>
-
-              <div className="flip-signup-form-like">
-                <div className="flip-field">
-                  <span className="flip-field-label" />
-                  <span className="flip-field-input" />
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label" />
-                  <span className="flip-field-input" />
-                  <span className="flip-field-hint" />
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label" />
-                  <span className="flip-field-input" />
-                  <span className="flip-field-hint wide" />
-                  <div className="flip-pill-row">
-                    <span className="flip-pill" />
-                    <span className="flip-pill" />
-                    <span className="flip-pill" />
-                    <span className="flip-pill" />
-                  </div>
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label" />
-                  <span className="flip-field-input" />
-                  <div className="flip-pill-row single">
-                    <span className="flip-pill short" />
-                  </div>
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label short" />
-                  <span className="flip-field-input" />
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label short" />
-                  <span className="flip-field-input" />
-                </div>
-
-                <div className="flip-field">
-                  <span className="flip-field-label short" />
-                  <span className="flip-field-input has-icon">
-                    <span className="flip-input-icon" />
-                  </span>
-                </div>
-
-                <div className="flip-consent-preview">
-                  <div className="flip-consent-row">
-                    <span className="flip-consent-dot" />
-                    <span className="flip-consent-text" />
-                    <span className="flip-consent-view">보기</span>
-                  </div>
-                  <div className="flip-consent-row">
-                    <span className="flip-consent-dot" />
-                    <span className="flip-consent-text" />
-                    <span className="flip-consent-view">보기</span>
-                  </div>
-                </div>
-
-                <div className="flip-button-row">
-                  <span className="flip-btn primary" />
-                  <span className="flip-btn secondary" />
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="right-page-flip-sheet" aria-hidden="true" />
-
         {/* Left: 로그인 폼 */}
-
         <section className="login-panel light-panel">
           <h2>LOGIN</h2>
 
@@ -397,7 +303,7 @@ export default function LoginApp() {
               <button
                 type="button"
                 className="signup-cta"
-                onClick={goSignupWithFlip}
+                onClick={goSignup}
                 onMouseEnter={warmSignupPage}
                 onFocus={warmSignupPage}
                 disabled={isLoading}
@@ -418,49 +324,49 @@ export default function LoginApp() {
           <div className="feature-marquee" aria-label="서비스 핵심 기능">
             <div className="marquee-track">
               <div className="marquee-card">
-                <img src={namingLogoImg} alt="네이밍 로고 추천" />
+                <img src={namingLogoImg} alt="네이밍 로고 추천" loading="eager" decoding="async" fetchPriority="high" />
                 <strong>네이밍·로고 추천</strong>
                 <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={analyzeCompany} alt="기업 진단 분석" />
+                <img src={marqueeImages.analyzeCompany || TRANSPARENT_PIXEL} alt="기업 진단 분석" loading="lazy" decoding="async" />
                 <strong>기업 진단분석</strong>
                 <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={analyzeReport} alt="분석기반 리포트" />
+                <img src={marqueeImages.analyzeReport || TRANSPARENT_PIXEL} alt="분석기반 리포트" loading="lazy" decoding="async" />
                 <strong>분석 리포트 제공</strong>
                 <p>분석 내용 기반 리포트를 제공합니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
+                <img src={marqueeImages.story || TRANSPARENT_PIXEL} alt="스토리텔링" loading="lazy" decoding="async" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={namingLogoImg} alt="" />
+                <img src={namingLogoImg} alt="" loading="lazy" decoding="async" />
                 <strong>네이밍·로고 추천</strong>
                 <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={analyzeCompany} alt="" />
+                <img src={marqueeImages.analyzeCompany || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>기업 진단분석</strong>
                 <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={analyzeReport} alt="" />
+                <img src={marqueeImages.analyzeReport || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>분석 리포트 제공</strong>
                 <p>분석 내용 기반 리포트를 제공합니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={story} alt="" />
+                <img src={marqueeImages.story || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>

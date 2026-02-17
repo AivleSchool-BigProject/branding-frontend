@@ -11,6 +11,9 @@ import {
   userSetItem,
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
+import "../styles/PromotionResult.css";
+import "../styles/ConceptConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const SERVICE_MAP = {
   icon: {

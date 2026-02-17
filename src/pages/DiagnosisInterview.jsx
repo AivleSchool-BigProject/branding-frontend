@@ -16,6 +16,8 @@ import {
   upsertPipeline,
   resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
+import "../styles/DiagnosisInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_SUMMARY_KEY = "diagnosisDraft";

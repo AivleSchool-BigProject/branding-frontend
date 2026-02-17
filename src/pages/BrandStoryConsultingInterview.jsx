@@ -31,6 +31,8 @@ import {
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest, apiRequestAI } from "../api/client.js";
+import "../styles/BrandStoryConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const STORAGE_KEY = "brandStoryConsultingInterviewDraft_v1";
 const RESULT_KEY = "brandStoryConsultingInterviewResult_v1";

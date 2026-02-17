@@ -16,6 +16,8 @@ import {
   setBrandFlowCurrent,
   ensureBrandIdConsistency,
 } from "../utils/brandPipelineStorage.js";
+import "../styles/DiagnosisResult.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const DIAGNOSIS_RESULT_KEY = "diagnosisResult_v1";
 const DIAGNOSIS_RESULT_KEY_LEGACY = "diagnosisResult_v1_global";

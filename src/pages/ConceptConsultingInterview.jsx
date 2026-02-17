@@ -33,6 +33,8 @@ import {
 
 // ✅ 백 연동(이미 프로젝트에 존재하는 클라이언트 사용)
 import { apiRequest, apiRequestAI } from "../api/client.js";
+import "../styles/ConceptConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const STORAGE_KEY = "conceptInterviewDraft_homepage_v7";
 const RESULT_KEY = "conceptInterviewResult_homepage_v7";
@@ -1014,9 +1016,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.core_values ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-core_values">
+                <div
+                  className={`field questionField ${questionComplete.core_values ? "is-complete" : ""}`}
+                  id="concept-q-core_values"
+                >
                   <label>
                     1. 브랜드가 절대 포기할 수 없는 핵심 가치는 무엇인가요?
                     (2-3개 선택) <span className="req">*</span>
@@ -1055,9 +1060,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.brand_voice ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-brand_voice">
+                <div
+                  className={`field questionField ${questionComplete.brand_voice ? "is-complete" : ""}`}
+                  id="concept-q-brand_voice"
+                >
                   <label>
                     2. 고객에게 말을 건넨다면 어떤 말투일까요?{" "}
                     <span className="req">*</span>
@@ -1090,9 +1098,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.brand_promise ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-brand_promise">
+                <div
+                  className={`field questionField ${questionComplete.brand_promise ? "is-complete" : ""}`}
+                  id="concept-q-brand_promise"
+                >
                   <label>
                     3. 우리 브랜드가 고객에게 약속하는 단 하나는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1106,9 +1117,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.key_message ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-key_message">
+                <div
+                  className={`field questionField ${questionComplete.key_message ? "is-complete" : ""}`}
+                  id="concept-q-key_message"
+                >
                   <label>
                     4. 고객이 기억해야 할 단 한 문장은 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1122,9 +1136,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.concept_vibe ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-concept_vibe">
+                <div
+                  className={`field questionField ${questionComplete.concept_vibe ? "is-complete" : ""}`}
+                  id="concept-q-concept_vibe"
+                >
                   <label>
                     5. 브랜드 전체를 관통하는 시각적/심리적 분위기는 무엇인가요?{" "}
                     <span className="req">*</span>
@@ -1138,9 +1155,12 @@ export default function ConceptConsultingInterview({ onLogout }) {
               </div>
 
               <div
-                className={`card questionCard ${questionComplete.positioning_axes ? "is-complete" : ""}`}
+                className="card questionCard"
               >
-                <div className="field" id="concept-q-positioning_axes">
+                <div
+                  className={`field questionField ${questionComplete.positioning_axes ? "is-complete" : ""}`}
+                  id="concept-q-positioning_axes"
+                >
                   <label>
                     6. 우리 브랜드가 경쟁사와 가장 달라지고 싶은 방향은 어디에
                     가깝나요? (최대 2개) <span className="req">*</span>

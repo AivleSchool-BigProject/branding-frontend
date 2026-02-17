@@ -10,6 +10,7 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 
 import investGuideImg from "../Image/investment_image/investment_rule.webp";
+import "../styles/InvestmentBoard.css";
 
 export default function InvestmentBoard({ onLogout }) {
   const navigate = useNavigate();

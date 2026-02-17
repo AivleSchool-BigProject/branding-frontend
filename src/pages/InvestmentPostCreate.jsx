@@ -14,6 +14,7 @@ import {
   userSetItem,
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
+import "../styles/InvestmentPostCreate.css";
 
 const LOCATION_OPTIONS = [
   "수도권",

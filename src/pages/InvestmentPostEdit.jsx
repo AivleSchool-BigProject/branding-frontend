@@ -9,6 +9,7 @@ import SiteFooter from "../components/SiteFooter.jsx";
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
+import "../styles/InvestmentPostCreate.css";
 
 const LOCATION_OPTIONS = ["수도권", "강원도", "충남/충북", "경남/경북", "전남/전북", "제주"];
 const COMPANY_SIZE_OPTIONS = ["예비 창업 / 개인", "스타트업", "중소기업", "중견기업", "대기업"];

@@ -6,6 +6,8 @@ import SiteHeader from "../components/SiteHeader.jsx";
 import SiteFooter from "../components/SiteFooter.jsx";
 
 import { getPromoReport } from "../utils/promoReportHistory.js";
+import "../styles/ConceptConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 function fmt(ts) {
   if (!ts) return "-";

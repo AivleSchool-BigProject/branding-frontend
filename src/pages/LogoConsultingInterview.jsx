@@ -53,6 +53,8 @@ import exCocaCola from "../Image/logo_example_image/coca-cola-logo.webp";
 import exHarley from "../Image/logo_example_image/logo_Harley.webp";
 import exNFL from "../Image/logo_example_image/logo_nfl.webp";
 import exSnapchat from "../Image/logo_example_image/logo_snapchat.webp";
+import "../styles/LogoConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const STORAGE_KEY = "logoConsultingInterviewDraft_v1";
 const RESULT_KEY = "logoConsultingInterviewResult_v1";

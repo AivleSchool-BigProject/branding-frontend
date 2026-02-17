@@ -1,6 +1,7 @@
 // src/pages/EasyLogin.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "../styles/EasyLogin.css";
 
 /**
  * [EasyLogin Page] 간편 로그인 "페이지" 버전

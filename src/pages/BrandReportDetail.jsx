@@ -10,6 +10,8 @@ import { userSafeParse } from "../utils/userLocalStorage.js";
 
 import { clearAccessToken } from "../api/client.js";
 import { clearCurrentUserId, clearIsLoggedIn } from "../api/auth.js";
+import "../styles/ConceptConsultingInterview.css";
+import "../styles/ConsultingUnifiedTheme.css";
 
 const SELECTED_LOGO_MAP_KEY = "selectedLogoUrlByBrand_v1";
 

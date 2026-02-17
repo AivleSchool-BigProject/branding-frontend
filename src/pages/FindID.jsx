@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SiteFooter from "../components/SiteFooter.jsx";
+import "../styles/FindID.css";
 
 /**
  * [FindID] 아이디 찾기 페이지 (프론트-only)
