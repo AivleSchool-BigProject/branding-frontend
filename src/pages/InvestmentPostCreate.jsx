@@ -14,6 +14,7 @@ import {
   userSetItem,
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
+import "../styles/InvestmentPostCreate.css";
 
 const LOCATION_OPTIONS = [
   "수도권",
@@ -176,7 +177,7 @@ export default function InvestmentPostCreate({ onLogout }) {
       formData.append("image", logoFile);
     } else {
       const draftBlob = dataUrlToBlob(logoPreview);
-      if (draftBlob) formData.append("image", draftBlob, "draft-logo.png");
+      if (draftBlob) formData.append("image", draftBlob, "draft-logo.webp");
     }
 
     try {

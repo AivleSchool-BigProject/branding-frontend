@@ -602,3 +602,192 @@
     font-size: 14px !important;
   }
 }
+
+/* ===== Shared AI loading card (naming/concept/story/logo) ===== */
+.diagInterview.consultingInterview .namingLoadingCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.97) 0%,
+    rgba(239, 246, 255, 0.96) 100%
+  );
+  box-shadow:
+    0 10px 28px rgba(30, 64, 175, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__glow {
+  position: absolute;
+  right: -80px;
+  top: -72px;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.2) 0%,
+    rgba(59, 130, 246, 0) 72%
+  );
+  pointer-events: none;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(30, 64, 175, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: rgba(30, 64, 175, 0.98);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__elapsed {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(30, 64, 175, 0.92);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  padding: 5px 10px;
+  line-height: 1;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.25;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(37, 99, 235, 0.28);
+  border-top-color: rgba(37, 99, 235, 0.95);
+  animation: aiSpin 0.9s linear infinite;
+  flex: 0 0 auto;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__desc {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(51, 65, 85, 0.95);
+  font-weight: 600;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__steps {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  color: rgba(51, 65, 85, 0.9);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__step.is-active {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.42);
+  color: rgba(30, 64, 175, 0.98);
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__progress {
+  margin-top: 12px;
+  height: 9px;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  overflow: hidden;
+}
+
+@keyframes namingCardLoadShared {
+  0% {
+    width: 18%;
+  }
+  45% {
+    width: 62%;
+  }
+  100% {
+    width: 88%;
+  }
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__progressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb 0%, #38bdf8 100%);
+  animation: namingCardLoadShared 1.5s ease-in-out infinite alternate;
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__wait {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(30, 64, 175, 0.94);
+}
+
+.diagInterview.consultingInterview .namingLoadingCard__dots::after {
+  content: "...";
+  display: inline-block;
+  width: 16px;
+  text-align: left;
+  letter-spacing: 2px;
+  animation: namingDotsShared 1s steps(4, end) infinite;
+}
+
+@keyframes namingDotsShared {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .diagInterview.consultingInterview .namingLoadingCard__head h2 {
+    font-size: 20px;
+  }
+
+  .diagInterview.consultingInterview .namingLoadingCard__desc {
+    font-size: 13px;
+  }
+}

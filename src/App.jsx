@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import {
   Routes,
   Route,
@@ -14,43 +14,54 @@ import FindID from "./pages/FindID.jsx";
 import FindPassword from "./pages/FindPassword.jsx";
 import EasyLogin from "./pages/EasyLogin.jsx";
 
-import MainPage from "./pages/MainPage.jsx";
-
-import DiagnosisInterview from "./pages/DiagnosisInterview.jsx";
-import DiagnosisResult from "./pages/DiagnosisResult.jsx";
-
-import BrandConsulting from "./pages/BrandConsulting.jsx";
-import NamingConsultingInterview from "./pages/NamingConsultingInterview.jsx";
-import LogoConsultingInterview from "./pages/LogoConsultingInterview.jsx";
-import ConceptConsultingInterview from "./pages/ConceptConsultingInterview.jsx";
-import BrandStoryConsultingInterview from "./pages/BrandStoryConsultingInterview.jsx";
-import BrandConsultingResult from "./pages/BrandConsultingResult.jsx";
-import BrandAllResults from "./pages/BrandAllResults.jsx";
-
-import PromotionPage from "./pages/Promotion.jsx";
-import ProductIconConsultingInterview from "./pages/ProductIconConsultingInterview.jsx";
-import AICutModelConsultingInterview from "./pages/AICutModelConsultingInterview.jsx";
-import ProductStagingCutConsultingInterview from "./pages/ProductStagingCutConsultingInterview.jsx";
-import SNSPosterConsultingInterview from "./pages/SNSPosterConsultingInterview.jsx";
-import PromotionResult from "./pages/PromotionResult.jsx";
-import PromotionAllResults from "./pages/PromotionAllResults.jsx";
-
-import MyPage from "./pages/MyPage.jsx";
-import BrandReportDetail from "./pages/BrandReportDetail.jsx";
-import PromoReportDetail from "./pages/PromoReportDetail.jsx";
-
-import InvestmentBoard from "./pages/InvestmentBoard.jsx";
-import InvestmentPostCreate from "./pages/InvestmentPostCreate.jsx";
-import InvestmentPostDetail from "./pages/InvestmentPostDetail.jsx";
-import InvestmentPostEdit from "./pages/InvestmentPostEdit.jsx";
-
-import CurrentUserWidget from "./components/CurrentUserWidget.jsx";
-
 import {
   isBrandFlowRoute,
   isBrandWorkInProgress,
 } from "./utils/brandPipelineStorage.js";
 import { notifyPromoInterviewComingSoon } from "./utils/promoComingSoon.js";
+
+// ✅ 무거운 라우트는 필요 시점에만 로드
+const MainPage = lazy(() => import("./pages/MainPage.jsx"));
+
+const DiagnosisInterview = lazy(() => import("./pages/DiagnosisInterview.jsx"));
+const DiagnosisResult = lazy(() => import("./pages/DiagnosisResult.jsx"));
+
+const BrandConsulting = lazy(() => import("./pages/BrandConsulting.jsx"));
+const NamingConsultingInterview = lazy(
+  () => import("./pages/NamingConsultingInterview.jsx"),
+);
+const LogoConsultingInterview = lazy(
+  () => import("./pages/LogoConsultingInterview.jsx"),
+);
+const ConceptConsultingInterview = lazy(
+  () => import("./pages/ConceptConsultingInterview.jsx"),
+);
+const BrandStoryConsultingInterview = lazy(
+  () => import("./pages/BrandStoryConsultingInterview.jsx"),
+);
+const BrandConsultingResult = lazy(
+  () => import("./pages/BrandConsultingResult.jsx"),
+);
+const BrandAllResults = lazy(() => import("./pages/BrandAllResults.jsx"));
+
+const PromotionPage = lazy(() => import("./pages/Promotion.jsx"));
+const PromotionResult = lazy(() => import("./pages/PromotionResult.jsx"));
+const PromotionAllResults = lazy(() => import("./pages/PromotionAllResults.jsx"));
+
+const MyPage = lazy(() => import("./pages/MyPage.jsx"));
+const BrandReportDetail = lazy(() => import("./pages/BrandReportDetail.jsx"));
+const PromoReportDetail = lazy(() => import("./pages/PromoReportDetail.jsx"));
+
+const InvestmentBoard = lazy(() => import("./pages/InvestmentBoard.jsx"));
+const InvestmentPostCreate = lazy(
+  () => import("./pages/InvestmentPostCreate.jsx"),
+);
+const InvestmentPostDetail = lazy(
+  () => import("./pages/InvestmentPostDetail.jsx"),
+);
+const InvestmentPostEdit = lazy(() => import("./pages/InvestmentPostEdit.jsx"));
+
+const CurrentUserWidget = lazy(() => import("./components/CurrentUserWidget.jsx"));
 
 function PromoInterviewBlocked() {
   const navigate = useNavigate();
@@ -61,6 +72,10 @@ function PromoInterviewBlocked() {
   }, [navigate]);
 
   return null;
+}
+
+function withSuspense(element) {
+  return <Suspense fallback={null}>{element}</Suspense>;
 }
 
 export default function App() {
@@ -108,89 +123,122 @@ export default function App() {
       <Routes>
         {/* ✅ 기본 진입: 로그인 */}
         <Route path="/" element={<Login />} />
+
         {/* ✅ 로그인/계정 */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/findid" element={<FindID />} />
         <Route path="/findpw" element={<FindPassword />} />
         <Route path="/easylogin" element={<EasyLogin />} />
+
         {/* ✅ 메인 */}
-        <Route path="/main" element={<MainPage />} />
+        <Route path="/main" element={withSuspense(<MainPage />)} />
+
         {/* ✅ 기업 진단 */}
         <Route
           path="/diagnosis"
           element={<Navigate to="/brandconsulting" replace />}
         />
-        <Route path="/diagnosisinterview" element={<DiagnosisInterview />} />
+        <Route
+          path="/diagnosisinterview"
+          element={withSuspense(<DiagnosisInterview />)}
+        />
         {/* ✅ alias (레거시 경로 대응) */}
         <Route
           path="/diagnosis/interview"
           element={<Navigate to="/diagnosisinterview" replace />}
         />
-        <Route path="/diagnosis/result" element={<DiagnosisResult />} />
+        <Route
+          path="/diagnosis/result"
+          element={withSuspense(<DiagnosisResult />)}
+        />
         <Route
           path="/diagnosisresult"
           element={<Navigate to="/diagnosis/result" replace />}
         />
+
         {/* ✅ 브랜드 컨설팅 메인 */}
-        <Route path="/brandconsulting" element={<BrandConsulting />} />
+        <Route
+          path="/brandconsulting"
+          element={withSuspense(<BrandConsulting />)}
+        />
+
         {/* ✅ 브랜드 컨설팅 인터뷰(권장 표준 라우트) */}
         <Route
           path="/brand/naming/interview"
-          element={<NamingConsultingInterview />}
+          element={withSuspense(<NamingConsultingInterview />)}
         />
         <Route
           path="/brand/concept/interview"
-          element={<ConceptConsultingInterview />}
+          element={withSuspense(<ConceptConsultingInterview />)}
         />
         <Route
           path="/brand/story"
-          element={<BrandStoryConsultingInterview />}
+          element={withSuspense(<BrandStoryConsultingInterview />)}
         />
         <Route
           path="/brand/story/interview"
-          element={<BrandStoryConsultingInterview />}
-        />{" "}
+          element={withSuspense(<BrandStoryConsultingInterview />)}
+        />
         {/* ✅ alias */}
         <Route
           path="/brand/logo/interview"
-          element={<LogoConsultingInterview />}
+          element={withSuspense(<LogoConsultingInterview />)}
         />
+
         {/* ✅ 기존 라우트(alias) 유지 */}
-        <Route path="/nameconsulting" element={<NamingConsultingInterview />} />
+        <Route
+          path="/nameconsulting"
+          element={withSuspense(<NamingConsultingInterview />)}
+        />
         <Route
           path="/namingconsulting"
-          element={<NamingConsultingInterview />}
+          element={withSuspense(<NamingConsultingInterview />)}
         />
         <Route
           path="/conceptconsulting"
-          element={<ConceptConsultingInterview />}
+          element={withSuspense(<ConceptConsultingInterview />)}
         />
         <Route
           path="/homepageconsulting"
-          element={<ConceptConsultingInterview />}
+          element={withSuspense(<ConceptConsultingInterview />)}
         />
         <Route
           path="/brand/homepage/interview"
-          element={<ConceptConsultingInterview />}
-        />{" "}
+          element={withSuspense(<ConceptConsultingInterview />)}
+        />
         {/* legacy */}
         <Route
           path="/brandstoryconsulting"
-          element={<BrandStoryConsultingInterview />}
+          element={withSuspense(<BrandStoryConsultingInterview />)}
         />
-        <Route path="/logoconsulting" element={<LogoConsultingInterview />} />
+        <Route
+          path="/logoconsulting"
+          element={withSuspense(<LogoConsultingInterview />)}
+        />
+
         {/* ✅ 브랜드/홍보물 결과 단일 페이지 */}
-        <Route path="/brand/result" element={<BrandConsultingResult />} />
-        <Route path="/promotion/result" element={<PromotionResult />} />
+        <Route
+          path="/brand/result"
+          element={withSuspense(<BrandConsultingResult />)}
+        />
+        <Route
+          path="/promotion/result"
+          element={withSuspense(<PromotionResult />)}
+        />
+
         {/* ✅ 통합 결과 페이지 */}
-        <Route path="/mypage/brand-results" element={<BrandAllResults />} />
+        <Route
+          path="/mypage/brand-results"
+          element={withSuspense(<BrandAllResults />)}
+        />
         <Route
           path="/mypage/promotion-results"
-          element={<PromotionAllResults />}
+          element={withSuspense(<PromotionAllResults />)}
         />
+
         {/* ✅ 홍보물 컨설팅 */}
-        <Route path="/promotion" element={<PromotionPage />} />
+        <Route path="/promotion" element={withSuspense(<PromotionPage />)} />
         <Route
           path="/promotion/icon/interview"
           element={<PromoInterviewBlocked />}
@@ -207,27 +255,42 @@ export default function App() {
           path="/promotion/poster/interview"
           element={<PromoInterviewBlocked />}
         />
+
         {/* ✅ 마이페이지 */}
-        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/mypage" element={withSuspense(<MyPage />)} />
         <Route
           path="/mypage/brand-report/:id"
-          element={<BrandReportDetail />}
+          element={withSuspense(<BrandReportDetail />)}
         />
         <Route
           path="/mypage/promo-report/:id"
-          element={<PromoReportDetail />}
+          element={withSuspense(<PromoReportDetail />)}
         />
+
         {/* ✅ 투자 라운지 */}
-        <Route path="/investment" element={<InvestmentBoard />} />
-        <Route path="/investment/new" element={<InvestmentPostCreate />} />
-        <Route path="/investment/:id" element={<InvestmentPostDetail />} />
-        <Route path="/investment/edit/:id" element={<InvestmentPostEdit />} />
+        <Route
+          path="/investment"
+          element={withSuspense(<InvestmentBoard />)}
+        />
+        <Route
+          path="/investment/new"
+          element={withSuspense(<InvestmentPostCreate />)}
+        />
+        <Route
+          path="/investment/:id"
+          element={withSuspense(<InvestmentPostDetail />)}
+        />
+        <Route
+          path="/investment/edit/:id"
+          element={withSuspense(<InvestmentPostEdit />)}
+        />
+
         {/* ✅ 없는 경로는 메인으로 */}
         <Route path="*" element={<Navigate to="/main" replace />} />
       </Routes>
 
       {/* ✅ 우측 하단 유저 위젯(현재 로그인 계정) */}
-      {!shouldHideUserWidget && <CurrentUserWidget />}
+      {!shouldHideUserWidget && withSuspense(<CurrentUserWidget />)}
     </>
   );
 }

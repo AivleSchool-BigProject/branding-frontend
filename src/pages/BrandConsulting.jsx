@@ -25,6 +25,7 @@ import {
   resetBrandConsultingToDiagnosisStart,
 } from "../utils/brandPipelineStorage.js";
 import { fetchMyBrands } from "../api/mypage.js";
+import "../styles/BrandConsulting.css";
 
 export default function BrandConsulting({ onLogout }) {
   const location = useLocation();

@@ -14,6 +14,7 @@ import {
   userSetItem,
   userRemoveItem,
 } from "../utils/userLocalStorage.js";
+import "../styles/BrandConsultingResult.css";
 
 const BRAND_HISTORY_KEY = "brandConsultingHistory_v1";
 

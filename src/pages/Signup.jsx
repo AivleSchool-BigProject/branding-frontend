@@ -2,24 +2,19 @@
 import React, { useEffect, useMemo, useRef, useState, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 import namingLogoImg from "../Image/login_image/네이밍_로고_추천.webp";
-import analyzeCompany from "../Image/login_image/기업 초기 진단.webp";
-import analyzeReport from "../Image/login_image/진단분석리포트.webp";
-import story from "../Image/login_image/스토리텔링.webp";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 import { apiRequest } from "../api/client.js";
 import { getServiceErrorMessage } from "../utils/serviceErrorMessages.js";
+import "../styles/Signup.css";
 
-const FLIP_MS = 850;
+const TRANSPARENT_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 const SUCCESS_HOLD_MS = 260;
-
-function shouldReduceMotion() {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 export default function SignupApp() {
   const navigate = useNavigate();
@@ -52,37 +47,61 @@ export default function SignupApp() {
   const [consentError, setConsentError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 읽기 모달 스크롤 완료 여부
-  const [canMarkRead, setCanMarkRead] = useState(false);
-  const policyScrollRef = useRef(null);
-
-  // 회원가입 -> 로그인 페이지 넘김
-  const [isFlippingToLogin, setIsFlippingToLogin] = useState(false);
-  const [isRoutingToLogin, setIsRoutingToLogin] = useState(false);
-  const timersRef = useRef([]);
+  const [marqueeImages, setMarqueeImages] = useState({
+    analyzeCompany: "",
+    analyzeReport: "",
+    story: "",
+  });
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadExtraImages = async () => {
+      try {
+        const [companyMod, reportMod, storyMod] = await Promise.all([
+          import("../Image/login_image/기업 초기 진단.webp"),
+          import("../Image/login_image/진단분석리포트.webp"),
+          import("../Image/login_image/스토리텔링.webp"),
+        ]);
+
+        if (cancelled) return;
+
+        setMarqueeImages({
+          analyzeCompany: companyMod.default,
+          analyzeReport: reportMod.default,
+          story: storyMod.default,
+        });
+      } catch {
+        // 이미지 지연 로드 실패 시 기존 UI 동작 유지
+      }
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(loadExtraImages, {
+        timeout: 1800,
+      });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+
+    const timer = window.setTimeout(loadExtraImages, 300);
     return () => {
-      timersRef.current.forEach((t) => clearTimeout(t));
-      timersRef.current = [];
+      cancelled = true;
+      window.clearTimeout(timer);
     };
   }, []);
 
-  const queueTimer = (callback, ms) => {
-    const timerId = window.setTimeout(callback, ms);
-    timersRef.current.push(timerId);
-  };
+  // 읽기 모달 스크롤 완료 여부
+  const [canMarkRead, setCanMarkRead] = useState(false);
+  const policyScrollRef = useRef(null);
 
   const warmLoginPage = () => {
     import("./Login.jsx").catch(() => {});
   };
 
-  useEffect(() => {
-    const t = window.setTimeout(warmLoginPage, 200);
-    return () => window.clearTimeout(t);
-  }, []);
-
-  const goLoginWithFlip = () => {
+  const goLogin = () => {
     navigate("/login");
   };
 
@@ -145,11 +164,11 @@ export default function SignupApp() {
         },
       });
 
-      // 가입 완료: 동의 모달 닫기 -> 잠깐 유지 -> 책장 넘김
+      // 가입 완료
       setConsentOpen(false);
       setReadOpenType(null);
       setConsentError("");
-      goLoginWithFlip(SUCCESS_HOLD_MS);
+      window.setTimeout(() => goLogin(), SUCCESS_HOLD_MS);
     } catch (error) {
       setError(
         getServiceErrorMessage(error, {
@@ -257,7 +276,7 @@ export default function SignupApp() {
     await registerAccount();
   };
 
-  const disabled = loading || isRoutingToLogin;
+  const disabled = loading;
 
   return (
     <div className="signup-page">
@@ -472,70 +491,7 @@ export default function SignupApp() {
         </div>
       </PolicyModal>
 
-      <div
-        className={`signup-shell ${
-          isFlippingToLogin ? "is-flipping-to-login" : ""
-        }`}
-      >
-        <div className="left-page-flip-sheet" aria-hidden="true" />
-
-        <div
-          className={`login-peek-layer ${isFlippingToLogin ? "is-visible" : ""}`}
-          aria-hidden="true"
-        >
-          <section className="peek-login-pane">
-            <div className="peek-login-card">
-              <h3>LOGIN</h3>
-
-              <div className="peek-login-form-like">
-                <div className="peek-field">
-                  <span className="peek-label" />
-                  <span className="peek-input" />
-                </div>
-
-                <div className="peek-field">
-                  <span className="peek-label" />
-                  <span className="peek-input has-icon">
-                    <span className="peek-input-icon" />
-                  </span>
-                </div>
-
-                <div className="peek-login-links">
-                  <span className="peek-link" />
-                  <span className="dot" />
-                  <span className="peek-link short" />
-                </div>
-
-                <span className="peek-error-space" />
-
-                <div className="peek-login-actions">
-                  <span className="peek-btn primary" />
-                  <span className="peek-btn secondary" />
-                </div>
-
-                <div className="peek-login-divider" />
-
-                <div className="peek-login-signup-row">
-                  <span className="peek-signup-copy" />
-                  <span className="peek-signup-btn" />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="peek-login-hero">
-            <div className="peek-hero-top">
-              <span className="peek-hero-title" />
-              <span className="peek-hero-title short" />
-            </div>
-            <div className="peek-hero-cards">
-              <span className="peek-hero-card" />
-              <span className="peek-hero-card" />
-              <span className="peek-hero-card" />
-            </div>
-          </section>
-        </div>
-
+      <div className="signup-shell">
         {/* Left: 소개 패널 */}
         <section className="signup-hero navy-panel">
           <div className="hero-top">
@@ -546,49 +502,49 @@ export default function SignupApp() {
           <div className="feature-marquee" aria-label="서비스 핵심 기능">
             <div className="marquee-track">
               <div className="marquee-card">
-                <img src={namingLogoImg} alt="네이밍 로고 추천" />
+                <img src={namingLogoImg} alt="네이밍 로고 추천" loading="eager" decoding="async" fetchPriority="high" />
                 <strong>네이밍·로고 추천</strong>
                 <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={analyzeCompany} alt="기업 진단 분석" />
+                <img src={marqueeImages.analyzeCompany || TRANSPARENT_PIXEL} alt="기업 진단 분석" loading="lazy" decoding="async" />
                 <strong>기업 진단분석</strong>
                 <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={analyzeReport} alt="분석기반 리포트" />
+                <img src={marqueeImages.analyzeReport || TRANSPARENT_PIXEL} alt="분석기반 리포트" loading="lazy" decoding="async" />
                 <strong>분석 리포트 제공</strong>
                 <p>분석 내용 기반 리포트를 제공합니다.</p>
               </div>
 
               <div className="marquee-card">
-                <img src={story} alt="스토리텔링" />
+                <img src={marqueeImages.story || TRANSPARENT_PIXEL} alt="스토리텔링" loading="lazy" decoding="async" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={namingLogoImg} alt="" />
+                <img src={namingLogoImg} alt="" loading="lazy" decoding="async" />
                 <strong>네이밍·로고 추천</strong>
                 <p>요구사항에 맞는 네이밍과 로고를 추천해드립니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={analyzeCompany} alt="" />
+                <img src={marqueeImages.analyzeCompany || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>기업 진단분석</strong>
                 <p>초기 상황을 분석하여 최적의 제안을 해드립니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={analyzeReport} alt="" />
+                <img src={marqueeImages.analyzeReport || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>분석 리포트 제공</strong>
                 <p>분석 내용 기반 리포트를 제공합니다.</p>
               </div>
 
               <div className="marquee-card" aria-hidden="true">
-                <img src={story} alt="" />
+                <img src={marqueeImages.story || TRANSPARENT_PIXEL} alt="" loading="lazy" decoding="async" />
                 <strong>스타트업 스토리텔링</strong>
                 <p>기업 관련 소개글 등 기업관련 홍보글을 생성해줍니다.</p>
               </div>
@@ -760,7 +716,7 @@ export default function SignupApp() {
                 <button
                   type="button"
                   className="secondary"
-                  onClick={() => goLoginWithFlip()}
+                  onClick={goLogin}
                   onMouseEnter={warmLoginPage}
                   onFocus={warmLoginPage}
                   disabled={disabled}

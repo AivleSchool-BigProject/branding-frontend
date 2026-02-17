@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { startGoogleEasyLogin } from "../lib/googleEasyLogin.js";
 import { setAccessToken } from "../api/client.js";
 import { setCurrentUserId, setIsLoggedIn } from "../api/auth.js";
+import "../styles/EasyLoginModal.css";
 
 function GoogleIcon() {
   return (

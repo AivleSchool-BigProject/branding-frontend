@@ -10,6 +10,7 @@ import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
 
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem } from "../utils/userLocalStorage.js";
+import "../styles/BrandAllResults.css";
 
 const BRAND_HISTORY_KEY = "brandConsultingHistory_v1";
 

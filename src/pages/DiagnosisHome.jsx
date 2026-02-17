@@ -14,6 +14,7 @@ import bannerImage from "../Image/banner_image/Banner_D.webp";
 // ✅ 사용자별 localStorage 분리(계정마다 독립 진행)
 import { userGetItem } from "../utils/userLocalStorage.js";
 import { resetBrandConsultingToDiagnosisStart } from "../utils/brandPipelineStorage.js";
+import "../styles/DiagnosisHome.css";
 
 const INTERVIEW_STORAGE_KEY = "diagnosisInterviewDraft_v1";
 const HOME_SUMMARY_KEY = "diagnosisDraft";

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import SiteFooter from "../components/SiteFooter.jsx";
+import "../styles/FindPassword.css";
 
 export default function FindPassword() {
   const navigate = useNavigate();

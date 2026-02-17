@@ -32,6 +32,7 @@ import {
   deleteMyBrand,
   mapBrandDtoToReport,
 } from "../api/mypage.js";
+import "../styles/MyPage.css";
 
 function fmt(ts) {
   if (!ts) return "-";
