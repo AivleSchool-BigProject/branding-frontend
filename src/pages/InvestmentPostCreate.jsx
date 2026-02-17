@@ -176,7 +176,7 @@ export default function InvestmentPostCreate({ onLogout }) {
       formData.append("image", logoFile);
     } else {
       const draftBlob = dataUrlToBlob(logoPreview);
-      if (draftBlob) formData.append("image", draftBlob, "draft-logo.png");
+      if (draftBlob) formData.append("image", draftBlob, "draft-logo.webp");
     }
 
     try {
