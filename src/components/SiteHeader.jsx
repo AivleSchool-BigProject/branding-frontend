@@ -274,37 +274,22 @@ export default function SiteHeader({ onLogout, onBrandPick, onPromoPick }) {
                   <li className="brand-dd__step">
                     <span className="brand-dd__step-no">01</span>
                     <span className="brand-dd__step-name">기업진단</span>
-                    <span className="brand-dd__step-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </li>
                   <li className="brand-dd__step">
                     <span className="brand-dd__step-no">02</span>
                     <span className="brand-dd__step-name">네이밍</span>
-                    <span className="brand-dd__step-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </li>
                   <li className="brand-dd__step">
                     <span className="brand-dd__step-no">03</span>
                     <span className="brand-dd__step-name">컨셉</span>
-                    <span className="brand-dd__step-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </li>
                   <li className="brand-dd__step">
                     <span className="brand-dd__step-no">04</span>
                     <span className="brand-dd__step-name">스토리</span>
-                    <span className="brand-dd__step-arrow" aria-hidden="true">
-                      →
-                    </span>
                   </li>
-                  <li className="brand-dd__step brand-dd__step--last">
+                  <li className="brand-dd__step">
                     <span className="brand-dd__step-no">05</span>
                     <span className="brand-dd__step-name">로고</span>
-                    <span className="brand-dd__step-done" aria-hidden="true">
-                      완료
-                    </span>
                   </li>
                 </ol>
               </div>
