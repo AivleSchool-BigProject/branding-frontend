@@ -1218,9 +1218,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.namingStyles ? "is-complete" : ""}`}
                   id="naming-q-namingStyles"
@@ -1258,9 +1256,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.nameLength ? "is-complete" : ""}`}
                   id="naming-q-nameLength"
@@ -1296,9 +1292,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.languagePrefs ? "is-complete" : ""}`}
                   id="naming-q-languagePrefs"
@@ -1336,9 +1330,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.brandVibe ? "is-complete" : ""}`}
                   id="naming-q-brandVibe"
@@ -1390,9 +1382,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.avoidStyle ? "is-complete" : ""}`}
                   id="naming-q-avoidStyle"
@@ -1409,9 +1399,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.domainConstraint ? "is-complete" : ""}`}
                   id="naming-q-domainConstraint"
@@ -1447,9 +1435,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.targetEmotion ? "is-complete" : ""}`}
                   id="naming-q-targetEmotion"
@@ -1466,9 +1452,7 @@ export default function NamingConsultingInterview({ onLogout }) {
                 </div>
               </div>
 
-              <div
-                className="card questionCard"
-              >
+              <div className="card questionCard">
                 <div
                   className={`field questionField ${questionComplete.currentName ? "is-complete" : ""}`}
                 >
