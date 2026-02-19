@@ -298,7 +298,7 @@
 .brand-dd__step {
   position: relative;
   display: grid;
-  grid-template-columns: 40px 1fr auto;
+  grid-template-columns: 40px 1fr;
   align-items: center;
   gap: 10px;
 
@@ -310,15 +310,6 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 
   user-select: none;
-}
-
-.brand-dd__step:first-child {
-  background: linear-gradient(
-    90deg,
-    rgba(0, 31, 102, 0.08) 0%,
-    rgba(255, 255, 255, 0.95) 64%
-  );
-  border-color: rgba(0, 31, 102, 0.14);
 }
 
 .brand-dd__step-no {
@@ -345,26 +336,6 @@
   font-weight: 900;
   color: rgba(15, 23, 42, 0.9);
   letter-spacing: -0.01em;
-}
-
-.brand-dd__step-arrow {
-  font-size: 12px;
-  font-weight: 900;
-  color: rgba(15, 23, 42, 0.35);
-}
-
-.brand-dd__step-done {
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 900;
-  color: rgba(0, 31, 102, 0.88);
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.22);
-}
-
-.brand-dd__step--last .brand-dd__step-name {
-  color: rgba(0, 31, 102, 0.95);
 }
 
 /* Note */
