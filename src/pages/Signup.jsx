@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-import namingLogoImg from "../Image/login_image/네이밍_로고_추천.webp";
+import namingLogoImg from "../Image/login_image/naming_logo.webp";
 
 import PolicyModal from "../components/PolicyModal.jsx";
 import { PrivacyContent, TermsContent } from "../components/PolicyContents.jsx";
@@ -59,9 +59,9 @@ export default function SignupApp() {
     const loadExtraImages = async () => {
       try {
         const [companyMod, reportMod, storyMod] = await Promise.all([
-          import("../Image/login_image/기업 초기 진단.webp"),
-          import("../Image/login_image/진단분석리포트.webp"),
-          import("../Image/login_image/스토리텔링.webp"),
+          import("../Image/login_image/diag_intro.webp"),
+          import("../Image/login_image/diag_report.webp"),
+          import("../Image/login_image/storytelling.webp"),
         ]);
 
         if (cancelled) return;

@@ -45,10 +45,10 @@ import {
 // 컬러 피커 - react-colorful import
 import { HexColorPicker } from "react-colorful";
 
-import exNetflix from "../Image/logo_example_image/logo-Netflix.jpg";
+import exNetflix from "../Image/logo_example_image/logo-Netflix.webp";
 import exdunkin from "../Image/logo_example_image/logo_dunkin.webp";
 import exBurgerKing from "../Image/logo_example_image/burgerking_logo.webp";
-import exNike from "../Image/logo_example_image/nike-logos-swoosh-white.jpg";
+import exNike from "../Image/logo_example_image/nike-logos-swoosh-white.webp";
 import exCocaCola from "../Image/logo_example_image/coca-cola-logo.webp";
 import exHarley from "../Image/logo_example_image/logo_Harley.webp";
 import exNFL from "../Image/logo_example_image/logo_nfl.webp";
